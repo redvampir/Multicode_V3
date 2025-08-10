@@ -4,8 +4,8 @@ pub fn language() -> Language {
     tree_sitter_python::LANGUAGE.into()
 }
 
-pub fn parse(source: &str) -> Option<Tree> {
+pub fn parse(source: &str, old_tree: Option<&Tree>) -> Option<Tree> {
     let mut parser = Parser::new();
     parser.set_language(&language()).ok()?;
-    parser.parse(source, None)
+    parser.parse(source, old_tree)
 }

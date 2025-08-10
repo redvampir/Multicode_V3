@@ -14,6 +14,7 @@ use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
 use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
+use backend::{get_document_tree, update_document_tree};
 use serde::Serialize;
 use syn::{File, Item};
 use tauri::State;
@@ -72,7 +73,9 @@ fn normalize_kind(kind: &str) -> String {
 #[cfg_attr(not(test), tauri::command)]
 pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     let lang = to_lang(&lang)?;
-    let tree = parse(&content, lang)?;
+    let old = get_document_tree("current");
+    let tree = parse(&content, lang, old.as_ref())?;
+    update_document_tree("current".to_string(), tree.clone());
     let blocks = parse_to_blocks(&tree);
     let metas = read_all(&content);
     let map: HashMap<_, _> = metas.into_iter().map(|m| (m.id.clone(), m)).collect();
@@ -130,7 +133,7 @@ fn regenerate_code(content: &str, lang: Lang, metas: &[VisualMeta]) -> Option<St
 
 fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
     let mut file: File = syn::parse_file(content).ok()?;
-    let tree = parse(content, Lang::Rust)?;
+    let tree = parse(content, Lang::Rust, None)?;
     let blocks = parse_to_blocks(&tree);
     let map: HashMap<_, _> = blocks
         .into_iter()

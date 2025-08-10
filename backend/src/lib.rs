@@ -4,8 +4,26 @@ pub mod debugger;
 pub mod search;
 pub mod plugins;
 
+use once_cell::sync::Lazy;
 use plugins::Plugin;
+use std::collections::HashMap;
 use std::path::Path;
+use std::sync::Mutex;
+use tree_sitter::Tree;
+
+/// Stored parse trees for opened documents.
+static DOCUMENT_TREES: Lazy<Mutex<HashMap<String, Tree>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Retrieve the last parsed [`Tree`] for the given document identifier.
+pub fn get_document_tree(id: &str) -> Option<Tree> {
+    DOCUMENT_TREES.lock().unwrap().get(id).cloned()
+}
+
+/// Update the stored [`Tree`] for the given document identifier.
+pub fn update_document_tree(id: String, tree: Tree) {
+    DOCUMENT_TREES.lock().unwrap().insert(id, tree);
+}
 
 /// Load all backend plugins from the `plugins/` directory.
 ///
