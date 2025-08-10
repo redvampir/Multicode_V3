@@ -32,6 +32,34 @@ export class Block {
   }
 }
 
+// ---- Plugin infrastructure -------------------------------------------------
+
+const registry = {};
+
+export function registerBlock(kind, ctor) {
+  registry[kind] = ctor;
+}
+
+export function createBlock(kind, id, x, y, label, color) {
+  const Ctor = registry[kind] || Block;
+  return new Ctor(id, x, y, 120, 50, label, color);
+}
+
+export async function loadBlockPlugins(urls) {
+  for (const url of urls) {
+    try {
+      const mod = await import(/* @vite-ignore */ url);
+      if (mod && typeof mod.register === 'function') {
+        mod.register({ Block, registerBlock });
+      }
+    } catch (e) {
+      console.error('Failed to load block plugin', url, e);
+    }
+  }
+}
+
+// ---- Built-in blocks -------------------------------------------------------
+
 export class FunctionBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Function', '#e0f7fa');
@@ -55,3 +83,8 @@ export class LoopBlock extends Block {
     super(id, x, y, 120, 50, 'Loop', '#fce4ec');
   }
 }
+
+registerBlock('Function', FunctionBlock);
+registerBlock('Variable', VariableBlock);
+registerBlock('Condition', ConditionBlock);
+registerBlock('Loop', LoopBlock);

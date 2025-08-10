@@ -22,6 +22,9 @@
     import { invoke } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/tauri.js";
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
     import { VisualCanvas } from "./visual/canvas.js";
+    import { loadBlockPlugins } from "./visual/blocks.js";
+
+    await loadBlockPlugins(window.blockPlugins || []);
 
     const canvasEl = document.getElementById('visual-canvas');
     const vc = new VisualCanvas(canvasEl);
