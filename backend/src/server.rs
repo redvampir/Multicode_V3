@@ -13,12 +13,17 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
+use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use std::{
+    env,
+    fs,
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
+        mpsc::channel,
         Arc,
     },
+    thread,
     time::Duration,
 };
 use tokio::{signal, sync::broadcast, time};
@@ -202,6 +207,35 @@ pub async fn run() {
     let _ = SERVER_CONFIG.set(cfg.clone());
 
     let (tx, _rx) = broadcast::channel::<String>(100);
+
+    let watch_tx = tx.clone();
+    thread::spawn(move || {
+        let (fs_tx, fs_rx) = channel();
+        let mut watcher = watcher(fs_tx, Duration::from_secs(1)).expect("watcher");
+        let path = env::current_dir().expect("cwd");
+        watcher
+            .watch(&path, RecursiveMode::Recursive)
+            .expect("watch");
+        while let Ok(event) = fs_rx.recv() {
+            if let DebouncedEvent::Write(path) = event {
+                let lang = match path.extension().and_then(|s| s.to_str()) {
+                    Some("rs") => "rust",
+                    Some("py") => "python",
+                    Some("js") => "javascript",
+                    Some("css") => "css",
+                    Some("html") => "html",
+                    _ => continue,
+                };
+                if let Ok(content) = fs::read_to_string(&path) {
+                    if let Some(blocks) = parse_blocks(content, lang.into()) {
+                        if let Ok(json) = serde_json::to_string(&blocks) {
+                            let _ = watch_tx.send(json);
+                        }
+                    }
+                }
+            }
+        }
+    });
     let state = AppState {
         tx,
         connections: Arc::new(AtomicUsize::new(0)),
