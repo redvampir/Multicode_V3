@@ -11,6 +11,7 @@ mod parser;
 mod plugins;
 mod server;
 use backend::{get_document_tree, update_document_tree};
+use clap::{Parser, Subcommand};
 use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
 use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
@@ -21,6 +22,40 @@ use tauri::State;
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
+
+#[derive(Parser)]
+#[command(author, version, about)]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Parse a source file and output block information as JSON
+    Parse {
+        /// Path to the source file
+        path: String,
+        /// Language of the source file
+        #[arg(long)]
+        lang: String,
+    },
+    /// Export a file, optionally stripping metadata comments
+    Export {
+        /// Input file path
+        input: String,
+        /// Output file path
+        output: String,
+        /// Remove @VISUAL_META comments
+        #[arg(long)]
+        strip_meta: bool,
+    },
+    /// Show all metadata comments from a file as JSON
+    Metadata {
+        /// Path to the source file
+        path: String,
+    },
+}
 
 #[cfg_attr(not(test), tauri::command)]
 fn save_state(state: State<EditorState>, content: String) {
@@ -232,6 +267,40 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
 
 #[cfg(not(test))]
 fn main() {
+    let cli = Cli::parse();
+    if let Some(command) = cli.command {
+        match command {
+            Commands::Parse { path, lang } => {
+                let content = std::fs::read_to_string(path).expect("read file");
+                let lang = to_lang(&lang).expect("unknown language");
+                let tree = parse(&content, lang, None).expect("parse");
+                let blocks = parse_to_blocks(&tree);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&blocks).expect("serialize blocks")
+                );
+            }
+            Commands::Export {
+                input,
+                output,
+                strip_meta,
+            } => {
+                let content = std::fs::read_to_string(&input).expect("read file");
+                let out = prepare_for_export(&content, strip_meta);
+                std::fs::write(output, out).expect("write file");
+            }
+            Commands::Metadata { path } => {
+                let content = std::fs::read_to_string(path).expect("read file");
+                let metas = read_all(&content);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&metas).expect("serialize metadata")
+                );
+            }
+        }
+        return;
+    }
+
     let log_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../logs");
     std::fs::create_dir_all(&log_dir).expect("create logs directory");
     let file_appender = tracing_appender::rolling::daily(log_dir, "backend.log");
