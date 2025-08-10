@@ -1,0 +1,43 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["id", "x", "y"],
+  "additionalProperties": false,
+  "properties": {
+    "id": {
+      "type": "string",
+      "description": "Identifier linking this metadata to blocks."
+    },
+    "x": {
+      "type": "number",
+      "description": "X coordinate on the canvas."
+    },
+    "y": {
+      "type": "number",
+      "description": "Y coordinate on the canvas."
+    },
+    "translations": {
+      "type": "object",
+      "description": "Optional translations for block labels.",
+      "additionalProperties": false,
+      "properties": {
+        "ru": { "type": "string", "description": "Russian translation." },
+        "en": { "type": "string", "description": "English translation." },
+        "es": { "type": "string", "description": "Spanish translation." }
+      }
+    },
+    "ai": {
+      "type": "object",
+      "description": "Optional AI-generated note.",
+      "additionalProperties": false,
+      "properties": {
+        "description": { "type": "string", "description": "AI provided description." },
+        "hints": {
+          "type": "array",
+          "description": "Helpful hints for the user.",
+          "items": { "type": "string" }
+        }
+      }
+    }
+  }
+}
