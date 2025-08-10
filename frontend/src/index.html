@@ -18,6 +18,7 @@
     import { html } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-html@0.19.7/dist/index.js";
     import { css } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-css@0.19.7/dist/index.js";
     import { invoke } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/tauri.js";
+    import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
     import { VisualCanvas } from "./visual/canvas.js";
 
     const canvasEl = document.getElementById('visual-canvas');
@@ -67,8 +68,17 @@
       parseAndRender();
     }
 
+    async function exportFile() {
+      await save();
+      const path = await saveDialog({ defaultPath: 'code.txt' });
+      if (path) {
+        await invoke('export_clean', { path });
+      }
+    }
+
     document.getElementById('save').addEventListener('click', save);
     document.getElementById('load').addEventListener('click', load);
+    document.getElementById('export').addEventListener('click', exportFile);
     document.getElementById('locale').addEventListener('change', e => {
       currentLocale = e.target.value;
       vc.setLocale(currentLocale);
@@ -83,6 +93,7 @@
   <div id="controls">
     <button id="save">Save</button>
     <button id="load">Load</button>
+    <button id="export">Export</button>
     <select id="locale">
       <option value="en">English</option>
       <option value="ru">Русский</option>
