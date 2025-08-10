@@ -6,6 +6,7 @@ interface HotkeyMap {
   selectConnections: string;
   focusSearch: string;
   showHelp: string;
+  zoomToFit: string;
 }
 
 const cfg: { hotkeys?: Partial<HotkeyMap> } = settings as any;
@@ -15,7 +16,8 @@ export const hotkeys: HotkeyMap = {
   pasteBlock: cfg.hotkeys?.pasteBlock || 'Ctrl+V',
   selectConnections: cfg.hotkeys?.selectConnections || 'Ctrl+Shift+A',
   focusSearch: cfg.hotkeys?.focusSearch || 'Ctrl+F',
-  showHelp: cfg.hotkeys?.showHelp || 'Ctrl+?'
+  showHelp: cfg.hotkeys?.showHelp || 'Ctrl+?',
+  zoomToFit: cfg.hotkeys?.zoomToFit || 'Ctrl+0'
 };
 
 function buildCombo(e: KeyboardEvent) {
@@ -59,6 +61,10 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       showHotkeyHelp();
       break;
+    case hotkeys.zoomToFit:
+      e.preventDefault();
+      zoomToFit();
+      break;
   }
 }
 
@@ -84,5 +90,15 @@ export function showHotkeyHelp() {
     .map(([name, combo]) => `${combo} - ${name}`)
     .join('\n');
   alert(list);
+}
+
+let canvasRef: any = null;
+
+export function setCanvas(vc: any) {
+  canvasRef = vc;
+}
+
+export function zoomToFit() {
+  canvasRef?.zoomToFit();
 }
 
