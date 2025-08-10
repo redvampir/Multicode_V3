@@ -5,7 +5,7 @@ pub mod search;
 pub mod plugins;
 
 use once_cell::sync::Lazy;
-use plugins::Plugin;
+use plugins::{Plugin, wasm::WasmPlugin};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
@@ -32,7 +32,7 @@ pub fn update_document_tree(id: String, tree: Tree) {
 /// libraries (`.dll`, `.so`, `.dylib`) are loaded via [`libloading`]
 /// and must export a `create_plugin` function returning a boxed
 /// implementation of [`Plugin`].  WebAssembly modules (`.wasm`) are
-/// currently ignored but the function is prepared for future support.
+/// executed in a sandboxed WebAssembly runtime using `wasmtime`.
 pub fn load_plugins() -> Vec<Box<dyn Plugin>> {
     let mut loaded: Vec<Box<dyn Plugin>> = Vec::new();
     let expected = env!("CARGO_PKG_VERSION");
@@ -95,9 +95,7 @@ unsafe fn load_dll(path: &Path) -> Option<Box<dyn Plugin>> {
     Some(plugin)
 }
 
-/// Load a WebAssembly plugin.  This is currently a stub that returns
-/// `None`, but the function is provided to make extending the loader in
-/// the future straightforward.
-fn load_wasm(_path: &Path) -> Option<Box<dyn Plugin>> {
-    None
+/// Load a WebAssembly plugin using [`wasmtime`].
+fn load_wasm(path: &Path) -> Option<Box<dyn Plugin>> {
+    WasmPlugin::from_file(path).map(|p| Box::new(p) as Box<dyn Plugin>)
 }

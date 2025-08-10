@@ -30,3 +30,5 @@ pub trait Plugin: Send + Sync {
     /// Return block descriptors contributed by this plugin.
     fn blocks(&self) -> Vec<BlockDescriptor>;
 }
+
+pub mod wasm;
