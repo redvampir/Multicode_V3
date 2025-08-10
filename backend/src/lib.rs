@@ -9,7 +9,7 @@ pub mod server;
 use crate::meta::{AiNote, Translations};
 use once_cell::sync::Lazy;
 use plugins::{Plugin, WasmPlugin};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
@@ -135,4 +135,79 @@ unsafe fn load_dll(path: &Path) -> Option<Box<dyn Plugin>> {
 /// the future straightforward.
 fn load_wasm(path: &Path) -> Option<Box<dyn Plugin>> {
     WasmPlugin::from_file(path).map(|p| Box::new(p) as Box<dyn Plugin>)
+}
+
+const SETTINGS_PATH: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../frontend/settings.json");
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct PluginInfo {
+    pub name: String,
+    pub version: String,
+    pub enabled: bool,
+}
+
+static ACTIVE_PLUGINS: Lazy<Mutex<Vec<Box<dyn Plugin>>>> =
+    Lazy::new(|| Mutex::new(Vec::new()));
+static PLUGIN_INFOS: Lazy<Mutex<Vec<PluginInfo>>> =
+    Lazy::new(|| Mutex::new(Vec::new()));
+
+fn read_plugin_settings() -> HashMap<String, bool> {
+    let mut map = HashMap::new();
+    if let Ok(data) = std::fs::read_to_string(SETTINGS_PATH) {
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&data) {
+            if let Some(obj) = json.get("plugins").and_then(|p| p.as_object()) {
+                for (k, v) in obj {
+                    if let Some(b) = v.as_bool() {
+                        map.insert(k.clone(), b);
+                    }
+                }
+            }
+        }
+    }
+    map
+}
+
+fn write_plugin_settings(settings: &HashMap<String, bool>) -> std::io::Result<()> {
+    use std::fs;
+    let mut json: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(SETTINGS_PATH)?)?;
+    if let Some(obj) = json.as_object_mut() {
+        obj.insert(
+            "plugins".to_string(),
+            serde_json::to_value(settings).unwrap_or_default(),
+        );
+    }
+    fs::write(SETTINGS_PATH, serde_json::to_string_pretty(&json)?)
+}
+
+pub fn reload_plugins_state() {
+    let settings = read_plugin_settings();
+    let mut infos = Vec::new();
+    let mut active = Vec::new();
+    for plugin in load_plugins() {
+        let name = plugin.name().to_string();
+        let info = PluginInfo {
+            name: name.clone(),
+            version: plugin.version().to_string(),
+            enabled: *settings.get(&name).unwrap_or(&true),
+        };
+        if info.enabled {
+            active.push(plugin);
+        }
+        infos.push(info);
+    }
+    *ACTIVE_PLUGINS.lock().unwrap() = active;
+    *PLUGIN_INFOS.lock().unwrap() = infos;
+}
+
+pub fn get_plugins_info() -> Vec<PluginInfo> {
+    PLUGIN_INFOS.lock().unwrap().clone()
+}
+
+pub fn set_plugin_enabled(name: String, enabled: bool) -> std::io::Result<()> {
+    let mut settings = read_plugin_settings();
+    settings.insert(name, enabled);
+    write_plugin_settings(&settings)?;
+    reload_plugins_state();
+    Ok(())
 }

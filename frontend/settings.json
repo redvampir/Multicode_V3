@@ -9,5 +9,6 @@
   "visual": {
     "theme": "default",
     "gridSize": 20
-  }
+  },
+  "plugins": {}
 }
