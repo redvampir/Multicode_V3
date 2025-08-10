@@ -1,19 +1,26 @@
+use crate::config::ServerConfig;
+use axum::extract::ws::Message;
 use axum::{
-    extract::{ws::{WebSocketUpgrade, WebSocket}, State},
+    extract::{
+        ws::{WebSocket, WebSocketUpgrade},
+        State,
+    },
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
 use futures::{SinkExt, StreamExt};
-use tokio::sync::broadcast;
-use axum::extract::ws::Message;
+use once_cell::sync::OnceCell;
 use serde::Deserialize;
-use std::{env, net::SocketAddr};
-use tracing::{info, error};
+use std::net::SocketAddr;
+use tokio::sync::broadcast;
+use tracing::{error, info};
 
+use crate::meta::{remove_all, AiNote, VisualMeta};
 use crate::{parse_blocks, upsert_meta, BlockInfo};
-use crate::meta::{remove_all, VisualMeta, AiNote};
+
+static SERVER_CONFIG: OnceCell<ServerConfig> = OnceCell::new();
 
 #[derive(Clone)]
 struct AppState {
@@ -21,16 +28,15 @@ struct AppState {
 }
 
 fn auth(headers: &HeaderMap) -> bool {
-    let token = env::var("API_TOKEN").unwrap_or_default();
-    if token.is_empty() {
-        return true;
+    match SERVER_CONFIG.get().and_then(|c| c.token.as_deref()) {
+        Some(token) if !token.is_empty() => headers
+            .get(axum::http::header::AUTHORIZATION)
+            .and_then(|h| h.to_str().ok())
+            .and_then(|s| s.strip_prefix("Bearer "))
+            .map(|t| t == token)
+            .unwrap_or(false),
+        _ => true,
     }
-    headers
-        .get(axum::http::header::AUTHORIZATION)
-        .and_then(|h| h.to_str().ok())
-        .and_then(|s| s.strip_prefix("Bearer "))
-        .map(|t| t == token)
-        .unwrap_or(false)
 }
 
 #[derive(Deserialize)]
@@ -39,7 +45,10 @@ struct ParseRequest {
     lang: String,
 }
 
-async fn parse_endpoint(headers: HeaderMap, Json(req): Json<ParseRequest>) -> Result<Json<Vec<BlockInfo>>, StatusCode> {
+async fn parse_endpoint(
+    headers: HeaderMap,
+    Json(req): Json<ParseRequest>,
+) -> Result<Json<Vec<BlockInfo>>, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
@@ -55,7 +64,10 @@ struct ExportRequest {
     strip_meta: bool,
 }
 
-async fn export_endpoint(headers: HeaderMap, Json(req): Json<ExportRequest>) -> Result<Json<String>, StatusCode> {
+async fn export_endpoint(
+    headers: HeaderMap,
+    Json(req): Json<ExportRequest>,
+) -> Result<Json<String>, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
@@ -74,7 +86,10 @@ struct MetadataRequest {
     lang: String,
 }
 
-async fn metadata_endpoint(headers: HeaderMap, Json(req): Json<MetadataRequest>) -> Result<Json<String>, StatusCode> {
+async fn metadata_endpoint(
+    headers: HeaderMap,
+    Json(req): Json<MetadataRequest>,
+) -> Result<Json<String>, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
@@ -87,14 +102,24 @@ struct SuggestRequest {
     lang: String,
 }
 
-async fn suggest_endpoint(headers: HeaderMap, Json(_req): Json<SuggestRequest>) -> Result<Json<AiNote>, StatusCode> {
+async fn suggest_endpoint(
+    headers: HeaderMap,
+    Json(_req): Json<SuggestRequest>,
+) -> Result<Json<AiNote>, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    Ok(Json(AiNote { description: Some("Not implemented".into()), hints: Vec::new() }))
+    Ok(Json(AiNote {
+        description: Some("Not implemented".into()),
+        hints: Vec::new(),
+    }))
 }
 
-async fn ws_handler(headers: HeaderMap, ws: WebSocketUpgrade, State(state): State<AppState>) -> Result<impl IntoResponse, StatusCode> {
+async fn ws_handler(
+    headers: HeaderMap,
+    ws: WebSocketUpgrade,
+    State(state): State<AppState>,
+) -> Result<impl IntoResponse, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
@@ -122,6 +147,9 @@ async fn handle_socket(socket: WebSocket, tx: broadcast::Sender<String>) {
 }
 
 pub async fn run() {
+    let cfg = ServerConfig::from_env();
+    let _ = SERVER_CONFIG.set(cfg.clone());
+
     let (tx, _rx) = broadcast::channel::<String>(100);
     let state = AppState { tx };
     let app = Router::new()
@@ -132,7 +160,9 @@ pub async fn run() {
         .route("/suggest_ai_note", post(suggest_endpoint))
         .with_state(state);
 
-    let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
+    let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port)
+        .parse()
+        .expect("invalid address");
     info!("Listening on {}", addr);
     if let Err(e) = axum::Server::bind(&addr)
         .serve(app.into_make_service())
