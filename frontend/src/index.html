@@ -26,7 +26,7 @@
 
     vc.onBlockMove(async block => {
       const content = view.state.doc.toString();
-      const updated = await invoke('upsert_meta', { content, meta: { id: block.id, x: block.x, y: block.y } });
+      const updated = await invoke('upsert_meta', { content, meta: { id: block.id, x: block.x, y: block.y }, lang: currentLang });
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: updated } });
       await invoke('save_state', { content: updated });
     });
@@ -79,6 +79,8 @@
     document.getElementById('save').addEventListener('click', save);
     document.getElementById('load').addEventListener('click', load);
     document.getElementById('export').addEventListener('click', exportFile);
+    document.getElementById('undo').addEventListener('click', () => vc.undo());
+    document.getElementById('redo').addEventListener('click', () => vc.redo());
     document.getElementById('locale').addEventListener('change', e => {
       currentLocale = e.target.value;
       vc.setLocale(currentLocale);
@@ -94,6 +96,8 @@
     <button id="save">Save</button>
     <button id="load">Load</button>
     <button id="export">Export</button>
+    <button id="undo">Undo</button>
+    <button id="redo">Redo</button>
     <select id="locale">
       <option value="en">English</option>
       <option value="ru">Русский</option>
