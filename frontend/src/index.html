@@ -80,7 +80,7 @@
         await save();
         const path = await saveDialog({ defaultPath: 'code.txt' });
         if (path) {
-          await invoke('export_clean', { path });
+          await invoke('export_file', { path, stripMeta: true });
         }
       } finally {
         exportProgress.style.display = 'none';

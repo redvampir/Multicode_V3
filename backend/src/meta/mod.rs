@@ -32,6 +32,9 @@ pub struct VisualMeta {
     pub x: f64,
     /// Y coordinate on the canvas.
     pub y: f64,
+    /// Optional reverse path to the original external file.
+    #[serde(default)]
+    pub origin: Option<String>,
     /// Optional translations for block labels.
     #[serde(default)]
     pub translations: Translations,
