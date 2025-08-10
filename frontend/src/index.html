@@ -6,6 +6,7 @@
   <style>
     body { margin: 0; font-family: sans-serif; }
     #visual-canvas { width: 100%; height: 50vh; border: 1px solid #ccc; display: block; }
+    #visual-minimap { position: fixed; bottom: 10px; right: 10px; width: 200px; height: 150px; border: 1px solid #ccc; background: #fff; opacity: 0.8; }
     #editor { height: 40vh; border: 1px solid #ccc; }
     #controls { padding: 0.5rem; }
     #git-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
@@ -30,7 +31,8 @@
     await loadBlockPlugins(window.blockPlugins || []);
 
     const canvasEl = document.getElementById('visual-canvas');
-    const vc = new VisualCanvas(canvasEl);
+    const minimapEl = document.getElementById('visual-minimap');
+    const vc = new VisualCanvas(canvasEl, minimapEl);
     setCanvas(vc);
     registerHotkeys();
 
@@ -157,6 +159,7 @@
 </head>
 <body>
   <canvas id="visual-canvas"></canvas>
+  <canvas id="visual-minimap" width="200" height="150"></canvas>
   <div id="editor"></div>
   <div id="controls">
     <button id="save">Save</button>
