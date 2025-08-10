@@ -1,6 +1,7 @@
 import { createBlock } from './blocks.js';
 import { getTheme } from './theme.ts';
 import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
+import { Minimap } from './minimap.ts';
 import settings from '../../settings.json' assert { type: 'json' };
 
 const cfg = settings.visual || {};
@@ -58,9 +59,10 @@ export function analyzeConnections(blockIds, edges) {
 }
 
 export class VisualCanvas {
-  constructor(canvas) {
+  constructor(canvas, minimapCanvas = null) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
+    this.minimap = minimapCanvas ? new Minimap(minimapCanvas) : null;
     this.scale = 1;
     this.offset = { x: 0, y: 0 };
     this.blocks = [];
@@ -556,6 +558,7 @@ export class VisualCanvas {
     }
 
     this.ctx.restore();
+    if (this.minimap) this.minimap.render(this);
     requestAnimationFrame(() => this.draw());
   }
 
