@@ -14,7 +14,7 @@ use futures::{SinkExt, StreamExt};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
 use std::net::SocketAddr;
-use tokio::sync::broadcast;
+use tokio::{signal, sync::broadcast};
 use tracing::{error, info};
 
 use crate::meta::{remove_all, AiNote, VisualMeta};
@@ -164,8 +164,14 @@ pub async fn run() {
         .parse()
         .expect("invalid address");
     info!("Listening on {}", addr);
+    let ctrl_c = signal::ctrl_c();
     if let Err(e) = axum::Server::bind(&addr)
         .serve(app.into_make_service())
+        .with_graceful_shutdown(async move {
+            if let Err(e) = ctrl_c.await {
+                error!("failed to listen for shutdown signal: {e}");
+            }
+        })
         .await
     {
         error!("server error: {e}");
