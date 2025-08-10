@@ -1,0 +1,97 @@
+use tree_sitter::{Language, Parser, Tree, Node};
+use std::ops::Range;
+
+/// Supported languages for parsing.
+#[derive(Clone, Copy)]
+pub enum Lang {
+    Rust,
+    Python,
+    JavaScript,
+    Css,
+    Html,
+}
+
+/// Get a tree-sitter [`Language`] from [`Lang`].
+fn language(lang: Lang) -> Language {
+    match lang {
+        Lang::Rust => tree_sitter_rust::language(),
+        Lang::Python => tree_sitter_python::language(),
+        Lang::JavaScript => tree_sitter_javascript::language(),
+        Lang::Css => tree_sitter_css::language(),
+        Lang::Html => tree_sitter_html::language(),
+    }
+}
+
+/// Parse the provided `source` using the parser for `lang`.
+pub fn parse(source: &str, lang: Lang) -> Option<Tree> {
+    let mut parser = Parser::new();
+    parser.set_language(language(lang)).ok()?;
+    parser.parse(source, None)
+}
+
+/// Block of code tied to a visual metadata identifier.
+#[derive(Debug, Clone)]
+pub struct Block {
+    /// Identifier linking this node with [`VisualMeta`].
+    pub visual_id: String,
+    /// Unique identifier of the underlying AST node.
+    pub node_id: usize,
+    /// Node kind as reported by tree-sitter.
+    pub kind: String,
+    /// Byte range of the node within the source.
+    pub range: Range<usize>,
+}
+
+/// Convert an AST [`Tree`] into a flat list of [`Block`]s.
+///
+/// Each node in the tree is assigned a sequential `visual_id` which can later
+/// be associated with a [`VisualMeta`] entry. The mapping between the tree-sitter
+/// node id and `visual_id` is preserved in the returned blocks.
+pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
+    let mut blocks = Vec::new();
+    let mut counter: u64 = 0;
+
+    fn walk(node: Node, blocks: &mut Vec<Block>, counter: &mut u64) {
+        blocks.push(Block {
+            visual_id: counter.to_string(),
+            node_id: node.id(),
+            kind: node.kind().to_string(),
+            range: node.byte_range(),
+        });
+        *counter += 1;
+
+        let mut cursor = node.walk();
+        if cursor.goto_first_child() {
+            loop {
+                let child = cursor.node();
+                walk(child, blocks, counter);
+                if !cursor.goto_next_sibling() {
+                    break;
+                }
+            }
+        }
+    }
+
+    walk(tree.root_node(), &mut blocks, &mut counter);
+    blocks
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::collections::HashSet;
+
+    #[test]
+    fn parse_rust_source_into_blocks() {
+        let source = "fn main() { println!(\"hi\"); }";
+        let tree = parse(source, Lang::Rust).expect("failed to parse");
+        let blocks = parse_to_blocks(&tree);
+        assert!(!blocks.is_empty());
+        // Ensure node ids are unique and mapped to a visual id
+        let mut unique = HashSet::new();
+        for block in &blocks {
+            assert!(unique.insert(block.node_id));
+            assert!(!block.visual_id.is_empty());
+        }
+    }
+}

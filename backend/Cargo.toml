@@ -8,6 +8,12 @@ serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
 tauri = { version = "1" }
 serde_json = "1"
+tree-sitter = "0.20"
+tree-sitter-rust = "0.20"
+tree-sitter-python = "0.20"
+tree-sitter-javascript = "0.20"
+tree-sitter-css = "0.20"
+tree-sitter-html = "0.20"
 
 [build-dependencies]
 tauri-build = { version = "1" }

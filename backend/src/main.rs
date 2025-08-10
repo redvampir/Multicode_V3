@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 mod meta;
+mod parser;
 use meta::{insert, read, VisualMeta};
 use tauri::State;
 
