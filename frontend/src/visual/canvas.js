@@ -7,6 +7,8 @@ export class VisualCanvas {
     this.scale = 1;
     this.offset = { x: 0, y: 0 };
     this.blocks = [];
+    this.blocksData = [];
+    this.locale = 'en';
     this.connections = [];
     this.dragged = null;
     this.dragOffset = { x: 0, y: 0 };
@@ -21,8 +23,21 @@ export class VisualCanvas {
   }
 
   setBlocks(blocks) {
-    this.blocks = blocks.map(b => new Block(b.visual_id, b.x, b.y, 120, 50, b.kind));
+    this.blocksData = blocks;
+    this.updateLabels();
     this.connections = [];
+  }
+
+  setLocale(locale) {
+    this.locale = locale;
+    this.updateLabels();
+  }
+
+  updateLabels() {
+    this.blocks = this.blocksData.map(b => {
+      const label = (b.translations && b.translations[this.locale]) || b.kind;
+      return new Block(b.visual_id, b.x, b.y, 120, 50, label);
+    });
   }
 
   onBlockMove(cb) {

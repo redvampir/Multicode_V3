@@ -2,7 +2,8 @@ use std::sync::Mutex;
 use std::collections::HashMap;
 mod meta;
 mod parser;
-use meta::{upsert, read_all, VisualMeta};
+mod i18n;
+use meta::{upsert, read_all, VisualMeta, Translations};
 use parser::{parse, parse_to_blocks, Lang};
 use tauri::State;
 use serde::Serialize;
@@ -35,9 +36,26 @@ fn to_lang(s: &str) -> Option<Lang> {
 struct BlockInfo {
     visual_id: String,
     kind: String,
+    translations: Translations,
     range: (usize, usize),
     x: f64,
     y: f64,
+}
+
+#[tauri::command]
+fn normalize_kind(kind: &str) -> String {
+    let k = kind.to_lowercase();
+    if k.contains("function") {
+        "Function".into()
+    } else if k.contains("if") {
+        "Condition".into()
+    } else if k.contains("for") || k.contains("while") || k.contains("loop") {
+        "Loop".into()
+    } else if k.contains("identifier") || k.contains("variable") {
+        "Variable".into()
+    } else {
+        kind.to_string()
+    }
 }
 
 #[tauri::command]
@@ -48,10 +66,23 @@ fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     let metas = read_all(&content);
     let map: HashMap<_, _> = metas.into_iter().map(|m| (m.id.clone(), m)).collect();
     Some(blocks.into_iter().map(|b| {
+        let label = normalize_kind(&b.kind);
+        let mut translations = i18n::lookup(&label).unwrap_or_else(|| Translations {
+            ru: Some(label.clone()),
+            en: Some(label.clone()),
+            es: Some(label.clone()),
+        });
+        if let Some(meta) = map.get(&b.visual_id) {
+            let t = &meta.translations;
+            if let Some(ref v) = t.ru { translations.ru = Some(v.clone()); }
+            if let Some(ref v) = t.en { translations.en = Some(v.clone()); }
+            if let Some(ref v) = t.es { translations.es = Some(v.clone()); }
+        }
         let pos = map.get(&b.visual_id);
         BlockInfo {
             visual_id: b.visual_id,
-            kind: b.kind,
+            kind: label,
+            translations,
             range: (b.range.start, b.range.end),
             x: pos.map(|m| m.x).unwrap_or(0.0),
             y: pos.map(|m| m.y).unwrap_or(0.0),
