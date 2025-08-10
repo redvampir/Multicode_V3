@@ -74,6 +74,7 @@ export class VisualCanvas {
     this.cycleBlocks = new Set();
     this.dragged = null;
     this.dragOffset = { x: 0, y: 0 };
+    this.draggingConnection = null;
     this.panning = false;
     this.panStart = { x: 0, y: 0 };
     this.moveCallback = null;
@@ -207,6 +208,17 @@ export class VisualCanvas {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       const block = this.blocks.find(b => b.contains(pos.x, pos.y));
 
+      if (block) {
+        const exit = { x: block.x + block.w, y: block.y + block.h / 2 };
+        if (Math.hypot(pos.x - exit.x, pos.y - exit.y) < 5) {
+          this.draggingConnection = { from: block, x: pos.x, y: pos.y };
+          this.dragged = null;
+          this.panning = false;
+          this.tooltip.style.display = 'none';
+          return;
+        }
+      }
+
       if (e.shiftKey) {
         if (block) {
           if (this.selected.has(block)) this.selected.delete(block);
@@ -232,7 +244,10 @@ export class VisualCanvas {
 
     this.canvas.addEventListener('mousemove', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
-      if (this.dragged) {
+      if (this.draggingConnection) {
+        this.draggingConnection.x = pos.x;
+        this.draggingConnection.y = pos.y;
+      } else if (this.dragged) {
         let x = pos.x - this.dragOffset.x;
         let y = pos.y - this.dragOffset.y;
         if (this.gridEnabled) {
@@ -321,7 +336,19 @@ export class VisualCanvas {
       }
     });
 
-    window.addEventListener('mouseup', () => {
+    window.addEventListener('mouseup', e => {
+      if (this.draggingConnection) {
+        const rect = this.canvas.getBoundingClientRect();
+        const offX = e.clientX - rect.left;
+        const offY = e.clientY - rect.top;
+        const pos = this.toWorld(offX, offY);
+        const target = this.blocks.find(b => b.contains(pos.x, pos.y));
+        if (target && target !== this.draggingConnection.from) {
+          this.connections.push([this.draggingConnection.from, target]);
+          if (this.debugMode) this.analyze();
+        }
+        this.draggingConnection = null;
+      }
       if (this.dragged) {
         if (this.dragged.x !== this.dragStart.x || this.dragged.y !== this.dragStart.y) {
           this.undoStack.push({ id: this.dragged.id, from: { x: this.dragStart.x, y: this.dragStart.y }, to: { x: this.dragged.x, y: this.dragged.y } });
@@ -482,6 +509,17 @@ export class VisualCanvas {
       }
       this.ctx.stroke();
     });
+
+    // Preview connection while dragging
+    if (this.draggingConnection) {
+      const ac = this.draggingConnection.from.center();
+      this.ctx.beginPath();
+      this.ctx.moveTo(ac.x, ac.y);
+      this.ctx.lineTo(this.draggingConnection.x, this.draggingConnection.y);
+      this.ctx.strokeStyle = theme.connection;
+      this.ctx.lineWidth = 1;
+      this.ctx.stroke();
+    }
 
     // Hover highlights
     drawHoverHighlight(this);
