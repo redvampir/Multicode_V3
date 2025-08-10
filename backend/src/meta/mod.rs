@@ -107,6 +107,7 @@ mod tests {
             id: "1".into(),
             x: 10.0,
             y: 20.0,
+            origin: None,
             translations: Translations::default(),
             ai: Some(AiNote { description: Some("desc".into()), hints: vec!["hint".into()] }),
         };

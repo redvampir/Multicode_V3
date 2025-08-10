@@ -3,6 +3,7 @@ pub mod meta;
 pub mod debugger;
 pub mod search;
 pub mod plugins;
+pub mod parser;
 
 use once_cell::sync::Lazy;
 use plugins::Plugin;
