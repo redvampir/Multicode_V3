@@ -30,6 +30,7 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 config = "0.13"
 libloading = "0.8"
+clap = { version = "4", features = ["derive"] }
 
 [dev-dependencies]
 tempfile = "3"
