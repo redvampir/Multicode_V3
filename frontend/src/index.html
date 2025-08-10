@@ -5,7 +5,8 @@
   <title>Multicode Editor</title>
   <style>
     body { margin: 0; font-family: sans-serif; }
-    #editor { height: 90vh; border: 1px solid #ccc; }
+    #visual-canvas { width: 100%; height: 50vh; border: 1px solid #ccc; display: block; }
+    #editor { height: 40vh; border: 1px solid #ccc; }
     #controls { padding: 0.5rem; }
   </style>
   <script type="module">
@@ -40,10 +41,12 @@
   </script>
 </head>
 <body>
+  <canvas id="visual-canvas"></canvas>
   <div id="editor"></div>
   <div id="controls">
     <button id="save">Save</button>
     <button id="load">Load</button>
   </div>
+  <script type="module" src="./visual/index.js"></script>
 </body>
 </html>
