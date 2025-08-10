@@ -4,6 +4,7 @@ pub mod debugger;
 pub mod search;
 pub mod plugins;
 pub mod parser;
+pub mod server;
 
 use once_cell::sync::Lazy;
 use plugins::Plugin;
