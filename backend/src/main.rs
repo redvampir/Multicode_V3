@@ -281,6 +281,7 @@ mod tests {
             id: "0".into(),
             x: 1.0,
             y: 2.0,
+            origin: None,
             translations: Translations {
                 en: Some("Main".into()),
                 ..Default::default()

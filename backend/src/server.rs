@@ -12,7 +12,7 @@ use axum::{
 };
 use futures::{SinkExt, StreamExt};
 use once_cell::sync::OnceCell;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     net::SocketAddr,
     sync::{
@@ -50,6 +50,23 @@ fn auth(headers: &HeaderMap) -> bool {
     }
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ErrorResponse {
+    pub code: u16,
+    pub message: String,
+}
+
+pub fn set_server_config(cfg: ServerConfig) {
+    let _ = SERVER_CONFIG.set(cfg);
+}
+
+pub fn test_router() -> Router {
+    Router::new()
+        .route("/parse", post(parse_endpoint))
+        .route("/export", post(export_endpoint))
+        .route("/metadata", post(metadata_endpoint))
+}
+
 #[derive(Deserialize)]
 struct ParseRequest {
     content: String,
@@ -59,13 +76,26 @@ struct ParseRequest {
 async fn parse_endpoint(
     headers: HeaderMap,
     Json(req): Json<ParseRequest>,
-) -> Result<Json<Vec<BlockInfo>>, StatusCode> {
+) -> Result<Json<Vec<BlockInfo>>, (StatusCode, Json<ErrorResponse>)> {
     if !auth(&headers) {
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse {
+                code: StatusCode::UNAUTHORIZED.as_u16(),
+                message: "Unauthorized".into(),
+            }),
+        ));
     }
-    parse_blocks(req.content, req.lang)
-        .map(Json)
-        .ok_or(StatusCode::BAD_REQUEST)
+    match parse_blocks(req.content, req.lang) {
+        Some(res) => Ok(Json(res)),
+        None => Err((
+            StatusCode::BAD_REQUEST,
+            Json(ErrorResponse {
+                code: StatusCode::BAD_REQUEST.as_u16(),
+                message: "Bad Request".into(),
+            }),
+        )),
+    }
 }
 
 #[derive(Deserialize)]
@@ -78,9 +108,15 @@ struct ExportRequest {
 async fn export_endpoint(
     headers: HeaderMap,
     Json(req): Json<ExportRequest>,
-) -> Result<Json<String>, StatusCode> {
+) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
     if !auth(&headers) {
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse {
+                code: StatusCode::UNAUTHORIZED.as_u16(),
+                message: "Unauthorized".into(),
+            }),
+        ));
     }
     let out = if req.strip_meta {
         remove_all(&req.content)
@@ -100,9 +136,15 @@ struct MetadataRequest {
 async fn metadata_endpoint(
     headers: HeaderMap,
     Json(req): Json<MetadataRequest>,
-) -> Result<Json<String>, StatusCode> {
+) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
     if !auth(&headers) {
-        return Err(StatusCode::UNAUTHORIZED);
+        return Err((
+            StatusCode::UNAUTHORIZED,
+            Json(ErrorResponse {
+                code: StatusCode::UNAUTHORIZED.as_u16(),
+                message: "Unauthorized".into(),
+            }),
+        ));
     }
     Ok(Json(upsert_meta(req.content, req.meta, req.lang)))
 }

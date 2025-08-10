@@ -3,6 +3,10 @@ name = "backend"
 version = "0.1.0"
 edition = "2021"
 
+[features]
+default = ["build-binary"]
+build-binary = []
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
@@ -33,6 +37,13 @@ libloading = "0.8"
 
 [dev-dependencies]
 tempfile = "3"
+tower = "0.4"
+hyper = "0.14"
 
 [build-dependencies]
 tauri-build = { version = "1", default-features = false }
+
+[[bin]]
+name = "backend"
+path = "src/main.rs"
+required-features = ["build-binary"]

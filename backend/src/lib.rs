@@ -3,6 +3,10 @@ pub mod meta;
 pub mod debugger;
 pub mod search;
 pub mod plugins;
+pub mod server;
+pub mod config;
+mod parser;
+mod i18n;
 
 use once_cell::sync::Lazy;
 use plugins::Plugin;
@@ -10,6 +14,8 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 use tree_sitter::Tree;
+use serde::Serialize;
+use crate::meta::{VisualMeta};
 
 /// Stored parse trees for opened documents.
 static DOCUMENT_TREES: Lazy<Mutex<HashMap<String, Tree>>> =
@@ -18,6 +24,17 @@ static DOCUMENT_TREES: Lazy<Mutex<HashMap<String, Tree>>> =
 /// Retrieve the last parsed [`Tree`] for the given document identifier.
 pub fn get_document_tree(id: &str) -> Option<Tree> {
     DOCUMENT_TREES.lock().unwrap().get(id).cloned()
+}
+
+#[derive(Serialize)]
+pub struct BlockInfo;
+
+pub fn parse_blocks(_content: String, _lang: String) -> Option<Vec<BlockInfo>> {
+    None
+}
+
+pub fn upsert_meta(content: String, _meta: VisualMeta, _lang: String) -> String {
+    content
 }
 
 /// Update the stored [`Tree`] for the given document identifier.
