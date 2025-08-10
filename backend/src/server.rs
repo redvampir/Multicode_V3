@@ -12,7 +12,7 @@ use axum::{
 };
 use futures::{SinkExt, StreamExt};
 use once_cell::sync::OnceCell;
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::{
     net::SocketAddr,
     sync::{
@@ -107,7 +107,7 @@ async fn metadata_endpoint(
     Ok(Json(upsert_meta(req.content, req.meta, req.lang)))
 }
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Serialize)]
 struct SuggestRequest {
     content: String,
     lang: String,
@@ -115,15 +115,28 @@ struct SuggestRequest {
 
 async fn suggest_endpoint(
     headers: HeaderMap,
-    Json(_req): Json<SuggestRequest>,
+    Json(req): Json<SuggestRequest>,
 ) -> Result<Json<AiNote>, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    Ok(Json(AiNote {
-        description: Some("Not implemented".into()),
-        hints: Vec::new(),
-    }))
+
+    let cfg = SERVER_CONFIG.get().cloned().unwrap_or_default();
+    let client = reqwest::Client::new();
+    let mut builder = client
+        .post("https://api.example.com/suggest")
+        .json(&req);
+
+    if let Some(key) = cfg.api_key {
+        builder = builder.header("Authorization", format!("Bearer {}", key));
+    }
+
+    let response = builder.send().await.map_err(|_| StatusCode::BAD_GATEWAY)?;
+    let note: AiNote = response
+        .json()
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+    Ok(Json(note))
 }
 
 async fn ws_handler(
