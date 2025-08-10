@@ -10,11 +10,11 @@ mod meta;
 mod parser;
 mod plugins;
 mod server;
+use backend::{get_document_tree, update_document_tree};
 use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
 use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
-use backend::{get_document_tree, update_document_tree};
 use serde::Serialize;
 use syn::{File, Item};
 use tauri::State;
@@ -232,7 +232,14 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
 
 #[cfg(not(test))]
 fn main() {
-    tracing_subscriber::fmt::init();
+    let log_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../logs");
+    std::fs::create_dir_all(&log_dir).expect("create logs directory");
+    let file_appender = tracing_appender::rolling::daily(log_dir, "backend.log");
+    let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
+    tracing_subscriber::fmt()
+        .with_writer(non_blocking)
+        .with_ansi(false)
+        .init();
     tauri::async_runtime::spawn(async {
         server::run().await;
     });
