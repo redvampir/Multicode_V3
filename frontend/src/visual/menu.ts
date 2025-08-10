@@ -1,4 +1,5 @@
 import { hotkeys, showHotkeyHelp, zoomToFit } from './hotkeys';
+import { exportPNG } from './canvas.js';
 
 export interface MenuItem {
   label: string;
@@ -12,7 +13,8 @@ export const mainMenu: MenuItem[] = [
     label: 'File',
     submenu: [
       { label: 'New', action: () => console.log('new file') },
-      { label: 'Open', action: () => console.log('open file') }
+      { label: 'Open', action: () => console.log('open file') },
+      { label: 'Экспорт в PNG', action: exportPNG }
     ]
   },
   {

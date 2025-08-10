@@ -547,3 +547,12 @@ export class VisualCanvas {
     }
   }
 }
+
+export function exportPNG() {
+  const canvas = document.getElementById('visual-canvas');
+  if (!(canvas instanceof HTMLCanvasElement)) return;
+  const link = document.createElement('a');
+  link.href = canvas.toDataURL('image/png');
+  link.download = 'canvas.png';
+  link.click();
+}
