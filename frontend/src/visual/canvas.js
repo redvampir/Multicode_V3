@@ -83,6 +83,7 @@ export class VisualCanvas {
     this.highlighted = new Set();
     this.hovered = null;
     this.gridEnabled = false;
+    this.selected = new Set();
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -176,16 +177,27 @@ export class VisualCanvas {
   registerEvents() {
     this.canvas.addEventListener('mousedown', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
-      this.dragged = this.blocks.find(b => b.contains(pos.x, pos.y));
-      if (this.dragged) {
-        this.dragOffset.x = pos.x - this.dragged.x;
-        this.dragOffset.y = pos.y - this.dragged.y;
-        this.dragStart.x = this.dragged.x;
-        this.dragStart.y = this.dragged.y;
+      const block = this.blocks.find(b => b.contains(pos.x, pos.y));
+
+      if (e.shiftKey) {
+        if (block) {
+          if (this.selected.has(block)) this.selected.delete(block);
+          else this.selected.add(block);
+        }
+        this.dragged = null;
+        this.panning = false;
       } else {
-        this.panning = true;
-        this.panStart.x = e.offsetX - this.offset.x;
-        this.panStart.y = e.offsetY - this.offset.y;
+        this.dragged = block;
+        if (this.dragged) {
+          this.dragOffset.x = pos.x - this.dragged.x;
+          this.dragOffset.y = pos.y - this.dragged.y;
+          this.dragStart.x = this.dragged.x;
+          this.dragStart.y = this.dragged.y;
+        } else {
+          this.panning = true;
+          this.panStart.x = e.offsetX - this.offset.x;
+          this.panStart.y = e.offsetY - this.offset.y;
+        }
       }
       this.tooltip.style.display = 'none';
     });
@@ -199,8 +211,25 @@ export class VisualCanvas {
           x = Math.round(x / GRID_SIZE) * GRID_SIZE;
           y = Math.round(y / GRID_SIZE) * GRID_SIZE;
         }
+        const oldX = this.dragged.x;
+        const oldY = this.dragged.y;
         this.dragged.x = x;
         this.dragged.y = y;
+        if (this.selected.has(this.dragged)) {
+          const dx = this.dragged.x - oldX;
+          const dy = this.dragged.y - oldY;
+          for (const b of this.selected) {
+            if (b === this.dragged) continue;
+            let bx = b.x + dx;
+            let by = b.y + dy;
+            if (this.gridEnabled) {
+              bx = Math.round(bx / GRID_SIZE) * GRID_SIZE;
+              by = Math.round(by / GRID_SIZE) * GRID_SIZE;
+            }
+            b.x = bx;
+            b.y = by;
+          }
+        }
       } else if (this.panning) {
         this.offset.x = e.offsetX - this.panStart.x;
         this.offset.y = e.offsetY - this.panStart.y;
