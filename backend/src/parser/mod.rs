@@ -32,7 +32,7 @@ fn language(lang: Lang) -> Language {
 /// Parse the provided `source` using the parser for `lang`.
 pub fn parse(source: &str, lang: Lang) -> Option<Tree> {
     let mut parser = Parser::new();
-    parser.set_language(language(lang)).ok()?;
+    parser.set_language(&language(lang)).ok()?;
     parser.parse(source, None)
 }
 

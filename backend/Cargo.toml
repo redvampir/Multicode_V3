@@ -6,21 +6,21 @@ edition = "2021"
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 tokio = { version = "1", features = ["full"] }
-tauri = { version = "1" }
+tauri = { version = "1", default-features = false }
 serde_json = "1"
 axum = { version = "0.6", features = ["ws", "json"] }
 tokio-tungstenite = "0.20"
 futures = "0.3"
-tree-sitter = "0.20"
-tree-sitter-rust = "0.20"
-tree-sitter-python = "0.20"
-tree-sitter-javascript = "0.20"
-tree-sitter-css = "0.20"
-tree-sitter-html = "0.20"
+tree-sitter = "0.23"
+tree-sitter-rust = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-css = "0.23"
+tree-sitter-html = "0.23"
 syn = { version = "2", features = ["full"] }
 quote = "1"
 prettyplease = "0.2"
 git2 = "0.18"
 
 [build-dependencies]
-tauri-build = { version = "1" }
+tauri-build = { version = "1", default-features = false }

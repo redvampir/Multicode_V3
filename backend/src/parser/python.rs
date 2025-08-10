@@ -1,11 +1,11 @@
 use tree_sitter::{Language, Parser, Tree};
 
 pub fn language() -> Language {
-    tree_sitter_python::language()
+    tree_sitter_python::LANGUAGE.into()
 }
 
 pub fn parse(source: &str) -> Option<Tree> {
     let mut parser = Parser::new();
-    parser.set_language(language()).ok()?;
+    parser.set_language(&language()).ok()?;
     parser.parse(source, None)
 }

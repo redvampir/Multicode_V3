@@ -7,7 +7,7 @@ use axum::{
 };
 use futures::{SinkExt, StreamExt};
 use tokio::sync::broadcast;
-use tokio_tungstenite::tungstenite::Message;
+use axum::extract::ws::Message;
 use serde::Deserialize;
 use std::{env, net::SocketAddr};
 

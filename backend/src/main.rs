@@ -16,12 +16,12 @@ use syn::{File, Item};
 #[derive(Default)]
 struct EditorState(Mutex<String>);
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn save_state(state: State<EditorState>, content: String) {
     *state.0.lock().unwrap() = content;
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn load_state(state: State<EditorState>) -> String {
     state.0.lock().unwrap().clone()
 }
@@ -48,7 +48,7 @@ pub struct BlockInfo {
     ai: Option<AiNote>,
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn normalize_kind(kind: &str) -> String {
     let k = kind.to_lowercase();
     if k.contains("function") {
@@ -64,7 +64,7 @@ fn normalize_kind(kind: &str) -> String {
     }
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     let lang = to_lang(&lang)?;
     let tree = parse(&content, lang)?;
@@ -97,7 +97,7 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     }).collect())
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn suggest_ai_note(_content: String, _lang: String) -> AiNote {
     AiNote { description: Some("Not implemented".into()), hints: Vec::new() }
 }
@@ -139,7 +139,7 @@ fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
     Some(prettyplease::unparse(&file))
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> String {
     let mut metas = read_all(&content);
     if let Some(existing) = metas.iter().find(|m| m.id == meta.id) {
@@ -160,33 +160,34 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
     metas.into_iter().fold(regenerated, |acc, m| upsert(&acc, &m))
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn export_clean(path: String, state: State<EditorState>) -> Result<(), String> {
     let content = state.0.lock().unwrap().clone();
     let cleaned = remove_all(&content);
     std::fs::write(path, cleaned).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn git_commit_cmd(message: String) -> Result<(), String> {
     git::commit(&message).map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn git_diff_cmd() -> Result<String, String> {
     git::diff().map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn git_branches_cmd() -> Result<Vec<String>, String> {
     git::branches().map_err(|e| e.to_string())
 }
 
-#[tauri::command]
+#[cfg_attr(not(test), tauri::command)]
 fn git_log_cmd() -> Result<Vec<String>, String> {
     git::log().map_err(|e| e.to_string())
 }
 
+#[cfg(not(test))]
 fn main() {
     tauri::async_runtime::spawn(async {
         server::run().await;
@@ -209,4 +210,45 @@ fn main() {
             "../frontend/src-tauri/tauri.conf.json"
         ))
         .expect("error while running tauri application");
+}
+
+#[cfg(test)]
+fn main() {}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn parses_source_into_blockinfo() {
+        let src = "fn main() {}".to_string();
+        let blocks = parse_blocks(src, "rust".into()).expect("parse");
+        assert!(!blocks.is_empty());
+        assert!(blocks.iter().any(|b| b.kind == "Function"));
+    }
+
+    #[test]
+    fn upsert_meta_synchronizes_data() {
+        let src = "fn main() {}".to_string();
+        let meta = VisualMeta {
+            id: "0".into(),
+            x: 1.0,
+            y: 2.0,
+            translations: Translations { en: Some("Main".into()), ..Default::default() },
+            ai: None,
+        };
+        let updated = upsert_meta(src, meta.clone(), "rust".into());
+        assert!(updated.contains("@VISUAL_META"));
+        let metas = meta::read_all(&updated);
+        assert_eq!(metas.len(), 1);
+        assert_eq!(metas[0].translations.en.as_deref(), Some("Main"));
+    }
+
+    #[test]
+    fn export_removes_metadata() {
+        let src = format!("<!-- @VISUAL_META {{\"id\":\"1\"}} -->\nfn main() {{}}\n");
+        let cleaned = meta::remove_all(&src);
+        assert!(!cleaned.contains("@VISUAL_META"));
+        assert!(cleaned.contains("fn main"));
+    }
 }
