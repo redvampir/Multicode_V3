@@ -1,5 +1,6 @@
 use std::cmp::Ordering;
-use std::collections::HashMap;
+use std::collections::{hash_map::DefaultHasher, HashMap};
+use std::hash::{Hash, Hasher};
 use std::sync::Mutex;
 mod config;
 mod debugger;
@@ -10,15 +11,17 @@ mod meta;
 mod parser;
 mod plugins;
 mod server;
-use backend::{get_document_tree, update_document_tree};
+use backend::{
+    get_cached_blocks, get_document_tree, update_block_cache, update_document_tree, BlockInfo,
+};
 use clap::{Parser, Subcommand};
 use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
 use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
-use serde::Serialize;
 use syn::{File, Item};
 use tauri::State;
+pub use backend::BlockInfo;
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
@@ -78,16 +81,6 @@ fn to_lang(s: &str) -> Option<Lang> {
     }
 }
 
-#[derive(Serialize)]
-pub struct BlockInfo {
-    visual_id: String,
-    kind: String,
-    translations: Translations,
-    range: (usize, usize),
-    x: f64,
-    y: f64,
-    ai: Option<AiNote>,
-}
 
 #[cfg_attr(not(test), tauri::command)]
 fn normalize_kind(kind: &str) -> String {
@@ -108,47 +101,53 @@ fn normalize_kind(kind: &str) -> String {
 #[cfg_attr(not(test), tauri::command)]
 pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     let lang = to_lang(&lang)?;
+    let mut hasher = DefaultHasher::new();
+    content.hash(&mut hasher);
+    let key = hasher.finish().to_string();
+    if let Some(blocks) = get_cached_blocks(&key, &content) {
+        return Some(blocks);
+    }
     let old = get_document_tree("current");
     let tree = parse(&content, lang, old.as_ref())?;
     update_document_tree("current".to_string(), tree.clone());
     let blocks = parse_to_blocks(&tree);
     let metas = read_all(&content);
     let map: HashMap<_, _> = metas.into_iter().map(|m| (m.id.clone(), m)).collect();
-    Some(
-        blocks
-            .into_iter()
-            .map(|b| {
-                let label = normalize_kind(&b.kind);
-                let mut translations = i18n::lookup(&label).unwrap_or_else(|| Translations {
-                    ru: Some(label.clone()),
-                    en: Some(label.clone()),
-                    es: Some(label.clone()),
-                });
-                if let Some(meta) = map.get(&b.visual_id) {
-                    let t = &meta.translations;
-                    if let Some(ref v) = t.ru {
-                        translations.ru = Some(v.clone());
-                    }
-                    if let Some(ref v) = t.en {
-                        translations.en = Some(v.clone());
-                    }
-                    if let Some(ref v) = t.es {
-                        translations.es = Some(v.clone());
-                    }
+    let result: Vec<BlockInfo> = blocks
+        .into_iter()
+        .map(|b| {
+            let label = normalize_kind(&b.kind);
+            let mut translations = i18n::lookup(&label).unwrap_or_else(|| Translations {
+                ru: Some(label.clone()),
+                en: Some(label.clone()),
+                es: Some(label.clone()),
+            });
+            if let Some(meta) = map.get(&b.visual_id) {
+                let t = &meta.translations;
+                if let Some(ref v) = t.ru {
+                    translations.ru = Some(v.clone());
                 }
-                let pos = map.get(&b.visual_id);
-                BlockInfo {
-                    visual_id: b.visual_id,
-                    kind: label,
-                    translations,
-                    range: (b.range.start, b.range.end),
-                    x: pos.map(|m| m.x).unwrap_or(0.0),
-                    y: pos.map(|m| m.y).unwrap_or(0.0),
-                    ai: pos.and_then(|m| m.ai.clone()),
+                if let Some(ref v) = t.en {
+                    translations.en = Some(v.clone());
                 }
-            })
-            .collect(),
-    )
+                if let Some(ref v) = t.es {
+                    translations.es = Some(v.clone());
+                }
+            }
+            let pos = map.get(&b.visual_id);
+            BlockInfo {
+                visual_id: b.visual_id,
+                kind: label,
+                translations,
+                range: (b.range.start, b.range.end),
+                x: pos.map(|m| m.x).unwrap_or(0.0),
+                y: pos.map(|m| m.y).unwrap_or(0.0),
+                ai: pos.and_then(|m| m.ai.clone()),
+            }
+        })
+        .collect();
+    update_block_cache(key, content, result.clone());
+    Some(result)
 }
 
 #[cfg_attr(not(test), tauri::command)]
