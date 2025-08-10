@@ -1,5 +1,56 @@
 import { createBlock } from './blocks.js';
 
+// Utility used in tests and debug mode to analyze graph connections.
+// Accepts an array of block ids and array of edges [fromId, toId].
+// Returns sets of block ids that lack connections and edges participating in cycles.
+export function analyzeConnections(blockIds, edges) {
+  const missing = new Set();
+  const cycles = new Set();
+
+  const adjacency = new Map();
+  const connected = new Set();
+  for (const [a, b] of edges) {
+    connected.add(a);
+    connected.add(b);
+    if (!adjacency.has(a)) adjacency.set(a, []);
+    adjacency.get(a).push(b);
+  }
+
+  blockIds.forEach(id => {
+    if (!connected.has(id)) missing.add(id);
+  });
+
+  const visited = new Set();
+  const stack = [];
+  const onStack = new Set();
+
+  function dfs(node) {
+    stack.push(node);
+    onStack.add(node);
+    const neigh = adjacency.get(node) || [];
+    for (const n of neigh) {
+      if (onStack.has(n)) {
+        const idx = stack.indexOf(n);
+        for (let i = idx; i < stack.length - 1; i++) {
+          cycles.add(stack[i] + '->' + stack[i + 1]);
+        }
+        cycles.add(stack[stack.length - 1] + '->' + n);
+      } else if (!visited.has(n)) {
+        dfs(n);
+      }
+    }
+    stack.pop();
+    onStack.delete(node);
+    visited.add(node);
+  }
+
+  adjacency.forEach((_, id) => {
+    if (!visited.has(id)) dfs(id);
+  });
+
+  return { missing, cycles };
+}
+
 export class VisualCanvas {
   constructor(canvas) {
     this.canvas = canvas;
@@ -11,6 +62,10 @@ export class VisualCanvas {
     this.blockDataMap = new Map();
     this.locale = 'en';
     this.connections = [];
+    this.debugMode = false;
+    this.errorBlocks = new Set();
+    this.errorEdges = new Set();
+    this.cycleBlocks = new Set();
     this.dragged = null;
     this.dragOffset = { x: 0, y: 0 };
     this.panning = false;
@@ -44,6 +99,7 @@ export class VisualCanvas {
     this.updateLabels();
     this.highlightBlocks([]);
     this.connections = [];
+    if (this.debugMode) this.analyze();
   }
 
   setLocale(locale) {
@@ -76,6 +132,26 @@ export class VisualCanvas {
 
   connect(a, b) {
     this.connections.push([a, b]);
+    if (this.debugMode) this.analyze();
+  }
+
+  setDebugMode(enabled) {
+    this.debugMode = enabled;
+    this.analyze();
+  }
+
+  analyze() {
+    const ids = this.blocks.map(b => b.id);
+    const edges = this.connections.map(([a, b]) => [a.id, b.id]);
+    const { missing, cycles } = analyzeConnections(ids, edges);
+    this.errorBlocks = missing;
+    this.errorEdges = cycles;
+    this.cycleBlocks = new Set();
+    cycles.forEach(edge => {
+      const [from, to] = edge.split('->');
+      this.cycleBlocks.add(from);
+      this.cycleBlocks.add(to);
+    });
   }
 
   registerEvents() {
@@ -105,6 +181,7 @@ export class VisualCanvas {
         this.offset.y = e.offsetY - this.panStart.y;
       } else {
         const hovered = this.blocks.find(b => b.contains(pos.x, pos.y));
+        let tooltipText = null;
         if (hovered) {
           const data = this.blockDataMap.get(hovered.id);
           const note = data && data.ai;
@@ -112,14 +189,30 @@ export class VisualCanvas {
             const lines = [];
             if (note.description) lines.push(note.description);
             if (note.hints) lines.push(...note.hints);
-            this.tooltip.textContent = lines.join('\n');
-            const rect = this.canvas.getBoundingClientRect();
-            this.tooltip.style.left = rect.left + e.offsetX + 10 + 'px';
-            this.tooltip.style.top = rect.top + e.offsetY + 10 + 'px';
-            this.tooltip.style.display = 'block';
-          } else {
-            this.tooltip.style.display = 'none';
+            tooltipText = lines.join('\n');
           }
+          if (this.debugMode) {
+            if (this.errorBlocks.has(hovered.id)) tooltipText = 'Missing connection';
+            else if (this.cycleBlocks.has(hovered.id)) tooltipText = 'Cyclic connection';
+          }
+        } else if (this.debugMode) {
+          for (const edge of this.errorEdges) {
+            const [fromId, toId] = edge.split('->');
+            const a = this.blocks.find(b => b.id === fromId);
+            const b = this.blocks.find(b => b.id === toId);
+            if (a && b && this.pointToSegmentDist(pos, a.center(), b.center()) < 5) {
+              tooltipText = 'Cyclic connection';
+              break;
+            }
+          }
+        }
+
+        if (tooltipText) {
+          this.tooltip.textContent = tooltipText;
+          const rect = this.canvas.getBoundingClientRect();
+          this.tooltip.style.left = rect.left + e.offsetX + 10 + 'px';
+          this.tooltip.style.top = rect.top + e.offsetY + 10 + 'px';
+          this.tooltip.style.display = 'block';
         } else {
           this.tooltip.style.display = 'none';
         }
@@ -170,6 +263,24 @@ export class VisualCanvas {
     };
   }
 
+  pointToSegmentDist(p, a, b) {
+    const A = p.x - a.x;
+    const B = p.y - a.y;
+    const C = b.x - a.x;
+    const D = b.y - a.y;
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = -1;
+    if (lenSq !== 0) param = dot / lenSq;
+    let xx, yy;
+    if (param < 0) { xx = a.x; yy = a.y; }
+    else if (param > 1) { xx = b.x; yy = b.y; }
+    else { xx = a.x + param * C; yy = a.y + param * D; }
+    const dx = p.x - xx;
+    const dy = p.y - yy;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+
   draw() {
     this.ctx.save();
     this.ctx.setTransform(this.scale, 0, 0, this.scale, this.offset.x, this.offset.y);
@@ -177,18 +288,32 @@ export class VisualCanvas {
       this.canvas.width / this.scale, this.canvas.height / this.scale);
 
     // Draw connections
-    this.ctx.strokeStyle = '#000';
     this.connections.forEach(([a, b]) => {
       const ac = a.center();
       const bc = b.center();
+      const key = a.id + '->' + b.id;
       this.ctx.beginPath();
       this.ctx.moveTo(ac.x, ac.y);
       this.ctx.lineTo(bc.x, bc.y);
+      if (this.debugMode && this.errorEdges.has(key)) {
+        this.ctx.strokeStyle = 'red';
+        this.ctx.lineWidth = 2;
+      } else {
+        this.ctx.strokeStyle = '#000';
+        this.ctx.lineWidth = 1;
+      }
       this.ctx.stroke();
     });
 
     // Draw blocks
-    this.blocks.forEach(b => b.draw(this.ctx));
+    this.blocks.forEach(b => {
+      b.draw(this.ctx);
+      if (this.debugMode && this.errorBlocks.has(b.id)) {
+        this.ctx.strokeStyle = 'red';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(b.x, b.y, b.w, b.h);
+      }
+    });
 
     this.ctx.restore();
     requestAnimationFrame(() => this.draw());
