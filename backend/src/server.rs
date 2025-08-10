@@ -13,8 +13,15 @@ use axum::{
 use futures::{SinkExt, StreamExt};
 use once_cell::sync::OnceCell;
 use serde::Deserialize;
-use std::net::SocketAddr;
-use tokio::{signal, sync::broadcast};
+use std::{
+    net::SocketAddr,
+    sync::{
+        atomic::{AtomicBool, AtomicUsize, Ordering},
+        Arc,
+    },
+    time::Duration,
+};
+use tokio::{signal, sync::broadcast, time};
 use tracing::{error, info};
 
 use crate::meta::{remove_all, AiNote, VisualMeta};
@@ -22,9 +29,13 @@ use crate::{parse_blocks, upsert_meta, BlockInfo};
 
 static SERVER_CONFIG: OnceCell<ServerConfig> = OnceCell::new();
 
+const MAX_CONNECTIONS: usize = 100;
+const PING_INTERVAL: Duration = Duration::from_secs(30);
+
 #[derive(Clone)]
 struct AppState {
     tx: broadcast::Sender<String>,
+    connections: Arc<AtomicUsize>,
 }
 
 fn auth(headers: &HeaderMap) -> bool {
@@ -123,27 +134,67 @@ async fn ws_handler(
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    Ok(ws.on_upgrade(move |socket| handle_socket(socket, state.tx.clone())))
+    let current = state.connections.fetch_add(1, Ordering::SeqCst);
+    if current >= MAX_CONNECTIONS {
+        state.connections.fetch_sub(1, Ordering::SeqCst);
+        return Err(StatusCode::SERVICE_UNAVAILABLE);
+    }
+    Ok(ws.on_upgrade(move |socket| {
+        handle_socket(socket, state.tx.clone(), state.connections.clone())
+    }))
 }
 
-async fn handle_socket(socket: WebSocket, tx: broadcast::Sender<String>) {
+async fn handle_socket(
+    socket: WebSocket,
+    tx: broadcast::Sender<String>,
+    connections: Arc<AtomicUsize>,
+) {
     let (mut sender, mut receiver) = socket.split();
     let mut rx = tx.subscribe();
     let tx_incoming = tx.clone();
+    let awaiting_pong = Arc::new(AtomicBool::new(false));
+    let pong_flag = awaiting_pong.clone();
 
     tokio::spawn(async move {
         while let Some(Ok(msg)) = receiver.next().await {
-            if let Message::Text(text) = msg {
-                let _ = tx_incoming.send(text);
+            match msg {
+                Message::Text(text) => {
+                    let _ = tx_incoming.send(text);
+                }
+                Message::Pong(_) => {
+                    pong_flag.store(false, Ordering::SeqCst);
+                }
+                _ => {}
             }
         }
     });
 
-    while let Ok(msg) = rx.recv().await {
-        if sender.send(Message::Text(msg)).await.is_err() {
-            break;
+    let mut interval = time::interval(PING_INTERVAL);
+    loop {
+        tokio::select! {
+            _ = interval.tick() => {
+                if awaiting_pong.swap(true, Ordering::SeqCst) {
+                    let _ = sender.send(Message::Close(None)).await;
+                    break;
+                }
+                if sender.send(Message::Ping(Vec::new())).await.is_err() {
+                    break;
+                }
+            }
+            msg = rx.recv() => {
+                match msg {
+                    Ok(msg) => {
+                        if sender.send(Message::Text(msg)).await.is_err() {
+                            break;
+                        }
+                    }
+                    Err(_) => break,
+                }
+            }
         }
     }
+
+    connections.fetch_sub(1, Ordering::SeqCst);
 }
 
 pub async fn run() {
@@ -151,7 +202,10 @@ pub async fn run() {
     let _ = SERVER_CONFIG.set(cfg.clone());
 
     let (tx, _rx) = broadcast::channel::<String>(100);
-    let state = AppState { tx };
+    let state = AppState {
+        tx,
+        connections: Arc::new(AtomicUsize::new(0)),
+    };
     let app = Router::new()
         .route("/ws", get(ws_handler))
         .route("/parse", post(parse_endpoint))
