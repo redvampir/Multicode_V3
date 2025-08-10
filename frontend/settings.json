@@ -1,0 +1,9 @@
+{
+  "hotkeys": {
+    "copyBlock": "Ctrl+C",
+    "pasteBlock": "Ctrl+V",
+    "selectConnections": "Ctrl+Shift+A",
+    "focusSearch": "Ctrl+F",
+    "showHelp": "Ctrl+?"
+  }
+}
