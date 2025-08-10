@@ -1,6 +1,12 @@
-use tree_sitter::{Language, Parser, Tree, Node};
-use std::ops::Range;
 use serde::Serialize;
+use std::ops::Range;
+use tree_sitter::{Language, Node, Parser, Tree};
+
+pub mod css;
+pub mod html;
+pub mod javascript;
+pub mod python;
+pub mod rust;
 
 /// Supported languages for parsing.
 #[derive(Clone, Copy)]
@@ -15,11 +21,11 @@ pub enum Lang {
 /// Get a tree-sitter [`Language`] from [`Lang`].
 fn language(lang: Lang) -> Language {
     match lang {
-        Lang::Rust => tree_sitter_rust::language(),
-        Lang::Python => tree_sitter_python::language(),
-        Lang::JavaScript => tree_sitter_javascript::language(),
-        Lang::Css => tree_sitter_css::language(),
-        Lang::Html => tree_sitter_html::language(),
+        Lang::Rust => rust::language(),
+        Lang::Python => python::language(),
+        Lang::JavaScript => javascript::language(),
+        Lang::Css => css::language(),
+        Lang::Html => html::language(),
     }
 }
 
@@ -83,16 +89,24 @@ mod tests {
     use std::collections::HashSet;
 
     #[test]
-    fn parse_rust_source_into_blocks() {
-        let source = "fn main() { println!(\"hi\"); }";
-        let tree = parse(source, Lang::Rust).expect("failed to parse");
-        let blocks = parse_to_blocks(&tree);
-        assert!(!blocks.is_empty());
-        // Ensure node ids are unique and mapped to a visual id
-        let mut unique = HashSet::new();
-        for block in &blocks {
-            assert!(unique.insert(block.node_id));
-            assert!(!block.visual_id.is_empty());
+    fn parse_sources_into_blocks() {
+        let cases = [
+            (Lang::Rust, "fn main() { println!(\"hi\"); }"),
+            (Lang::Python, "def main():\n    print('hi')"),
+            (Lang::JavaScript, "function main() { console.log('hi'); }"),
+            (Lang::Css, "body { color: red; }"),
+            (Lang::Html, "<html></html>"),
+        ];
+
+        for (lang, source) in cases {
+            let tree = parse(source, lang).expect("failed to parse");
+            let blocks = parse_to_blocks(&tree);
+            assert!(!blocks.is_empty());
+            let mut unique = HashSet::new();
+            for block in &blocks {
+                assert!(unique.insert(block.node_id));
+                assert!(!block.visual_id.is_empty());
+            }
         }
     }
 }
