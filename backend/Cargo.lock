@@ -159,6 +159,8 @@ dependencies = [
  "tempfile",
  "tokio",
  "tokio-tungstenite",
+ "tracing",
+ "tracing-subscriber",
  "tree-sitter",
  "tree-sitter-css",
  "tree-sitter-html",
