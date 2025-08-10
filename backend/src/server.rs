@@ -11,13 +11,13 @@ use axum::{
     Json, Router,
 };
 use futures::{SinkExt, StreamExt};
-use once_cell::sync::OnceCell;
+use once_cell::sync::{Lazy, OnceCell};
 use serde::Deserialize;
 use std::{
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        Arc,
+        Arc, Mutex,
     },
     time::Duration,
 };
@@ -31,6 +31,24 @@ static SERVER_CONFIG: OnceCell<ServerConfig> = OnceCell::new();
 
 const MAX_CONNECTIONS: usize = 100;
 const PING_INTERVAL: Duration = Duration::from_secs(30);
+
+static PLUGINS: Lazy<Mutex<Vec<String>>> = Lazy::new(|| Mutex::new(Vec::new()));
+
+fn scan_plugins_dir() -> Vec<String> {
+    std::fs::read_dir("plugins")
+        .map(|rd| {
+            rd.filter_map(|e| e.ok())
+                .map(|e| e.file_name().to_string_lossy().into_owned())
+                .collect()
+        })
+        .unwrap_or_default()
+}
+
+fn reload_plugins() -> Vec<String> {
+    let list = scan_plugins_dir();
+    *PLUGINS.lock().unwrap() = list.clone();
+    list
+}
 
 #[derive(Clone)]
 struct AppState {
@@ -126,6 +144,14 @@ async fn suggest_endpoint(
     }))
 }
 
+async fn plugins_list_endpoint() -> Json<Vec<String>> {
+    Json(PLUGINS.lock().unwrap().clone())
+}
+
+async fn plugins_reload_endpoint() -> Json<Vec<String>> {
+    Json(reload_plugins())
+}
+
 async fn ws_handler(
     headers: HeaderMap,
     ws: WebSocketUpgrade,
@@ -206,12 +232,14 @@ pub async fn run() {
         tx,
         connections: Arc::new(AtomicUsize::new(0)),
     };
+    reload_plugins();
     let app = Router::new()
         .route("/ws", get(ws_handler))
         .route("/parse", post(parse_endpoint))
         .route("/export", post(export_endpoint))
         .route("/metadata", post(metadata_endpoint))
         .route("/suggest_ai_note", post(suggest_endpoint))
+        .route("/plugins", get(plugins_list_endpoint).post(plugins_reload_endpoint))
         .with_state(state);
 
     let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port)

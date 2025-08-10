@@ -5,5 +5,8 @@
     "selectConnections": "Ctrl+Shift+A",
     "focusSearch": "Ctrl+F",
     "showHelp": "Ctrl+?"
+  },
+  "plugins": {
+    "lsp": true
   }
 }
