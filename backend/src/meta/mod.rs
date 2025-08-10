@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+mod comment_detector;
 
 /// Marker used to identify visual metadata comments in documents.
 const MARKER: &str = "@VISUAL_META";
@@ -76,16 +77,10 @@ pub fn upsert(content: &str, meta: &VisualMeta) -> String {
 
 /// Read all visual metadata comments from `content`.
 pub fn read_all(content: &str) -> Vec<VisualMeta> {
-    let marker = format!("<!-- {} ", MARKER);
     let mut metas = Vec::new();
-    for line in content.lines() {
-        if let Some(start) = line.find(&marker) {
-            if let Some(end_idx) = line[start + marker.len()..].find("-->") {
-                let json_str = &line[start + marker.len()..start + marker.len() + end_idx];
-                if let Ok(meta) = serde_json::from_str::<VisualMeta>(json_str.trim()) {
-                    metas.push(meta);
-                }
-            }
+    for json in comment_detector::extract_json(content) {
+        if let Ok(meta) = serde_json::from_str::<VisualMeta>(&json) {
+            metas.push(meta);
         }
     }
     metas
@@ -93,15 +88,7 @@ pub fn read_all(content: &str) -> Vec<VisualMeta> {
 
 /// Remove all visual metadata comments from `content`.
 pub fn remove_all(content: &str) -> String {
-    let marker = format!("<!-- {} ", MARKER);
-    let mut out = String::new();
-    for line in content.lines() {
-        if !line.trim_start().starts_with(&marker) {
-            out.push_str(line);
-            out.push('\n');
-        }
-    }
-    out
+    comment_detector::strip(content)
 }
 
 #[cfg(test)]
