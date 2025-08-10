@@ -36,10 +36,13 @@ fn language(lang: Lang) -> Language {
 }
 
 /// Parse the provided `source` using the parser for `lang`.
-pub fn parse(source: &str, lang: Lang) -> Option<Tree> {
+///
+/// An optional previously parsed [`Tree`] can be supplied to enable
+/// incremental parsing.
+pub fn parse(source: &str, lang: Lang, old_tree: Option<&Tree>) -> Option<Tree> {
     let mut parser = Parser::new();
     parser.set_language(&language(lang)).ok()?;
-    parser.parse(source, None)
+    parser.parse(source, old_tree)
 }
 
 /// Block of code tied to a visual metadata identifier.
@@ -110,7 +113,7 @@ mod tests {
         ];
 
         for (lang, source) in cases {
-            let tree = parse(source, lang).expect("failed to parse");
+            let tree = parse(source, lang, None).expect("failed to parse");
             let blocks = parse_to_blocks(&tree);
             assert!(!blocks.is_empty());
             let mut unique = HashSet::new();
