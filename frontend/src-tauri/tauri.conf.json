@@ -1,0 +1,28 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "build": {
+    "beforeDevCommand": "cargo run --manifest-path ../backend/Cargo.toml",
+    "beforeBuildCommand": "cargo build --release --manifest-path ../backend/Cargo.toml",
+    "devPath": "../dist",
+    "distDir": "../dist"
+  },
+  "package": {
+    "productName": "multicode",
+    "version": "0.1.0"
+  },
+  "tauri": {
+    "bundle": {
+      "identifier": "com.example.multicode",
+      "externalBin": [
+        "../backend/target/release/backend"
+      ]
+    },
+    "windows": [
+      {
+        "title": "Multicode",
+        "width": 800,
+        "height": 600
+      }
+    ]
+  }
+}
