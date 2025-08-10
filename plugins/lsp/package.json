@@ -1,0 +1,13 @@
+{
+  "name": "@multicode/lsp",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prototype language server highlighting metadata",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "vscode-languageserver": "^9.0.1"
+  }
+}
