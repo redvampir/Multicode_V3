@@ -156,6 +156,7 @@ dependencies = [
  "syn 2.0.104",
  "tauri",
  "tauri-build",
+ "tempfile",
  "tokio",
  "tokio-tungstenite",
  "tree-sitter",
@@ -164,6 +165,7 @@ dependencies = [
  "tree-sitter-javascript",
  "tree-sitter-python",
  "tree-sitter-rust",
+ "walkdir",
 ]
 
 [[package]]

@@ -1,4 +1,6 @@
 import { createBlock } from './blocks.js';
+import { getTheme } from './theme.ts';
+import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
 
 // Utility used in tests and debug mode to analyze graph connections.
 // Accepts an array of block ids and array of edges [fromId, toId].
@@ -75,11 +77,13 @@ export class VisualCanvas {
     this.redoStack = [];
     this.dragStart = { x: 0, y: 0 };
     this.highlighted = new Set();
+    this.hovered = null;
 
     this.tooltip = document.createElement('div');
+    const theme = getTheme();
     this.tooltip.style.position = 'fixed';
-    this.tooltip.style.background = '#333';
-    this.tooltip.style.color = '#fff';
+    this.tooltip.style.background = theme.tooltipBg;
+    this.tooltip.style.color = theme.tooltipText;
     this.tooltip.style.padding = '4px 8px';
     this.tooltip.style.borderRadius = '4px';
     this.tooltip.style.pointerEvents = 'none';
@@ -90,6 +94,7 @@ export class VisualCanvas {
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.registerEvents();
+    registerHoverHighlight(this);
     requestAnimationFrame(() => this.draw());
   }
 
@@ -108,17 +113,22 @@ export class VisualCanvas {
   }
 
   updateLabels() {
+    const theme = getTheme();
     this.blocks = this.blocksData.map(b => {
       const label = (b.translations && b.translations[this.locale]) || b.kind;
-      const color = this.highlighted.has(b.visual_id) ? '#ffcccc' : '#fff';
+      const base = theme.blockKinds[b.kind] || theme.blockFill;
+      const color = this.highlighted.has(b.visual_id) ? theme.highlight : base;
       return createBlock(b.kind, b.visual_id, b.x, b.y, label, color);
     });
   }
 
   highlightBlocks(ids) {
+    const theme = getTheme();
     this.highlighted = new Set(ids);
     this.blocks.forEach(b => {
-      b.color = this.highlighted.has(b.id) ? '#ffcccc' : '#fff';
+      const data = this.blockDataMap.get(b.id);
+      const base = data ? theme.blockKinds[data.kind] || theme.blockFill : theme.blockFill;
+      b.color = this.highlighted.has(b.id) ? theme.highlight : base;
     });
   }
 
@@ -282,6 +292,7 @@ export class VisualCanvas {
   }
 
   draw() {
+    const theme = getTheme();
     this.ctx.save();
     this.ctx.setTransform(this.scale, 0, 0, this.scale, this.offset.x, this.offset.y);
     this.ctx.clearRect(-this.offset.x / this.scale, -this.offset.y / this.scale,
@@ -299,11 +310,14 @@ export class VisualCanvas {
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
       } else {
-        this.ctx.strokeStyle = '#000';
+        this.ctx.strokeStyle = theme.connection;
         this.ctx.lineWidth = 1;
       }
       this.ctx.stroke();
     });
+
+    // Hover highlights
+    drawHoverHighlight(this);
 
     // Draw blocks
     this.blocks.forEach(b => {
