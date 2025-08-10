@@ -6,6 +6,8 @@ const MARKER: &str = "@VISUAL_META";
 /// Metadata stored inside `@VISUAL_META` comments.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VisualMeta {
+    /// Identifier linking this metadata to AST nodes.
+    pub id: String,
     /// Title of the document.
     pub title: String,
     /// List of authors.
@@ -63,6 +65,7 @@ mod tests {
     #[test]
     fn insert_and_read_roundtrip() {
         let meta = VisualMeta {
+            id: "1".into(),
             title: "Example".into(),
             authors: vec!["Alice".into(), "Bob".into()],
             url: Some("https://example.com".into()),
