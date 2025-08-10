@@ -30,7 +30,10 @@ use tokio::{signal, sync::broadcast, time};
 use tracing::{error, info};
 
 use crate::meta::{remove_all, AiNote, VisualMeta};
-use crate::{parse_blocks, upsert_meta, BlockInfo};
+use crate::{
+    get_plugins_info, parse_blocks, reload_plugins_state, set_plugin_enabled, upsert_meta,
+    BlockInfo, PluginInfo,
+};
 
 pub static SERVER_CONFIG: OnceCell<ServerConfig> = OnceCell::new();
 
@@ -146,6 +149,31 @@ pub async fn metadata_endpoint(
     Ok(Json(upsert_meta(req.content, req.meta, req.lang)))
 }
 
+async fn plugins_get(headers: HeaderMap) -> Result<Json<Vec<PluginInfo>>, StatusCode> {
+    if !auth(&headers) {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    Ok(Json(get_plugins_info()))
+}
+
+#[derive(Deserialize)]
+struct PluginToggle {
+    name: String,
+    enabled: bool,
+}
+
+async fn plugins_update(
+    headers: HeaderMap,
+    Json(req): Json<PluginToggle>,
+) -> Result<Json<Vec<PluginInfo>>, StatusCode> {
+    if !auth(&headers) {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    set_plugin_enabled(req.name, req.enabled)
+        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    Ok(Json(get_plugins_info()))
+}
+
 #[derive(Deserialize)]
 struct SuggestRequest {
     content: String,
@@ -257,6 +285,8 @@ pub async fn run() {
     let cfg = ServerConfig::from_env();
     let _ = SERVER_CONFIG.set(cfg.clone());
 
+    reload_plugins_state();
+
     let (tx, _rx) = broadcast::channel::<String>(100);
 
     let watch_tx = tx.clone();
@@ -296,6 +326,7 @@ pub async fn run() {
         .route("/parse", post(parse_endpoint))
         .route("/export", post(export_endpoint))
         .route("/metadata", post(metadata_endpoint))
+        .route("/plugins", get(plugins_get).post(plugins_update))
         .route("/suggest_ai_note", post(suggest_endpoint))
         .with_state(state);
 
