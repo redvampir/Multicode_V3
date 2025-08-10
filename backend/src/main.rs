@@ -1,22 +1,24 @@
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
+use std::sync::Mutex;
+use tauri::State;
 
-#[derive(Serialize, Deserialize)]
-struct Message {
-    content: String,
+#[derive(Default)]
+struct EditorState(Mutex<String>);
+
+#[tauri::command]
+fn save_state(state: State<EditorState>, content: String) {
+    *state.0.lock().unwrap() = content;
 }
 
-#[tokio::main]
-async fn main() {
-    let msg = Message {
-        content: "Backend started".into(),
-    };
-    println!("{}", msg.content);
+#[tauri::command]
+fn load_state(state: State<EditorState>) -> String {
+    state.0.lock().unwrap().clone()
+}
 
-    tauri::async_runtime::spawn(async {
-        println!("Tauri async runtime initialized");
-    });
-
-    tokio::signal::ctrl_c()
-        .await
-        .expect("failed to listen for event");
+fn main() {
+    tauri::Builder::default()
+        .manage(EditorState::default())
+        .invoke_handler(tauri::generate_handler![save_state, load_state])
+        .run(tauri::generate_context!("../frontend/src-tauri/tauri.conf.json"))
+        .expect("error while running tauri application");
 }
