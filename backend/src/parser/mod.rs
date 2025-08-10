@@ -1,5 +1,6 @@
 use tree_sitter::{Language, Parser, Tree, Node};
 use std::ops::Range;
+use serde::Serialize;
 
 /// Supported languages for parsing.
 #[derive(Clone, Copy)]
@@ -30,7 +31,7 @@ pub fn parse(source: &str, lang: Lang) -> Option<Tree> {
 }
 
 /// Block of code tied to a visual metadata identifier.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct Block {
     /// Identifier linking this node with [`VisualMeta`].
     pub visual_id: String,
