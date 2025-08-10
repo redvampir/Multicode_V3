@@ -11,17 +11,17 @@ mod meta;
 mod parser;
 mod plugins;
 mod server;
+pub use backend::BlockInfo;
 use backend::{
     get_cached_blocks, get_document_tree, update_block_cache, update_document_tree, BlockInfo,
 };
 use clap::{Parser, Subcommand};
 use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
-use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
+use meta::{read_all, remove_all, upsert, AiNote, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
 use syn::{File, Item};
 use tauri::State;
-pub use backend::BlockInfo;
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
@@ -81,7 +81,6 @@ fn to_lang(s: &str) -> Option<Lang> {
     }
 }
 
-
 #[cfg_attr(not(test), tauri::command)]
 fn normalize_kind(kind: &str) -> String {
     let k = kind.to_lowercase();
@@ -117,22 +116,15 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
         .into_iter()
         .map(|b| {
             let label = normalize_kind(&b.kind);
-            let mut translations = i18n::lookup(&label).unwrap_or_else(|| Translations {
-                ru: Some(label.clone()),
-                en: Some(label.clone()),
-                es: Some(label.clone()),
+            let mut translations = i18n::lookup(&label).unwrap_or_else(|| {
+                let mut m = HashMap::new();
+                m.insert("ru".into(), label.clone());
+                m.insert("en".into(), label.clone());
+                m.insert("es".into(), label.clone());
+                m
             });
             if let Some(meta) = map.get(&b.visual_id) {
-                let t = &meta.translations;
-                if let Some(ref v) = t.ru {
-                    translations.ru = Some(v.clone());
-                }
-                if let Some(ref v) = t.en {
-                    translations.en = Some(v.clone());
-                }
-                if let Some(ref v) = t.es {
-                    translations.es = Some(v.clone());
-                }
+                translations.extend(meta.translations.clone());
             }
             let pos = map.get(&b.visual_id);
             BlockInfo {
@@ -215,10 +207,7 @@ fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
 pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> String {
     let mut metas = read_all(&content);
     if let Some(existing) = metas.iter().find(|m| m.id == meta.id) {
-        if meta.translations.ru.is_none()
-            && meta.translations.en.is_none()
-            && meta.translations.es.is_none()
-        {
+        if meta.translations.is_empty() {
             meta.translations = existing.translations.clone();
         }
         if meta.ai.is_none() {
@@ -356,9 +345,10 @@ mod tests {
             id: "0".into(),
             x: 1.0,
             y: 2.0,
-            translations: Translations {
-                en: Some("Main".into()),
-                ..Default::default()
+            translations: {
+                let mut m = HashMap::new();
+                m.insert("en".into(), "Main".into());
+                m
             },
             ai: None,
         };
@@ -366,7 +356,10 @@ mod tests {
         assert!(updated.contains("@VISUAL_META"));
         let metas = meta::read_all(&updated);
         assert_eq!(metas.len(), 1);
-        assert_eq!(metas[0].translations.en.as_deref(), Some("Main"));
+        assert_eq!(
+            metas[0].translations.get("en").map(|s| s.as_str()),
+            Some("Main")
+        );
     }
 
     #[test]

@@ -1,28 +1,33 @@
-use crate::meta::Translations;
+use std::collections::HashMap;
 
 /// Return default translations for known block kinds.
-pub fn lookup(kind: &str) -> Option<Translations> {
+pub fn lookup(kind: &str) -> Option<HashMap<String, String>> {
+    let mut map = HashMap::new();
     match kind {
-        "Function" => Some(Translations {
-            ru: Some("Функция".into()),
-            en: Some("Function".into()),
-            es: Some("Función".into()),
-        }),
-        "Variable" => Some(Translations {
-            ru: Some("Переменная".into()),
-            en: Some("Variable".into()),
-            es: Some("Variable".into()),
-        }),
-        "Condition" => Some(Translations {
-            ru: Some("Условие".into()),
-            en: Some("Condition".into()),
-            es: Some("Condición".into()),
-        }),
-        "Loop" => Some(Translations {
-            ru: Some("Цикл".into()),
-            en: Some("Loop".into()),
-            es: Some("Bucle".into()),
-        }),
+        "Function" => {
+            map.insert("ru".into(), "Функция".into());
+            map.insert("en".into(), "Function".into());
+            map.insert("es".into(), "Función".into());
+            Some(map)
+        }
+        "Variable" => {
+            map.insert("ru".into(), "Переменная".into());
+            map.insert("en".into(), "Variable".into());
+            map.insert("es".into(), "Variable".into());
+            Some(map)
+        }
+        "Condition" => {
+            map.insert("ru".into(), "Условие".into());
+            map.insert("en".into(), "Condition".into());
+            map.insert("es".into(), "Condición".into());
+            Some(map)
+        }
+        "Loop" => {
+            map.insert("ru".into(), "Цикл".into());
+            map.insert("en".into(), "Loop".into());
+            map.insert("es".into(), "Bucle".into());
+            Some(map)
+        }
         _ => None,
     }
 }

@@ -22,13 +22,8 @@
     },
     "translations": {
       "type": "object",
-      "description": "Optional translations for block labels.",
-      "additionalProperties": false,
-      "properties": {
-        "ru": { "type": "string", "description": "Russian translation." },
-        "en": { "type": "string", "description": "English translation." },
-        "es": { "type": "string", "description": "Spanish translation." }
-      }
+      "description": "Optional translations for block labels keyed by language code.",
+      "additionalProperties": { "type": "string" }
     },
     "ai": {
       "type": "object",
