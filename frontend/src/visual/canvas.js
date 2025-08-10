@@ -18,6 +18,7 @@ export class VisualCanvas {
     this.undoStack = [];
     this.redoStack = [];
     this.dragStart = { x: 0, y: 0 };
+    this.highlighted = new Set();
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -28,6 +29,7 @@ export class VisualCanvas {
   setBlocks(blocks) {
     this.blocksData = blocks;
     this.updateLabels();
+    this.highlightBlocks([]);
     this.connections = [];
   }
 
@@ -39,7 +41,15 @@ export class VisualCanvas {
   updateLabels() {
     this.blocks = this.blocksData.map(b => {
       const label = (b.translations && b.translations[this.locale]) || b.kind;
-      return new Block(b.visual_id, b.x, b.y, 120, 50, label);
+      const color = this.highlighted.has(b.visual_id) ? '#ffcccc' : '#fff';
+      return new Block(b.visual_id, b.x, b.y, 120, 50, label, color);
+    });
+  }
+
+  highlightBlocks(ids) {
+    this.highlighted = new Set(ids);
+    this.blocks.forEach(b => {
+      b.color = this.highlighted.has(b.id) ? '#ffcccc' : '#fff';
     });
   }
 
