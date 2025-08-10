@@ -12,7 +12,7 @@ use serde::Deserialize;
 use std::{env, net::SocketAddr};
 
 use crate::{parse_blocks, upsert_meta, BlockInfo};
-use crate::meta::{remove_all, VisualMeta};
+use crate::meta::{remove_all, VisualMeta, AiNote};
 
 #[derive(Clone)]
 struct AppState {
@@ -73,6 +73,19 @@ async fn metadata_endpoint(headers: HeaderMap, Json(req): Json<MetadataRequest>)
     Ok(Json(upsert_meta(req.content, req.meta, req.lang)))
 }
 
+#[derive(Deserialize)]
+struct SuggestRequest {
+    content: String,
+    lang: String,
+}
+
+async fn suggest_endpoint(headers: HeaderMap, Json(_req): Json<SuggestRequest>) -> Result<Json<AiNote>, StatusCode> {
+    if !auth(&headers) {
+        return Err(StatusCode::UNAUTHORIZED);
+    }
+    Ok(Json(AiNote { description: Some("Not implemented".into()), hints: Vec::new() }))
+}
+
 async fn ws_handler(headers: HeaderMap, ws: WebSocketUpgrade, State(state): State<AppState>) -> Result<impl IntoResponse, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
@@ -108,6 +121,7 @@ pub async fn run() {
         .route("/parse", post(parse_endpoint))
         .route("/export", post(export_endpoint))
         .route("/metadata", post(metadata_endpoint))
+        .route("/suggest_ai_note", post(suggest_endpoint))
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));

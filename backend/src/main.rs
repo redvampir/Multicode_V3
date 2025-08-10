@@ -7,7 +7,7 @@ mod i18n;
 mod git;
 mod plugins;
 mod server;
-use meta::{upsert, read_all, remove_all, VisualMeta, Translations};
+use meta::{upsert, read_all, remove_all, VisualMeta, Translations, AiNote};
 use parser::{parse, parse_to_blocks, Lang};
 use tauri::State;
 use serde::Serialize;
@@ -45,6 +45,7 @@ pub struct BlockInfo {
     range: (usize, usize),
     x: f64,
     y: f64,
+    ai: Option<AiNote>,
 }
 
 #[tauri::command]
@@ -91,8 +92,14 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
             range: (b.range.start, b.range.end),
             x: pos.map(|m| m.x).unwrap_or(0.0),
             y: pos.map(|m| m.y).unwrap_or(0.0),
+            ai: pos.and_then(|m| m.ai.clone()),
         }
     }).collect())
+}
+
+#[tauri::command]
+fn suggest_ai_note(_content: String, _lang: String) -> AiNote {
+    AiNote { description: Some("Not implemented".into()), hints: Vec::new() }
 }
 
 fn regenerate_code(content: &str, lang: Lang, metas: &[VisualMeta]) -> Option<String> {
@@ -133,8 +140,16 @@ fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
 }
 
 #[tauri::command]
-pub fn upsert_meta(content: String, meta: VisualMeta, lang: String) -> String {
+pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> String {
     let mut metas = read_all(&content);
+    if let Some(existing) = metas.iter().find(|m| m.id == meta.id) {
+        if meta.translations.ru.is_none() && meta.translations.en.is_none() && meta.translations.es.is_none() {
+            meta.translations = existing.translations.clone();
+        }
+        if meta.ai.is_none() {
+            meta.ai = existing.ai.clone();
+        }
+    }
     metas.retain(|m| m.id != meta.id);
     metas.push(meta);
 
@@ -182,6 +197,7 @@ fn main() {
             save_state,
             load_state,
             parse_blocks,
+            suggest_ai_note,
             upsert_meta,
             export_clean,
             git_commit_cmd,

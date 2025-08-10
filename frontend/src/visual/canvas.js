@@ -8,6 +8,7 @@ export class VisualCanvas {
     this.offset = { x: 0, y: 0 };
     this.blocks = [];
     this.blocksData = [];
+    this.blockDataMap = new Map();
     this.locale = 'en';
     this.connections = [];
     this.dragged = null;
@@ -20,6 +21,17 @@ export class VisualCanvas {
     this.dragStart = { x: 0, y: 0 };
     this.highlighted = new Set();
 
+    this.tooltip = document.createElement('div');
+    this.tooltip.style.position = 'fixed';
+    this.tooltip.style.background = '#333';
+    this.tooltip.style.color = '#fff';
+    this.tooltip.style.padding = '4px 8px';
+    this.tooltip.style.borderRadius = '4px';
+    this.tooltip.style.pointerEvents = 'none';
+    this.tooltip.style.whiteSpace = 'pre';
+    this.tooltip.style.display = 'none';
+    document.body.appendChild(this.tooltip);
+
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.registerEvents();
@@ -28,6 +40,7 @@ export class VisualCanvas {
 
   setBlocks(blocks) {
     this.blocksData = blocks;
+    this.blockDataMap = new Map(blocks.map(b => [b.visual_id, b]));
     this.updateLabels();
     this.highlightBlocks([]);
     this.connections = [];
@@ -79,6 +92,7 @@ export class VisualCanvas {
         this.panStart.x = e.offsetX - this.offset.x;
         this.panStart.y = e.offsetY - this.offset.y;
       }
+      this.tooltip.style.display = 'none';
     });
 
     this.canvas.addEventListener('mousemove', e => {
@@ -89,6 +103,26 @@ export class VisualCanvas {
       } else if (this.panning) {
         this.offset.x = e.offsetX - this.panStart.x;
         this.offset.y = e.offsetY - this.panStart.y;
+      } else {
+        const hovered = this.blocks.find(b => b.contains(pos.x, pos.y));
+        if (hovered) {
+          const data = this.blockDataMap.get(hovered.id);
+          const note = data && data.ai;
+          if (note && (note.description || (note.hints && note.hints.length))) {
+            const lines = [];
+            if (note.description) lines.push(note.description);
+            if (note.hints) lines.push(...note.hints);
+            this.tooltip.textContent = lines.join('\n');
+            const rect = this.canvas.getBoundingClientRect();
+            this.tooltip.style.left = rect.left + e.offsetX + 10 + 'px';
+            this.tooltip.style.top = rect.top + e.offsetY + 10 + 'px';
+            this.tooltip.style.display = 'block';
+          } else {
+            this.tooltip.style.display = 'none';
+          }
+        } else {
+          this.tooltip.style.display = 'none';
+        }
       }
     });
 
@@ -104,6 +138,10 @@ export class VisualCanvas {
       }
       this.dragged = null;
       this.panning = false;
+    });
+
+    this.canvas.addEventListener('mouseleave', () => {
+      this.tooltip.style.display = 'none';
     });
 
     this.canvas.addEventListener('wheel', e => {
