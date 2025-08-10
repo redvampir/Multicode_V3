@@ -4,6 +4,14 @@ use serde::{Deserialize, Serialize};
 const MARKER: &str = "@VISUAL_META";
 
 /// Metadata stored inside `@VISUAL_META` comments.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct Translations {
+    pub ru: Option<String>,
+    pub en: Option<String>,
+    pub es: Option<String>,
+}
+
+/// Metadata stored inside `@VISUAL_META` comments.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VisualMeta {
     /// Identifier linking this metadata to AST nodes.
@@ -12,6 +20,9 @@ pub struct VisualMeta {
     pub x: f64,
     /// Y coordinate on the canvas.
     pub y: f64,
+    /// Optional translations for block labels.
+    #[serde(default)]
+    pub translations: Translations,
 }
 
 /// Insert or update a visual metadata comment in `content`.
@@ -73,7 +84,7 @@ mod tests {
 
     #[test]
     fn upsert_and_read_roundtrip() {
-        let meta = VisualMeta { id: "1".into(), x: 10.0, y: 20.0 };
+        let meta = VisualMeta { id: "1".into(), x: 10.0, y: 20.0, translations: Translations::default() };
         let content = "fn main() {}";
         let updated = upsert(content, &meta);
         assert!(updated.contains(MARKER));

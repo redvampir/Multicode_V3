@@ -31,6 +31,8 @@
     });
 
     const currentLang = 'rust';
+    let currentLocale = 'en';
+    vc.setLocale(currentLocale);
 
     async function parseAndRender() {
       const content = view.state.doc.toString();
@@ -67,6 +69,10 @@
 
     document.getElementById('save').addEventListener('click', save);
     document.getElementById('load').addEventListener('click', load);
+    document.getElementById('locale').addEventListener('change', e => {
+      currentLocale = e.target.value;
+      vc.setLocale(currentLocale);
+    });
 
     parseAndRender();
   </script>
@@ -77,6 +83,11 @@
   <div id="controls">
     <button id="save">Save</button>
     <button id="load">Load</button>
+    <select id="locale">
+      <option value="en">English</option>
+      <option value="ru">Русский</option>
+      <option value="es">Español</option>
+    </select>
   </div>
 </body>
 </html>
