@@ -17,6 +17,7 @@ use std::path::Path;
 /// currently ignored but the function is prepared for future support.
 pub fn load_plugins() -> Vec<Box<dyn Plugin>> {
     let mut loaded: Vec<Box<dyn Plugin>> = Vec::new();
+    let expected = env!("CARGO_PKG_VERSION");
 
     if let Ok(entries) = std::fs::read_dir("plugins") {
         for entry in entries.flatten() {
@@ -24,12 +25,30 @@ pub fn load_plugins() -> Vec<Box<dyn Plugin>> {
             match path.extension().and_then(|e| e.to_str()) {
                 Some("dll") | Some("so") | Some("dylib") => {
                     if let Some(p) = unsafe { load_dll(&path) } {
-                        loaded.push(p);
+                        if p.version() == expected {
+                            loaded.push(p);
+                        } else {
+                            eprintln!(
+                                "Skipping plugin {} due to version mismatch: {} != {}",
+                                p.name(),
+                                p.version(),
+                                expected
+                            );
+                        }
                     }
                 }
                 Some("wasm") => {
                     if let Some(p) = load_wasm(&path) {
-                        loaded.push(p);
+                        if p.version() == expected {
+                            loaded.push(p);
+                        } else {
+                            eprintln!(
+                                "Skipping plugin {} due to version mismatch: {} != {}",
+                                p.name(),
+                                p.version(),
+                                expected
+                            );
+                        }
                     }
                 }
                 _ => {}

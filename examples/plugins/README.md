@@ -18,10 +18,13 @@ pub struct MyPlugin;
 impl Plugin for MyPlugin {
     fn name(&self) -> &'static str { "my-plugin" }
 
+    fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
+
     fn blocks(&self) -> Vec<BlockDescriptor> {
         vec![BlockDescriptor {
             kind: "MyBlock".into(),
             label: Some("Мой блок".into()),
+            version: env!("CARGO_PKG_VERSION").into(),
         }]
     }
 }

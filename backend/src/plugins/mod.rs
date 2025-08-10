@@ -10,6 +10,8 @@ pub struct BlockDescriptor {
     pub kind: String,
     /// Optional human‑readable label for the block.
     pub label: Option<String>,
+    /// Version of the block implementation.
+    pub version: String,
 }
 
 /// Interface implemented by backend plugins.
@@ -21,6 +23,9 @@ pub struct BlockDescriptor {
 pub trait Plugin: Send + Sync {
     /// Unique plugin name.
     fn name(&self) -> &'static str;
+
+    /// Version of the plugin API this implementation targets.
+    fn version(&self) -> &str;
 
     /// Return block descriptors contributed by this plugin.
     fn blocks(&self) -> Vec<BlockDescriptor>;
