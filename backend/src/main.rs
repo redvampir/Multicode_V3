@@ -6,6 +6,7 @@ mod parser;
 mod i18n;
 mod git;
 mod plugins;
+mod server;
 use meta::{upsert, read_all, remove_all, VisualMeta, Translations};
 use parser::{parse, parse_to_blocks, Lang};
 use tauri::State;
@@ -37,7 +38,7 @@ fn to_lang(s: &str) -> Option<Lang> {
 }
 
 #[derive(Serialize)]
-struct BlockInfo {
+pub struct BlockInfo {
     visual_id: String,
     kind: String,
     translations: Translations,
@@ -63,7 +64,7 @@ fn normalize_kind(kind: &str) -> String {
 }
 
 #[tauri::command]
-fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
+pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     let lang = to_lang(&lang)?;
     let tree = parse(&content, lang)?;
     let blocks = parse_to_blocks(&tree);
@@ -132,7 +133,7 @@ fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
 }
 
 #[tauri::command]
-fn upsert_meta(content: String, meta: VisualMeta, lang: String) -> String {
+pub fn upsert_meta(content: String, meta: VisualMeta, lang: String) -> String {
     let mut metas = read_all(&content);
     metas.retain(|m| m.id != meta.id);
     metas.push(meta);
@@ -172,6 +173,9 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
 }
 
 fn main() {
+    tauri::async_runtime::spawn(async {
+        server::run().await;
+    });
     tauri::Builder::default()
         .manage(EditorState::default())
         .invoke_handler(tauri::generate_handler![
