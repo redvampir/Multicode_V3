@@ -18,6 +18,41 @@ use backend::{get_document_tree, update_document_tree};
 use serde::Serialize;
 use syn::{File, Item};
 use tauri::State;
+use clap::{Parser, Subcommand};
+
+#[derive(Parser)]
+#[command(name = "multicode-backend", about = "CLI for Multicode backend")]
+struct Cli {
+    #[command(subcommand)]
+    command: Option<Commands>,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Parse a source file and output blocks as JSON
+    Parse {
+        /// Path to the source file
+        path: String,
+        /// Language of the source file
+        #[arg(short, long)]
+        lang: String,
+    },
+    /// Export a file, optionally stripping metadata comments
+    Export {
+        /// Input file path
+        input: String,
+        /// Output file path
+        output: String,
+        /// Remove @VISUAL_META comments
+        #[arg(long)]
+        strip_meta: bool,
+    },
+    /// Show metadata extracted from a file
+    Metadata {
+        /// File to inspect
+        path: String,
+    },
+}
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
@@ -232,6 +267,37 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
 
 #[cfg(not(test))]
 fn main() {
+    let cli = Cli::parse();
+    if let Some(command) = cli.command {
+        match command {
+            Commands::Parse { path, lang } => {
+                let content = std::fs::read_to_string(path).expect("read file");
+                let lang = to_lang(&lang).expect("unknown language");
+                let tree = parse(&content, lang, None).expect("parse failed");
+                let blocks = parse_to_blocks(&tree);
+                println!("{}", serde_json::to_string_pretty(&blocks).unwrap());
+            }
+            Commands::Export {
+                input,
+                output,
+                strip_meta,
+            } => {
+                let content = std::fs::read_to_string(input).expect("read file");
+                let out = prepare_for_export(&content, strip_meta);
+                std::fs::write(output, out).expect("write file");
+            }
+            Commands::Metadata { path } => {
+                let content = std::fs::read_to_string(path).expect("read file");
+                let metas = read_all(&content);
+                println!(
+                    "{}",
+                    serde_json::to_string_pretty(&metas).unwrap()
+                );
+            }
+        }
+        return;
+    }
+
     tracing_subscriber::fmt::init();
     tauri::async_runtime::spawn(async {
         server::run().await;
