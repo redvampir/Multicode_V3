@@ -1,19 +1,19 @@
+pub mod debugger;
 pub mod export;
 pub mod meta;
-pub mod debugger;
-pub mod search;
-pub mod plugins;
 pub mod parser;
+pub mod plugins;
+pub mod search;
 pub mod server;
 
+use crate::meta::{AiNote, Translations};
 use once_cell::sync::Lazy;
-use plugins::Plugin;
+use plugins::{Plugin, WasmPlugin};
 use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 use tree_sitter::Tree;
-use crate::meta::{AiNote, Translations};
 
 /// Stored parse trees for opened documents.
 static DOCUMENT_TREES: Lazy<Mutex<HashMap<String, Tree>>> =
@@ -57,10 +57,7 @@ pub fn get_cached_blocks(key: &str, content: &str) -> Option<Vec<BlockInfo>> {
 
 /// Update the block cache for the given key.
 pub fn update_block_cache(key: String, content: String, blocks: Vec<BlockInfo>) {
-    BLOCK_CACHE
-        .lock()
-        .unwrap()
-        .insert(key, (content, blocks));
+    BLOCK_CACHE.lock().unwrap().insert(key, (content, blocks));
 }
 
 /// Load all backend plugins from the `plugins/` directory.
@@ -136,6 +133,6 @@ unsafe fn load_dll(path: &Path) -> Option<Box<dyn Plugin>> {
 /// Load a WebAssembly plugin.  This is currently a stub that returns
 /// `None`, but the function is provided to make extending the loader in
 /// the future straightforward.
-fn load_wasm(_path: &Path) -> Option<Box<dyn Plugin>> {
-    None
+fn load_wasm(path: &Path) -> Option<Box<dyn Plugin>> {
+    WasmPlugin::from_file(path).map(|p| Box::new(p) as Box<dyn Plugin>)
 }
