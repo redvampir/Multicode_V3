@@ -1,5 +1,7 @@
+import { getTheme } from './theme.ts';
+
 export class Block {
-  constructor(id, x, y, w, h, label, color = '#fff') {
+  constructor(id, x, y, w, h, label, color = getTheme().blockFill) {
     this.id = id;
     this.x = x;
     this.y = y;
@@ -10,12 +12,13 @@ export class Block {
   }
 
   draw(ctx) {
+    const theme = getTheme();
     ctx.fillStyle = this.color;
-    ctx.strokeStyle = '#333';
+    ctx.strokeStyle = theme.blockStroke;
     ctx.lineWidth = 2;
     ctx.fillRect(this.x, this.y, this.w, this.h);
     ctx.strokeRect(this.x, this.y, this.w, this.h);
-    ctx.fillStyle = '#000';
+    ctx.fillStyle = theme.blockText;
     ctx.font = '16px sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -62,25 +65,25 @@ export async function loadBlockPlugins(urls) {
 
 export class FunctionBlock extends Block {
   constructor(id, x, y) {
-    super(id, x, y, 120, 50, 'Function', '#e0f7fa');
+    super(id, x, y, 120, 50, 'Function', getTheme().blockKinds.Function);
   }
 }
 
 export class VariableBlock extends Block {
   constructor(id, x, y) {
-    super(id, x, y, 120, 50, 'Variable', '#f1f8e9');
+    super(id, x, y, 120, 50, 'Variable', getTheme().blockKinds.Variable);
   }
 }
 
 export class ConditionBlock extends Block {
   constructor(id, x, y) {
-    super(id, x, y, 120, 50, 'Condition', '#fff9c4');
+    super(id, x, y, 120, 50, 'Condition', getTheme().blockKinds.Condition);
   }
 }
 
 export class LoopBlock extends Block {
   constructor(id, x, y) {
-    super(id, x, y, 120, 50, 'Loop', '#fce4ec');
+    super(id, x, y, 120, 50, 'Loop', getTheme().blockKinds.Loop);
   }
 }
 
