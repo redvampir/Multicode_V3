@@ -20,6 +20,8 @@ export const mainMenu: MenuItem[] = [
     submenu: [
       { label: 'Copy Block', action: () => console.log('copy'), shortcut: hotkeys.copyBlock },
       { label: 'Paste Block', action: () => console.log('paste'), shortcut: hotkeys.pasteBlock },
+      { label: 'Сгруппировать', action: () => console.log('group') },
+      { label: 'Разгруппировать', action: () => console.log('ungroup') },
       { label: 'Select Connections', action: () => console.log('select'), shortcut: hotkeys.selectConnections },
       { label: 'Focus Search', action: () => console.log('focus search'), shortcut: hotkeys.focusSearch }
     ]
@@ -35,7 +37,9 @@ export const mainMenu: MenuItem[] = [
 export const contextMenus = {
   block: [
     { label: 'Copy Block', action: () => console.log('copy'), shortcut: hotkeys.copyBlock },
-    { label: 'Paste Block', action: () => console.log('paste'), shortcut: hotkeys.pasteBlock }
+    { label: 'Paste Block', action: () => console.log('paste'), shortcut: hotkeys.pasteBlock },
+    { label: 'Сгруппировать', action: () => console.log('group') },
+    { label: 'Разгруппировать', action: () => console.log('ungroup') }
   ],
   canvas: [
     { label: 'Paste Block', action: () => console.log('paste'), shortcut: hotkeys.pasteBlock },
