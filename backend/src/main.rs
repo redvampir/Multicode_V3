@@ -228,6 +228,7 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
 
 #[cfg(not(test))]
 fn main() {
+    tracing_subscriber::fmt::init();
     tauri::async_runtime::spawn(async {
         server::run().await;
     });

@@ -10,6 +10,7 @@ use tokio::sync::broadcast;
 use axum::extract::ws::Message;
 use serde::Deserialize;
 use std::{env, net::SocketAddr};
+use tracing::{info, error};
 
 use crate::{parse_blocks, upsert_meta, BlockInfo};
 use crate::meta::{remove_all, VisualMeta, AiNote};
@@ -132,9 +133,11 @@ pub async fn run() {
         .with_state(state);
 
     let addr = SocketAddr::from(([127, 0, 0, 1], 3001));
-    println!("Listening on {}", addr);
-    axum::Server::bind(&addr)
+    info!("Listening on {}", addr);
+    if let Err(e) = axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .await
-        .unwrap();
+    {
+        error!("server error: {e}");
+    }
 }
