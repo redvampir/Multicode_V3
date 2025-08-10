@@ -1,6 +1,8 @@
 use std::cmp::Ordering;
 use std::collections::HashMap;
 use std::sync::Mutex;
+mod config;
+mod debugger;
 mod export;
 mod git;
 mod i18n;
@@ -8,14 +10,13 @@ mod meta;
 mod parser;
 mod plugins;
 mod server;
-mod debugger;
+use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
 use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
 use serde::Serialize;
 use syn::{File, Item};
 use tauri::State;
-use debugger::{debug_run, debug_step, debug_break};
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
