@@ -86,6 +86,7 @@ export class VisualCanvas {
     this.selected = new Set();
     this.groups = new Map();
     this.nextGroupId = 1;
+    this.alignGuides = [];
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -273,45 +274,49 @@ export class VisualCanvas {
             b.y = by;
           }
         }
-      } else if (this.panning) {
+        this.updateAlignGuides();
+      } else {
+        this.alignGuides = [];
+        if (this.panning) {
         this.offset.x = e.offsetX - this.panStart.x;
         this.offset.y = e.offsetY - this.panStart.y;
-      } else {
-        const hovered = this.blocks.find(b => b.contains(pos.x, pos.y));
-        let tooltipText = null;
-        if (hovered) {
-          const data = this.blockDataMap.get(hovered.id);
-          const note = data && data.ai;
-          if (note && (note.description || (note.hints && note.hints.length))) {
-            const lines = [];
-            if (note.description) lines.push(note.description);
-            if (note.hints) lines.push(...note.hints);
-            tooltipText = lines.join('\n');
-          }
-          if (this.debugMode) {
-            if (this.errorBlocks.has(hovered.id)) tooltipText = 'Missing connection';
-            else if (this.cycleBlocks.has(hovered.id)) tooltipText = 'Cyclic connection';
-          }
-        } else if (this.debugMode) {
-          for (const edge of this.errorEdges) {
-            const [fromId, toId] = edge.split('->');
-            const a = this.blocks.find(b => b.id === fromId);
-            const b = this.blocks.find(b => b.id === toId);
-            if (a && b && this.pointToSegmentDist(pos, a.center(), b.center()) < 5) {
-              tooltipText = 'Cyclic connection';
-              break;
+        } else {
+          const hovered = this.blocks.find(b => b.contains(pos.x, pos.y));
+          let tooltipText = null;
+          if (hovered) {
+            const data = this.blockDataMap.get(hovered.id);
+            const note = data && data.ai;
+            if (note && (note.description || (note.hints && note.hints.length))) {
+              const lines = [];
+              if (note.description) lines.push(note.description);
+              if (note.hints) lines.push(...note.hints);
+              tooltipText = lines.join('\n');
+            }
+            if (this.debugMode) {
+              if (this.errorBlocks.has(hovered.id)) tooltipText = 'Missing connection';
+              else if (this.cycleBlocks.has(hovered.id)) tooltipText = 'Cyclic connection';
+            }
+          } else if (this.debugMode) {
+            for (const edge of this.errorEdges) {
+              const [fromId, toId] = edge.split('->');
+              const a = this.blocks.find(b => b.id === fromId);
+              const b = this.blocks.find(b => b.id === toId);
+              if (a && b && this.pointToSegmentDist(pos, a.center(), b.center()) < 5) {
+                tooltipText = 'Cyclic connection';
+                break;
+              }
             }
           }
-        }
 
-        if (tooltipText) {
-          this.tooltip.textContent = tooltipText;
-          const rect = this.canvas.getBoundingClientRect();
-          this.tooltip.style.left = rect.left + e.offsetX + 10 + 'px';
-          this.tooltip.style.top = rect.top + e.offsetY + 10 + 'px';
-          this.tooltip.style.display = 'block';
-        } else {
-          this.tooltip.style.display = 'none';
+          if (tooltipText) {
+            this.tooltip.textContent = tooltipText;
+            const rect = this.canvas.getBoundingClientRect();
+            this.tooltip.style.left = rect.left + e.offsetX + 10 + 'px';
+            this.tooltip.style.top = rect.top + e.offsetY + 10 + 'px';
+            this.tooltip.style.display = 'block';
+          } else {
+            this.tooltip.style.display = 'none';
+          }
         }
       }
     });
@@ -328,6 +333,7 @@ export class VisualCanvas {
       }
       this.dragged = null;
       this.panning = false;
+      this.alignGuides = [];
     });
 
     this.canvas.addEventListener('mouseleave', () => {
@@ -376,6 +382,38 @@ export class VisualCanvas {
     const dx = p.x - xx;
     const dy = p.y - yy;
     return Math.sqrt(dx * dx + dy * dy);
+  }
+
+  updateAlignGuides() {
+    const lines = [];
+    if (!this.dragged) {
+      this.alignGuides = lines;
+      return;
+    }
+    const threshold = 5;
+    const d = this.dragged;
+    const dxs = [d.x, d.x + d.w / 2, d.x + d.w];
+    const dys = [d.y, d.y + d.h / 2, d.y + d.h];
+    for (const b of this.blocks) {
+      if (b === d) continue;
+      const bx = [b.x, b.x + b.w / 2, b.x + b.w];
+      const by = [b.y, b.y + b.h / 2, b.y + b.h];
+      for (const x1 of dxs) {
+        for (const x2 of bx) {
+          if (Math.abs(x1 - x2) < threshold) {
+            lines.push({ type: 'v', x: x2 });
+          }
+        }
+      }
+      for (const y1 of dys) {
+        for (const y2 of by) {
+          if (Math.abs(y1 - y2) < threshold) {
+            lines.push({ type: 'h', y: y2 });
+          }
+        }
+      }
+    }
+    this.alignGuides = lines;
   }
 
   draw() {
@@ -437,6 +475,27 @@ export class VisualCanvas {
         this.ctx.strokeRect(b.x, b.y, b.w, b.h);
       }
     });
+
+    // Alignment guides
+    if (this.alignGuides.length) {
+      const width = this.canvas.width / this.scale;
+      const height = this.canvas.height / this.scale;
+      const startX = -this.offset.x / this.scale;
+      const startY = -this.offset.y / this.scale;
+      this.ctx.beginPath();
+      this.ctx.strokeStyle = theme.alignGuide;
+      this.ctx.lineWidth = 1 / this.scale;
+      for (const g of this.alignGuides) {
+        if (g.type === 'v') {
+          this.ctx.moveTo(g.x, startY);
+          this.ctx.lineTo(g.x, startY + height);
+        } else {
+          this.ctx.moveTo(startX, g.y);
+          this.ctx.lineTo(startX + width, g.y);
+        }
+      }
+      this.ctx.stroke();
+    }
 
     this.ctx.restore();
     requestAnimationFrame(() => this.draw());

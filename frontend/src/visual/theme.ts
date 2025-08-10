@@ -9,6 +9,7 @@ export interface VisualTheme {
   highlight: string;
   tooltipBg: string;
   tooltipText: string;
+  alignGuide: string;
   blockKinds: Record<string, string>;
 }
 
