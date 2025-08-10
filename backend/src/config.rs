@@ -6,6 +6,7 @@ pub struct ServerConfig {
     pub host: String,
     pub port: u16,
     pub token: Option<String>,
+    pub api_key: Option<String>,
 }
 
 impl Default for ServerConfig {
@@ -14,6 +15,7 @@ impl Default for ServerConfig {
             host: "127.0.0.1".into(),
             port: 3001,
             token: None,
+            api_key: None,
         }
     }
 }

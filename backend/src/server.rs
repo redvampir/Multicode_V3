@@ -11,12 +11,12 @@ use axum::{
     Json, Router,
 };
 use futures::{SinkExt, StreamExt};
-use once_cell::sync::OnceCell;
-use serde::Deserialize;
 use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
+use once_cell::sync::OnceCell;
+use reqwest::Client;
+use serde::Deserialize;
 use std::{
-    env,
-    fs,
+    env, fs,
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -120,15 +120,32 @@ struct SuggestRequest {
 
 async fn suggest_endpoint(
     headers: HeaderMap,
-    Json(_req): Json<SuggestRequest>,
+    Json(req): Json<SuggestRequest>,
 ) -> Result<Json<AiNote>, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    Ok(Json(AiNote {
-        description: Some("Not implemented".into()),
-        hints: Vec::new(),
-    }))
+    let cfg = SERVER_CONFIG
+        .get()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    let api_key = cfg
+        .api_key
+        .as_deref()
+        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+
+    let client = Client::new();
+    let note = client
+        .post("https://api.example.com/suggest")
+        .header("Authorization", format!("Bearer {}", api_key))
+        .json(&req)
+        .send()
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?
+        .json::<AiNote>()
+        .await
+        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+
+    Ok(Json(note))
 }
 
 async fn ws_handler(
