@@ -1,4 +1,4 @@
-import { Block } from './blocks.js';
+import { createBlock } from './blocks.js';
 
 export class VisualCanvas {
   constructor(canvas) {
@@ -42,7 +42,7 @@ export class VisualCanvas {
     this.blocks = this.blocksData.map(b => {
       const label = (b.translations && b.translations[this.locale]) || b.kind;
       const color = this.highlighted.has(b.visual_id) ? '#ffcccc' : '#fff';
-      return new Block(b.visual_id, b.x, b.y, 120, 50, label, color);
+      return createBlock(b.kind, b.visual_id, b.x, b.y, label, color);
     });
   }
 

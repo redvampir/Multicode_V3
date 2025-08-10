@@ -5,6 +5,7 @@ mod meta;
 mod parser;
 mod i18n;
 mod git;
+mod plugins;
 use meta::{upsert, read_all, remove_all, VisualMeta, Translations};
 use parser::{parse, parse_to_blocks, Lang};
 use tauri::State;
