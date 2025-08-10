@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 mod comment_detector;
+pub mod id_registry;
 
 /// Marker used to identify visual metadata comments in documents.
 const MARKER: &str = "@VISUAL_META";
@@ -77,9 +78,11 @@ pub fn upsert(content: &str, meta: &VisualMeta) -> String {
 
 /// Read all visual metadata comments from `content`.
 pub fn read_all(content: &str) -> Vec<VisualMeta> {
+    id_registry::clear();
     let mut metas = Vec::new();
     for json in comment_detector::extract_json(content) {
         if let Ok(meta) = serde_json::from_str::<VisualMeta>(&json) {
+            id_registry::register(meta.clone());
             metas.push(meta);
         }
     }
