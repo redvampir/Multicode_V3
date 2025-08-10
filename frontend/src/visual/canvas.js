@@ -84,6 +84,8 @@ export class VisualCanvas {
     this.hovered = null;
     this.gridEnabled = false;
     this.selected = new Set();
+    this.groups = new Map();
+    this.nextGroupId = 1;
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -136,6 +138,31 @@ export class VisualCanvas {
       const base = data ? theme.blockKinds[data.kind] || theme.blockFill : theme.blockFill;
       b.color = this.highlighted.has(b.id) ? theme.highlight : base;
     });
+  }
+
+  getGroupId(blockId) {
+    for (const [id, set] of this.groups.entries()) {
+      if (set.has(blockId)) return id;
+    }
+    return null;
+  }
+
+  groupSelected() {
+    if (this.selected.size === 0) return;
+    const id = this.nextGroupId++;
+    this.groups.set(id, new Set(Array.from(this.selected).map(b => b.id)));
+  }
+
+  ungroupSelected() {
+    const ids = new Set(Array.from(this.selected).map(b => b.id));
+    for (const [id, set] of Array.from(this.groups.entries())) {
+      for (const bid of ids) {
+        if (set.has(bid)) {
+          this.groups.delete(id);
+          break;
+        }
+      }
+    }
   }
 
   onBlockMove(cb) {
@@ -215,9 +242,25 @@ export class VisualCanvas {
         const oldY = this.dragged.y;
         this.dragged.x = x;
         this.dragged.y = y;
-        if (this.selected.has(this.dragged)) {
-          const dx = this.dragged.x - oldX;
-          const dy = this.dragged.y - oldY;
+        const dx = this.dragged.x - oldX;
+        const dy = this.dragged.y - oldY;
+        const gid = this.getGroupId(this.dragged.id);
+        if (gid !== null) {
+          const set = this.groups.get(gid);
+          for (const id of set) {
+            if (id === this.dragged.id) continue;
+            const b = this.blocks.find(bb => bb.id === id);
+            if (!b) continue;
+            let bx = b.x + dx;
+            let by = b.y + dy;
+            if (this.gridEnabled) {
+              bx = Math.round(bx / GRID_SIZE) * GRID_SIZE;
+              by = Math.round(by / GRID_SIZE) * GRID_SIZE;
+            }
+            b.x = bx;
+            b.y = by;
+          }
+        } else if (this.selected.has(this.dragged)) {
           for (const b of this.selected) {
             if (b === this.dragged) continue;
             let bx = b.x + dx;
