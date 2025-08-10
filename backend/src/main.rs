@@ -3,7 +3,7 @@ use std::collections::HashMap;
 mod meta;
 mod parser;
 mod i18n;
-use meta::{upsert, read_all, VisualMeta, Translations};
+use meta::{upsert, read_all, remove_all, VisualMeta, Translations};
 use parser::{parse, parse_to_blocks, Lang};
 use tauri::State;
 use serde::Serialize;
@@ -95,6 +95,13 @@ fn upsert_meta(content: String, meta: VisualMeta) -> String {
     upsert(&content, &meta)
 }
 
+#[tauri::command]
+fn export_clean(path: String, state: State<EditorState>) -> Result<(), String> {
+    let content = state.0.lock().unwrap().clone();
+    let cleaned = remove_all(&content);
+    std::fs::write(path, cleaned).map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(EditorState::default())
@@ -102,7 +109,8 @@ fn main() {
             save_state,
             load_state,
             parse_blocks,
-            upsert_meta
+            upsert_meta,
+            export_clean
         ])
         .run(tauri::generate_context!(
             "../frontend/src-tauri/tauri.conf.json"

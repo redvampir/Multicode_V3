@@ -78,6 +78,19 @@ pub fn read_all(content: &str) -> Vec<VisualMeta> {
     metas
 }
 
+/// Remove all visual metadata comments from `content`.
+pub fn remove_all(content: &str) -> String {
+    let marker = format!("<!-- {} ", MARKER);
+    let mut out = String::new();
+    for line in content.lines() {
+        if !line.trim_start().starts_with(&marker) {
+            out.push_str(line);
+            out.push('\n');
+        }
+    }
+    out
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -91,5 +104,17 @@ mod tests {
         let metas = read_all(&updated);
         assert_eq!(metas.len(), 1);
         assert_eq!(metas[0].x, 10.0);
+    }
+
+    #[test]
+    fn remove_all_strips_metadata() {
+        let content = format!(
+            "line1\n<!-- {} {{\"id\":\"1\"}} -->\nline2\n",
+            MARKER
+        );
+        let cleaned = remove_all(&content);
+        assert!(!cleaned.contains(MARKER));
+        assert!(cleaned.contains("line1"));
+        assert!(cleaned.contains("line2"));
     }
 }
