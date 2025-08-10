@@ -8,12 +8,14 @@ mod meta;
 mod parser;
 mod plugins;
 mod server;
+mod debugger;
 use export::remove_meta_lines;
 use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
 use serde::Serialize;
 use syn::{File, Item};
 use tauri::State;
+use debugger::{debug_run, debug_step, debug_break};
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
@@ -241,7 +243,10 @@ fn main() {
             git_commit_cmd,
             git_diff_cmd,
             git_branches_cmd,
-            git_log_cmd
+            git_log_cmd,
+            debug_run,
+            debug_step,
+            debug_break
         ])
         .run(tauri::generate_context!(
             "../frontend/src-tauri/tauri.conf.json"
