@@ -4,6 +4,7 @@ use std::cmp::Ordering;
 mod meta;
 mod parser;
 mod i18n;
+mod git;
 use meta::{upsert, read_all, remove_all, VisualMeta, Translations};
 use parser::{parse, parse_to_blocks, Lang};
 use tauri::State;
@@ -149,6 +150,26 @@ fn export_clean(path: String, state: State<EditorState>) -> Result<(), String> {
     std::fs::write(path, cleaned).map_err(|e| e.to_string())
 }
 
+#[tauri::command]
+fn git_commit_cmd(message: String) -> Result<(), String> {
+    git::commit(&message).map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn git_diff_cmd() -> Result<String, String> {
+    git::diff().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn git_branches_cmd() -> Result<Vec<String>, String> {
+    git::branches().map_err(|e| e.to_string())
+}
+
+#[tauri::command]
+fn git_log_cmd() -> Result<Vec<String>, String> {
+    git::log().map_err(|e| e.to_string())
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(EditorState::default())
@@ -157,7 +178,11 @@ fn main() {
             load_state,
             parse_blocks,
             upsert_meta,
-            export_clean
+            export_clean,
+            git_commit_cmd,
+            git_diff_cmd,
+            git_branches_cmd,
+            git_log_cmd
         ])
         .run(tauri::generate_context!(
             "../frontend/src-tauri/tauri.conf.json"

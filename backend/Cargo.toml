@@ -17,6 +17,7 @@ tree-sitter-html = "0.20"
 syn = { version = "2", features = ["full"] }
 quote = "1"
 prettyplease = "0.2"
+git2 = "0.18"
 
 [build-dependencies]
 tauri-build = { version = "1" }

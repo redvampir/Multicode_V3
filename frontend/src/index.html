@@ -8,6 +8,8 @@
     #visual-canvas { width: 100%; height: 50vh; border: 1px solid #ccc; display: block; }
     #editor { height: 40vh; border: 1px solid #ccc; }
     #controls { padding: 0.5rem; }
+    #git-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
+    #git-log { white-space: pre-wrap; background: #f5f5f5; max-height: 20vh; overflow: auto; padding: 0.5rem; }
   </style>
   <script type="module">
     import { EditorState } from "https://cdn.jsdelivr.net/npm/@codemirror/state@6.4.0/dist/index.js";
@@ -86,6 +88,55 @@
       vc.setLocale(currentLocale);
     });
 
+    async function gitCommit() {
+      const message = document.getElementById('git-message').value;
+      await invoke('git_commit_cmd', { message });
+      document.getElementById('git-message').value = '';
+      vc.highlightBlocks([]);
+      await refreshLog();
+    }
+
+    async function showDiff() {
+      const diff = await invoke('git_diff_cmd');
+      document.getElementById('git-log').textContent = diff;
+      highlightDiff(diff);
+    }
+
+    async function refreshLog() {
+      const log = await invoke('git_log_cmd');
+      document.getElementById('git-log').textContent = log.join('\n');
+    }
+
+    function highlightDiff(diff) {
+      const changed = new Set();
+      const regex = /@@ -\d+(?:,\d+)? \+(\d+)(?:,(\d+))? @@/g;
+      let m;
+      while ((m = regex.exec(diff)) !== null) {
+        const start = parseInt(m[1]);
+        const count = m[2] ? parseInt(m[2]) : 1;
+        for (let i = start; i < start + count; i++) changed.add(i);
+      }
+      const content = view.state.doc.toString();
+      const blocks = vc.blocksData.map(b => {
+        const before = content.slice(0, b.range[0]);
+        const startLine = before.split('\n').length;
+        const blockContent = content.slice(b.range[0], b.range[1]);
+        const lines = blockContent.split('\n').length - 1;
+        const endLine = startLine + lines;
+        return { id: b.visual_id, start: startLine, end: endLine };
+      });
+      const ids = blocks.filter(b => {
+        for (let i = b.start; i <= b.end; i++) if (changed.has(i)) return true;
+        return false;
+      }).map(b => b.id);
+      vc.highlightBlocks(ids);
+    }
+
+    document.getElementById('git-commit').addEventListener('click', gitCommit);
+    document.getElementById('git-diff').addEventListener('click', showDiff);
+
+    refreshLog();
+
     parseAndRender();
   </script>
 </head>
@@ -103,6 +154,12 @@
       <option value="ru">Русский</option>
       <option value="es">Español</option>
     </select>
+  </div>
+  <div id="git-panel">
+    <input id="git-message" placeholder="Commit message" />
+    <button id="git-commit">Commit</button>
+    <button id="git-diff">Diff</button>
+    <pre id="git-log"></pre>
   </div>
 </body>
 </html>
