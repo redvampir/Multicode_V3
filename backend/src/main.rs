@@ -1,17 +1,19 @@
-use std::sync::Mutex;
-use std::collections::HashMap;
 use std::cmp::Ordering;
+use std::collections::HashMap;
+use std::sync::Mutex;
+mod export;
+mod git;
+mod i18n;
 mod meta;
 mod parser;
-mod i18n;
-mod git;
 mod plugins;
 mod server;
-use meta::{upsert, read_all, remove_all, VisualMeta, Translations, AiNote};
+use export::remove_meta_lines;
+use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
-use tauri::State;
 use serde::Serialize;
 use syn::{File, Item};
+use tauri::State;
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
@@ -71,35 +73,49 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     let blocks = parse_to_blocks(&tree);
     let metas = read_all(&content);
     let map: HashMap<_, _> = metas.into_iter().map(|m| (m.id.clone(), m)).collect();
-    Some(blocks.into_iter().map(|b| {
-        let label = normalize_kind(&b.kind);
-        let mut translations = i18n::lookup(&label).unwrap_or_else(|| Translations {
-            ru: Some(label.clone()),
-            en: Some(label.clone()),
-            es: Some(label.clone()),
-        });
-        if let Some(meta) = map.get(&b.visual_id) {
-            let t = &meta.translations;
-            if let Some(ref v) = t.ru { translations.ru = Some(v.clone()); }
-            if let Some(ref v) = t.en { translations.en = Some(v.clone()); }
-            if let Some(ref v) = t.es { translations.es = Some(v.clone()); }
-        }
-        let pos = map.get(&b.visual_id);
-        BlockInfo {
-            visual_id: b.visual_id,
-            kind: label,
-            translations,
-            range: (b.range.start, b.range.end),
-            x: pos.map(|m| m.x).unwrap_or(0.0),
-            y: pos.map(|m| m.y).unwrap_or(0.0),
-            ai: pos.and_then(|m| m.ai.clone()),
-        }
-    }).collect())
+    Some(
+        blocks
+            .into_iter()
+            .map(|b| {
+                let label = normalize_kind(&b.kind);
+                let mut translations = i18n::lookup(&label).unwrap_or_else(|| Translations {
+                    ru: Some(label.clone()),
+                    en: Some(label.clone()),
+                    es: Some(label.clone()),
+                });
+                if let Some(meta) = map.get(&b.visual_id) {
+                    let t = &meta.translations;
+                    if let Some(ref v) = t.ru {
+                        translations.ru = Some(v.clone());
+                    }
+                    if let Some(ref v) = t.en {
+                        translations.en = Some(v.clone());
+                    }
+                    if let Some(ref v) = t.es {
+                        translations.es = Some(v.clone());
+                    }
+                }
+                let pos = map.get(&b.visual_id);
+                BlockInfo {
+                    visual_id: b.visual_id,
+                    kind: label,
+                    translations,
+                    range: (b.range.start, b.range.end),
+                    x: pos.map(|m| m.x).unwrap_or(0.0),
+                    y: pos.map(|m| m.y).unwrap_or(0.0),
+                    ai: pos.and_then(|m| m.ai.clone()),
+                }
+            })
+            .collect(),
+    )
 }
 
 #[cfg_attr(not(test), tauri::command)]
 fn suggest_ai_note(_content: String, _lang: String) -> AiNote {
-    AiNote { description: Some("Not implemented".into()), hints: Vec::new() }
+    AiNote {
+        description: Some("Not implemented".into()),
+        hints: Vec::new(),
+    }
 }
 
 fn regenerate_code(content: &str, lang: Lang, metas: &[VisualMeta]) -> Option<String> {
@@ -113,26 +129,42 @@ fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
     let mut file: File = syn::parse_file(content).ok()?;
     let tree = parse(content, Lang::Rust)?;
     let blocks = parse_to_blocks(&tree);
-    let map: HashMap<_, _> = blocks.into_iter().map(|b| (b.node_id, b.visual_id)).collect();
+    let map: HashMap<_, _> = blocks
+        .into_iter()
+        .map(|b| (b.node_id, b.visual_id))
+        .collect();
 
     let mut cursor = tree.root_node().walk();
     let mut roots = Vec::new();
     if cursor.goto_first_child() {
         loop {
             roots.push(cursor.node().id());
-            if !cursor.goto_next_sibling() { break; }
+            if !cursor.goto_next_sibling() {
+                break;
+            }
         }
     }
 
-    let mut items: Vec<(Item, (f64, f64))> = file.items.into_iter().zip(roots.into_iter()).map(|(it, id)| {
-        let vid = map.get(&id).cloned().unwrap_or_default();
-        let pos = metas.iter().find(|m| m.id == vid).map(|m| (m.y, m.x)).unwrap_or((0.0,0.0));
-        (it, pos)
-    }).collect();
+    let mut items: Vec<(Item, (f64, f64))> = file
+        .items
+        .into_iter()
+        .zip(roots.into_iter())
+        .map(|(it, id)| {
+            let vid = map.get(&id).cloned().unwrap_or_default();
+            let pos = metas
+                .iter()
+                .find(|m| m.id == vid)
+                .map(|m| (m.y, m.x))
+                .unwrap_or((0.0, 0.0));
+            (it, pos)
+        })
+        .collect();
 
     items.sort_by(|a, b| {
-        a.1.0.partial_cmp(&b.1.0).unwrap_or(Ordering::Equal)
-            .then_with(|| a.1.1.partial_cmp(&b.1.1).unwrap_or(Ordering::Equal))
+        a.1 .0
+            .partial_cmp(&b.1 .0)
+            .unwrap_or(Ordering::Equal)
+            .then_with(|| a.1 .1.partial_cmp(&b.1 .1).unwrap_or(Ordering::Equal))
     });
 
     file.items = items.into_iter().map(|(it, _)| it).collect();
@@ -143,7 +175,10 @@ fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
 pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> String {
     let mut metas = read_all(&content);
     if let Some(existing) = metas.iter().find(|m| m.id == meta.id) {
-        if meta.translations.ru.is_none() && meta.translations.en.is_none() && meta.translations.es.is_none() {
+        if meta.translations.ru.is_none()
+            && meta.translations.en.is_none()
+            && meta.translations.es.is_none()
+        {
             meta.translations = existing.translations.clone();
         }
         if meta.ai.is_none() {
@@ -157,13 +192,15 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
     let lang = to_lang(&lang).unwrap_or(Lang::Rust);
     let regenerated = regenerate_code(&cleaned, lang, &metas).unwrap_or(cleaned);
 
-    metas.into_iter().fold(regenerated, |acc, m| upsert(&acc, &m))
+    metas
+        .into_iter()
+        .fold(regenerated, |acc, m| upsert(&acc, &m))
 }
 
 #[cfg_attr(not(test), tauri::command)]
 fn export_clean(path: String, state: State<EditorState>) -> Result<(), String> {
     let content = state.0.lock().unwrap().clone();
-    let cleaned = remove_all(&content);
+    let cleaned = remove_meta_lines(&content);
     std::fs::write(path, cleaned).map_err(|e| e.to_string())
 }
 
@@ -234,7 +271,10 @@ mod tests {
             id: "0".into(),
             x: 1.0,
             y: 2.0,
-            translations: Translations { en: Some("Main".into()), ..Default::default() },
+            translations: Translations {
+                en: Some("Main".into()),
+                ..Default::default()
+            },
             ai: None,
         };
         let updated = upsert_meta(src, meta.clone(), "rust".into());
@@ -247,7 +287,7 @@ mod tests {
     #[test]
     fn export_removes_metadata() {
         let src = format!("<!-- @VISUAL_META {{\"id\":\"1\"}} -->\nfn main() {{}}\n");
-        let cleaned = meta::remove_all(&src);
+        let cleaned = export::remove_meta_lines(&src);
         assert!(!cleaned.contains("@VISUAL_META"));
         assert!(cleaned.contains("fn main"));
     }
