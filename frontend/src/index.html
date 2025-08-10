@@ -25,11 +25,14 @@
     import { VisualCanvas } from "./visual/canvas.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
     import { insertVisualMeta, updateMetaComment, visualMetaHighlighter, visualMetaTooltip } from "./editor/visual-meta.js";
+    import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
 
     await loadBlockPlugins(window.blockPlugins || []);
 
     const canvasEl = document.getElementById('visual-canvas');
     const vc = new VisualCanvas(canvasEl);
+    setCanvas(vc);
+    registerHotkeys();
 
     vc.onBlockMove(async block => {
       if (updateMetaComment(view, { id: block.id, x: block.x, y: block.y })) {

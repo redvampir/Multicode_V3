@@ -1,4 +1,4 @@
-import { hotkeys, showHotkeyHelp } from './hotkeys';
+import { hotkeys, showHotkeyHelp, zoomToFit } from './hotkeys';
 
 export interface MenuItem {
   label: string;
@@ -27,6 +27,12 @@ export const mainMenu: MenuItem[] = [
     ]
   },
   {
+    label: 'View',
+    submenu: [
+      { label: 'Zoom to Fit', action: zoomToFit, shortcut: hotkeys.zoomToFit }
+    ]
+  },
+  {
     label: 'Help',
     submenu: [
       { label: 'Hotkeys', action: showHotkeyHelp, shortcut: hotkeys.showHelp }
@@ -43,7 +49,8 @@ export const contextMenus = {
   ],
   canvas: [
     { label: 'Paste Block', action: () => console.log('paste'), shortcut: hotkeys.pasteBlock },
-    { label: 'Select Connections', action: () => console.log('select'), shortcut: hotkeys.selectConnections }
+    { label: 'Select Connections', action: () => console.log('select'), shortcut: hotkeys.selectConnections },
+    { label: 'Zoom to Fit', action: zoomToFit, shortcut: hotkeys.zoomToFit }
   ]
 };
 

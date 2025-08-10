@@ -359,6 +359,26 @@ export class VisualCanvas {
     this.canvas.height = this.canvas.clientHeight;
   }
 
+  zoomToFit() {
+    if (this.blocks.length === 0) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const b of this.blocks) {
+      minX = Math.min(minX, b.x);
+      minY = Math.min(minY, b.y);
+      maxX = Math.max(maxX, b.x + b.w);
+      maxY = Math.max(maxY, b.y + b.h);
+    }
+    const width = maxX - minX;
+    const height = maxY - minY;
+    if (width === 0 || height === 0) return;
+    const scale = Math.min(this.canvas.width / width, this.canvas.height / height) * 0.9;
+    this.scale = scale;
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    this.offset.x = this.canvas.width / 2 - cx * scale;
+    this.offset.y = this.canvas.height / 2 - cy * scale;
+  }
+
   toWorld(x, y) {
     return {
       x: (x - this.offset.x) / this.scale,
