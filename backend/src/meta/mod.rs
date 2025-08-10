@@ -1,17 +1,10 @@
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 mod comment_detector;
 pub mod id_registry;
 
 /// Marker used to identify visual metadata comments in documents.
 const MARKER: &str = "@VISUAL_META";
-
-/// Metadata stored inside `@VISUAL_META` comments.
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
-pub struct Translations {
-    pub ru: Option<String>,
-    pub en: Option<String>,
-    pub es: Option<String>,
-}
 
 /// Additional notes provided by AI.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
@@ -37,7 +30,7 @@ pub struct VisualMeta {
     pub origin: Option<String>,
     /// Optional translations for block labels.
     #[serde(default)]
-    pub translations: Translations,
+    pub translations: HashMap<String, String>,
     /// Optional AI-generated note.
     #[serde(default)]
     pub ai: Option<AiNote>,
@@ -100,6 +93,7 @@ pub fn remove_all(content: &str) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::collections::HashMap;
 
     #[test]
     fn upsert_and_read_roundtrip() {
@@ -108,8 +102,11 @@ mod tests {
             x: 10.0,
             y: 20.0,
             origin: None,
-            translations: Translations::default(),
-            ai: Some(AiNote { description: Some("desc".into()), hints: vec!["hint".into()] }),
+            translations: HashMap::new(),
+            ai: Some(AiNote {
+                description: Some("desc".into()),
+                hints: vec!["hint".into()],
+            }),
         };
         let content = "fn main() {}";
         let updated = upsert(content, &meta);
@@ -117,15 +114,15 @@ mod tests {
         let metas = read_all(&updated);
         assert_eq!(metas.len(), 1);
         assert_eq!(metas[0].x, 10.0);
-        assert_eq!(metas[0].ai.as_ref().unwrap().description.as_deref(), Some("desc"));
+        assert_eq!(
+            metas[0].ai.as_ref().unwrap().description.as_deref(),
+            Some("desc")
+        );
     }
 
     #[test]
     fn remove_all_strips_metadata() {
-        let content = format!(
-            "line1\n<!-- {} {{\"id\":\"1\"}} -->\nline2\n",
-            MARKER
-        );
+        let content = format!("line1\n<!-- {} {{\"id\":\"1\"}} -->\nline2\n", MARKER);
         let cleaned = remove_all(&content);
         assert!(!cleaned.contains(MARKER));
         assert!(cleaned.contains("line1"));

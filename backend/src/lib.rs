@@ -6,7 +6,7 @@ pub mod plugins;
 pub mod search;
 pub mod server;
 
-use crate::meta::{AiNote, Translations};
+use crate::meta::AiNote;
 use once_cell::sync::Lazy;
 use plugins::{Plugin, WasmPlugin};
 use serde::{Deserialize, Serialize};
@@ -27,7 +27,7 @@ static BLOCK_CACHE: Lazy<Mutex<HashMap<String, (String, Vec<BlockInfo>)>>> =
 pub struct BlockInfo {
     pub visual_id: String,
     pub kind: String,
-    pub translations: Translations,
+    pub translations: HashMap<String, String>,
     pub range: (usize, usize),
     pub x: f64,
     pub y: f64,
@@ -146,10 +146,8 @@ pub struct PluginInfo {
     pub enabled: bool,
 }
 
-static ACTIVE_PLUGINS: Lazy<Mutex<Vec<Box<dyn Plugin>>>> =
-    Lazy::new(|| Mutex::new(Vec::new()));
-static PLUGIN_INFOS: Lazy<Mutex<Vec<PluginInfo>>> =
-    Lazy::new(|| Mutex::new(Vec::new()));
+static ACTIVE_PLUGINS: Lazy<Mutex<Vec<Box<dyn Plugin>>>> = Lazy::new(|| Mutex::new(Vec::new()));
+static PLUGIN_INFOS: Lazy<Mutex<Vec<PluginInfo>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
 fn read_plugin_settings() -> HashMap<String, bool> {
     let mut map = HashMap::new();
@@ -169,8 +167,7 @@ fn read_plugin_settings() -> HashMap<String, bool> {
 
 fn write_plugin_settings(settings: &HashMap<String, bool>) -> std::io::Result<()> {
     use std::fs;
-    let mut json: serde_json::Value =
-        serde_json::from_str(&fs::read_to_string(SETTINGS_PATH)?)?;
+    let mut json: serde_json::Value = serde_json::from_str(&fs::read_to_string(SETTINGS_PATH)?)?;
     if let Some(obj) = json.as_object_mut() {
         obj.insert(
             "plugins".to_string(),

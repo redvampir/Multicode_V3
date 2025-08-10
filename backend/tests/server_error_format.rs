@@ -1,11 +1,12 @@
 use axum::http::{HeaderMap, StatusCode};
 use axum::Json;
 use backend::config::ServerConfig;
-use backend::meta::{AiNote, Translations, VisualMeta};
+use backend::meta::{AiNote, VisualMeta};
 use backend::server::{
-    export_endpoint, metadata_endpoint, parse_endpoint, ErrorResponse, ExportRequest, MetadataRequest,
-    ParseRequest, SERVER_CONFIG,
+    export_endpoint, metadata_endpoint, parse_endpoint, ErrorResponse, ExportRequest,
+    MetadataRequest, ParseRequest, SERVER_CONFIG,
 };
+use std::collections::HashMap;
 
 #[tokio::test]
 async fn parse_endpoint_bad_request() {
@@ -69,7 +70,7 @@ async fn metadata_endpoint_unauthorized() {
             x: 0.0,
             y: 0.0,
             origin: None,
-            translations: Translations::default(),
+            translations: HashMap::new(),
             ai: Some(AiNote::default()),
         },
         lang: "rust".into(),
