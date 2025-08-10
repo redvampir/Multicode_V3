@@ -16,6 +16,10 @@
       "type": "number",
       "description": "Y coordinate on the canvas."
     },
+    "origin": {
+      "type": "string",
+      "description": "Reverse path to the original external file."
+    },
     "translations": {
       "type": "object",
       "description": "Optional translations for block labels.",

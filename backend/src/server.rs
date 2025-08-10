@@ -50,13 +50,20 @@ async fn parse_endpoint(headers: HeaderMap, Json(req): Json<ParseRequest>) -> Re
 #[derive(Deserialize)]
 struct ExportRequest {
     content: String,
+    #[serde(default)]
+    strip_meta: bool,
 }
 
 async fn export_endpoint(headers: HeaderMap, Json(req): Json<ExportRequest>) -> Result<Json<String>, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    Ok(Json(remove_all(&req.content)))
+    let out = if req.strip_meta {
+        remove_all(&req.content)
+    } else {
+        req.content
+    };
+    Ok(Json(out))
 }
 
 #[derive(Deserialize)]

@@ -28,6 +28,18 @@ pub fn remove_meta_lines(content: &str) -> String {
     out
 }
 
+/// Prepare source content for export.
+///
+/// When `strip_meta` is true all `@VISUAL_META` comments are removed.
+/// Otherwise the content is returned unchanged.
+pub fn prepare_for_export(content: &str, strip_meta: bool) -> String {
+    if strip_meta {
+        remove_meta_lines(content)
+    } else {
+        content.to_string()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -9,7 +9,7 @@ mod parser;
 mod plugins;
 mod server;
 mod debugger;
-use export::remove_meta_lines;
+use export::prepare_for_export;
 use meta::{read_all, remove_all, upsert, AiNote, Translations, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
 use serde::Serialize;
@@ -200,10 +200,10 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
 }
 
 #[cfg_attr(not(test), tauri::command)]
-fn export_clean(path: String, state: State<EditorState>) -> Result<(), String> {
+fn export_file(path: String, strip_meta: bool, state: State<EditorState>) -> Result<(), String> {
     let content = state.0.lock().unwrap().clone();
-    let cleaned = remove_meta_lines(&content);
-    std::fs::write(path, cleaned).map_err(|e| e.to_string())
+    let out = prepare_for_export(&content, strip_meta);
+    std::fs::write(path, out).map_err(|e| e.to_string())
 }
 
 #[cfg_attr(not(test), tauri::command)]
@@ -239,7 +239,7 @@ fn main() {
             parse_blocks,
             suggest_ai_note,
             upsert_meta,
-            export_clean,
+            export_file,
             git_commit_cmd,
             git_diff_cmd,
             git_branches_cmd,
@@ -292,7 +292,7 @@ mod tests {
     #[test]
     fn export_removes_metadata() {
         let src = format!("<!-- @VISUAL_META {{\"id\":\"1\"}} -->\nfn main() {{}}\n");
-        let cleaned = export::remove_meta_lines(&src);
+        let cleaned = export::prepare_for_export(&src, true);
         assert!(!cleaned.contains("@VISUAL_META"));
         assert!(cleaned.contains("fn main"));
     }
