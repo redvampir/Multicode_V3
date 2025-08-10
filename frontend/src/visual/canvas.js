@@ -1,6 +1,10 @@
 import { createBlock } from './blocks.js';
 import { getTheme } from './theme.ts';
 import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
+import settings from '../../settings.json' assert { type: 'json' };
+
+const cfg = settings.visual || {};
+const GRID_SIZE = cfg.gridSize || 20;
 
 // Utility used in tests and debug mode to analyze graph connections.
 // Accepts an array of block ids and array of edges [fromId, toId].
@@ -78,6 +82,7 @@ export class VisualCanvas {
     this.dragStart = { x: 0, y: 0 };
     this.highlighted = new Set();
     this.hovered = null;
+    this.gridEnabled = false;
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -150,6 +155,10 @@ export class VisualCanvas {
     this.analyze();
   }
 
+  setGridEnabled(enabled) {
+    this.gridEnabled = enabled;
+  }
+
   analyze() {
     const ids = this.blocks.map(b => b.id);
     const edges = this.connections.map(([a, b]) => [a.id, b.id]);
@@ -184,8 +193,14 @@ export class VisualCanvas {
     this.canvas.addEventListener('mousemove', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       if (this.dragged) {
-        this.dragged.x = pos.x - this.dragOffset.x;
-        this.dragged.y = pos.y - this.dragOffset.y;
+        let x = pos.x - this.dragOffset.x;
+        let y = pos.y - this.dragOffset.y;
+        if (this.gridEnabled) {
+          x = Math.round(x / GRID_SIZE) * GRID_SIZE;
+          y = Math.round(y / GRID_SIZE) * GRID_SIZE;
+        }
+        this.dragged.x = x;
+        this.dragged.y = y;
       } else if (this.panning) {
         this.offset.x = e.offsetX - this.panStart.x;
         this.offset.y = e.offsetY - this.panStart.y;
@@ -297,6 +312,28 @@ export class VisualCanvas {
     this.ctx.setTransform(this.scale, 0, 0, this.scale, this.offset.x, this.offset.y);
     this.ctx.clearRect(-this.offset.x / this.scale, -this.offset.y / this.scale,
       this.canvas.width / this.scale, this.canvas.height / this.scale);
+
+    if (this.gridEnabled) {
+      const size = GRID_SIZE;
+      const width = this.canvas.width / this.scale;
+      const height = this.canvas.height / this.scale;
+      const startX = Math.floor((-this.offset.x / this.scale) / size) * size;
+      const startY = Math.floor((-this.offset.y / this.scale) / size) * size;
+      const endX = startX + width + size;
+      const endY = startY + height + size;
+      this.ctx.beginPath();
+      this.ctx.strokeStyle = '#eee';
+      this.ctx.lineWidth = 1 / this.scale;
+      for (let x = startX; x <= endX; x += size) {
+        this.ctx.moveTo(x, startY);
+        this.ctx.lineTo(x, endY);
+      }
+      for (let y = startY; y <= endY; y += size) {
+        this.ctx.moveTo(startX, y);
+        this.ctx.lineTo(endX, y);
+      }
+      this.ctx.stroke();
+    }
 
     // Draw connections
     this.connections.forEach(([a, b]) => {
