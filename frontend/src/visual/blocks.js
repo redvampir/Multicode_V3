@@ -1,5 +1,6 @@
 export class Block {
-  constructor(x, y, w, h, label, color = '#fff') {
+  constructor(id, x, y, w, h, label, color = '#fff') {
+    this.id = id;
     this.x = x;
     this.y = y;
     this.w = w;
@@ -32,25 +33,25 @@ export class Block {
 }
 
 export class FunctionBlock extends Block {
-  constructor(x, y) {
-    super(x, y, 120, 50, 'Function', '#e0f7fa');
+  constructor(id, x, y) {
+    super(id, x, y, 120, 50, 'Function', '#e0f7fa');
   }
 }
 
 export class VariableBlock extends Block {
-  constructor(x, y) {
-    super(x, y, 120, 50, 'Variable', '#f1f8e9');
+  constructor(id, x, y) {
+    super(id, x, y, 120, 50, 'Variable', '#f1f8e9');
   }
 }
 
 export class ConditionBlock extends Block {
-  constructor(x, y) {
-    super(x, y, 120, 50, 'Condition', '#fff9c4');
+  constructor(id, x, y) {
+    super(id, x, y, 120, 50, 'Condition', '#fff9c4');
   }
 }
 
 export class LoopBlock extends Block {
-  constructor(x, y) {
-    super(x, y, 120, 50, 'Loop', '#fce4ec');
+  constructor(id, x, y) {
+    super(id, x, y, 120, 50, 'Loop', '#fce4ec');
   }
 }

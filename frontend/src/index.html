@@ -18,11 +18,39 @@
     import { html } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-html@0.19.7/dist/index.js";
     import { css } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-css@0.19.7/dist/index.js";
     import { invoke } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/tauri.js";
+    import { VisualCanvas } from "./visual/canvas.js";
+
+    const canvasEl = document.getElementById('visual-canvas');
+    const vc = new VisualCanvas(canvasEl);
+
+    vc.onBlockMove(async block => {
+      const content = view.state.doc.toString();
+      const updated = await invoke('upsert_meta', { content, meta: { id: block.id, x: block.x, y: block.y } });
+      view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: updated } });
+      await invoke('save_state', { content: updated });
+    });
+
+    const currentLang = 'rust';
+
+    async function parseAndRender() {
+      const content = view.state.doc.toString();
+      try {
+        const blocks = await invoke('parse_blocks', { content, lang: currentLang });
+        vc.setBlocks(blocks);
+      } catch (e) {
+        console.error(e);
+      }
+    }
 
     const view = new EditorView({
       state: EditorState.create({
         doc: '',
-        extensions: [basicSetup, javascript(), python(), rust(), html(), css()]
+        extensions: [
+          basicSetup, javascript(), python(), rust(), html(), css(),
+          EditorView.updateListener.of(update => {
+            if (update.docChanged) parseAndRender();
+          })
+        ]
       }),
       parent: document.getElementById('editor')
     });
@@ -34,10 +62,13 @@
     async function load() {
       const content = await invoke('load_state');
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
+      parseAndRender();
     }
 
     document.getElementById('save').addEventListener('click', save);
     document.getElementById('load').addEventListener('click', load);
+
+    parseAndRender();
   </script>
 </head>
 <body>
@@ -47,6 +78,5 @@
     <button id="save">Save</button>
     <button id="load">Load</button>
   </div>
-  <script type="module" src="./visual/index.js"></script>
 </body>
 </html>

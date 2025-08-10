@@ -1,4 +1,4 @@
-import { FunctionBlock, VariableBlock, ConditionBlock, LoopBlock } from './blocks.js';
+import { Block } from './blocks.js';
 
 export class VisualCanvas {
   constructor(canvas) {
@@ -12,11 +12,21 @@ export class VisualCanvas {
     this.dragOffset = { x: 0, y: 0 };
     this.panning = false;
     this.panStart = { x: 0, y: 0 };
+    this.moveCallback = null;
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
     this.registerEvents();
     requestAnimationFrame(() => this.draw());
+  }
+
+  setBlocks(blocks) {
+    this.blocks = blocks.map(b => new Block(b.visual_id, b.x, b.y, 120, 50, b.kind));
+    this.connections = [];
+  }
+
+  onBlockMove(cb) {
+    this.moveCallback = cb;
   }
 
   addBlock(block) {
@@ -53,6 +63,9 @@ export class VisualCanvas {
     });
 
     window.addEventListener('mouseup', () => {
+      if (this.dragged && this.moveCallback) {
+        this.moveCallback(this.dragged);
+      }
       this.dragged = null;
       this.panning = false;
     });
