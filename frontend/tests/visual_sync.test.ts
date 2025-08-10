@@ -11,6 +11,10 @@ vi.mock('https://cdn.jsdelivr.net/npm/@codemirror/view@6.21.3/dist/index.js', ()
   EditorView: { decorations: { from: vi.fn() }, updateListener: { of: vi.fn() } },
 }));
 
+vi.mock('https://cdn.jsdelivr.net/npm/@codemirror/language@6.10.1/dist/index.js', () => ({
+  hoverTooltip: () => ({})
+}));
+
 import { updateMetaComment } from '../src/editor/visual-meta.js';
 
 describe('visual-meta synchronization', () => {

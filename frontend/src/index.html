@@ -24,7 +24,7 @@
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
     import { VisualCanvas } from "./visual/canvas.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
-    import { insertVisualMeta, updateMetaComment, visualMetaHighlighter } from "./editor/visual-meta.js";
+    import { insertVisualMeta, updateMetaComment, visualMetaHighlighter, visualMetaTooltip } from "./editor/visual-meta.js";
 
     await loadBlockPlugins(window.blockPlugins || []);
 
@@ -55,7 +55,7 @@
       state: EditorState.create({
         doc: '',
         extensions: [
-          basicSetup, javascript(), python(), rust(), html(), css(), visualMetaHighlighter,
+          basicSetup, javascript(), python(), rust(), html(), css(), visualMetaHighlighter, visualMetaTooltip,
           EditorView.updateListener.of(update => {
             if (update.docChanged) parseAndRender();
           })
