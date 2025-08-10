@@ -74,6 +74,8 @@ fn to_lang(s: &str) -> Option<Lang> {
         "javascript" => Some(Lang::JavaScript),
         "css" => Some(Lang::Css),
         "html" => Some(Lang::Html),
+        "go" => Some(Lang::Go),
+        "typescript" | "ts" => Some(Lang::TypeScript),
         _ => None,
     }
 }
