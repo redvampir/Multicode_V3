@@ -74,17 +74,24 @@
       parseAndRender();
     }
 
-    async function exportFile() {
-      await save();
-      const path = await saveDialog({ defaultPath: 'code.txt' });
-      if (path) {
-        await invoke('export_clean', { path });
+    async function exportWithoutMeta() {
+      exportProgress.style.display = 'inline';
+      try {
+        await save();
+        const path = await saveDialog({ defaultPath: 'code.txt' });
+        if (path) {
+          await invoke('export_clean', { path });
+        }
+      } finally {
+        exportProgress.style.display = 'none';
       }
     }
 
+    const exportProgress = document.getElementById('export-progress');
+
     document.getElementById('save').addEventListener('click', save);
     document.getElementById('load').addEventListener('click', load);
-    document.getElementById('export').addEventListener('click', exportFile);
+    document.getElementById('export-clean').addEventListener('click', exportWithoutMeta);
     document.getElementById('undo').addEventListener('click', () => vc.undo());
     document.getElementById('redo').addEventListener('click', () => vc.redo());
     document.getElementById('insert-meta').addEventListener('click', () => insertVisualMeta(view, currentLang));
@@ -151,7 +158,8 @@
   <div id="controls">
     <button id="save">Save</button>
     <button id="load">Load</button>
-    <button id="export">Export</button>
+    <button id="export-clean">Экспорт без метаданных</button>
+    <span id="export-progress" style="display:none">Exporting…</span>
     <button id="undo">Undo</button>
     <button id="redo">Redo</button>
     <button id="insert-meta">Insert Meta</button>
