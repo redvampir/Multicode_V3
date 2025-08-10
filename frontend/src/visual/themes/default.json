@@ -6,6 +6,7 @@
   "highlight": "#ffcccc",
   "tooltipBg": "#333",
   "tooltipText": "#fff",
+  "alignGuide": "#888",
   "blockKinds": {
     "Function": "#e0f7fa",
     "Variable": "#f1f8e9",
