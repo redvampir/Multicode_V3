@@ -1,5 +1,6 @@
 use std::sync::Mutex;
 use std::collections::HashMap;
+use std::cmp::Ordering;
 mod meta;
 mod parser;
 mod i18n;
@@ -7,6 +8,7 @@ use meta::{upsert, read_all, remove_all, VisualMeta, Translations};
 use parser::{parse, parse_to_blocks, Lang};
 use tauri::State;
 use serde::Serialize;
+use syn::{File, Item};
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
@@ -90,9 +92,54 @@ fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     }).collect())
 }
 
+fn regenerate_code(content: &str, lang: Lang, metas: &[VisualMeta]) -> Option<String> {
+    match lang {
+        Lang::Rust => regenerate_rust(content, metas),
+        _ => Some(content.to_string()),
+    }
+}
+
+fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
+    let mut file: File = syn::parse_file(content).ok()?;
+    let tree = parse(content, Lang::Rust)?;
+    let blocks = parse_to_blocks(&tree);
+    let map: HashMap<_, _> = blocks.into_iter().map(|b| (b.node_id, b.visual_id)).collect();
+
+    let mut cursor = tree.root_node().walk();
+    let mut roots = Vec::new();
+    if cursor.goto_first_child() {
+        loop {
+            roots.push(cursor.node().id());
+            if !cursor.goto_next_sibling() { break; }
+        }
+    }
+
+    let mut items: Vec<(Item, (f64, f64))> = file.items.into_iter().zip(roots.into_iter()).map(|(it, id)| {
+        let vid = map.get(&id).cloned().unwrap_or_default();
+        let pos = metas.iter().find(|m| m.id == vid).map(|m| (m.y, m.x)).unwrap_or((0.0,0.0));
+        (it, pos)
+    }).collect();
+
+    items.sort_by(|a, b| {
+        a.1.0.partial_cmp(&b.1.0).unwrap_or(Ordering::Equal)
+            .then_with(|| a.1.1.partial_cmp(&b.1.1).unwrap_or(Ordering::Equal))
+    });
+
+    file.items = items.into_iter().map(|(it, _)| it).collect();
+    Some(prettyplease::unparse(&file))
+}
+
 #[tauri::command]
-fn upsert_meta(content: String, meta: VisualMeta) -> String {
-    upsert(&content, &meta)
+fn upsert_meta(content: String, meta: VisualMeta, lang: String) -> String {
+    let mut metas = read_all(&content);
+    metas.retain(|m| m.id != meta.id);
+    metas.push(meta);
+
+    let cleaned = remove_all(&content);
+    let lang = to_lang(&lang).unwrap_or(Lang::Rust);
+    let regenerated = regenerate_code(&cleaned, lang, &metas).unwrap_or(cleaned);
+
+    metas.into_iter().fold(regenerated, |acc, m| upsert(&acc, &m))
 }
 
 #[tauri::command]

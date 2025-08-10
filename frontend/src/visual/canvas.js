@@ -15,6 +15,9 @@ export class VisualCanvas {
     this.panning = false;
     this.panStart = { x: 0, y: 0 };
     this.moveCallback = null;
+    this.undoStack = [];
+    this.redoStack = [];
+    this.dragStart = { x: 0, y: 0 };
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
@@ -59,6 +62,8 @@ export class VisualCanvas {
       if (this.dragged) {
         this.dragOffset.x = pos.x - this.dragged.x;
         this.dragOffset.y = pos.y - this.dragged.y;
+        this.dragStart.x = this.dragged.x;
+        this.dragStart.y = this.dragged.y;
       } else {
         this.panning = true;
         this.panStart.x = e.offsetX - this.offset.x;
@@ -78,8 +83,14 @@ export class VisualCanvas {
     });
 
     window.addEventListener('mouseup', () => {
-      if (this.dragged && this.moveCallback) {
-        this.moveCallback(this.dragged);
+      if (this.dragged) {
+        if (this.dragged.x !== this.dragStart.x || this.dragged.y !== this.dragStart.y) {
+          this.undoStack.push({ id: this.dragged.id, from: { x: this.dragStart.x, y: this.dragStart.y }, to: { x: this.dragged.x, y: this.dragged.y } });
+          this.redoStack = [];
+        }
+        if (this.moveCallback) {
+          this.moveCallback(this.dragged);
+        }
       }
       this.dragged = null;
       this.panning = false;
@@ -133,5 +144,31 @@ export class VisualCanvas {
 
     this.ctx.restore();
     requestAnimationFrame(() => this.draw());
+  }
+
+  async undo() {
+    const action = this.undoStack.pop();
+    if (action) {
+      const block = this.blocks.find(b => b.id === action.id);
+      if (block) {
+        block.x = action.from.x;
+        block.y = action.from.y;
+        if (this.moveCallback) await this.moveCallback(block);
+      }
+      this.redoStack.push(action);
+    }
+  }
+
+  async redo() {
+    const action = this.redoStack.pop();
+    if (action) {
+      const block = this.blocks.find(b => b.id === action.id);
+      if (block) {
+        block.x = action.to.x;
+        block.y = action.to.y;
+        if (this.moveCallback) await this.moveCallback(block);
+      }
+      this.undoStack.push(action);
+    }
   }
 }
