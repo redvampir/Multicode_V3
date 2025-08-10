@@ -1,3 +1,6 @@
+import settings from '../../settings.json' assert { type: 'json' };
+import defaultThemeJson from './themes/default.json' assert { type: 'json' };
+
 export interface VisualTheme {
   blockFill: string;
   blockStroke: string;
@@ -9,25 +12,19 @@ export interface VisualTheme {
   blockKinds: Record<string, string>;
 }
 
-export const defaultTheme: VisualTheme = {
-  blockFill: '#fff',
-  blockStroke: '#333',
-  blockText: '#000',
-  connection: '#000',
-  highlight: '#ffcccc',
-  tooltipBg: '#333',
-  tooltipText: '#fff',
-  blockKinds: {
-    Function: '#e0f7fa',
-    Variable: '#f1f8e9',
-    Condition: '#fff9c4',
-    Loop: '#fce4ec',
-  }
+export const defaultTheme: VisualTheme = defaultThemeJson as VisualTheme;
+
+const themes: Record<string, VisualTheme> = {
+  default: defaultTheme
 };
 
+const cfg: { visual?: { theme?: string } } = settings as any;
+const themeName = cfg.visual?.theme || 'default';
+const base = themes[themeName] || defaultTheme;
+
 let current: VisualTheme = {
-  ...defaultTheme,
-  blockKinds: { ...defaultTheme.blockKinds }
+  ...base,
+  blockKinds: { ...base.blockKinds }
 };
 
 export function setTheme(theme: Partial<VisualTheme>) {
