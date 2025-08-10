@@ -3,10 +3,12 @@ use std::ops::Range;
 use tree_sitter::{Language, Node, Parser, Tree};
 
 pub mod css;
+pub mod go;
 pub mod html;
 pub mod javascript;
 pub mod python;
 pub mod rust;
+pub mod typescript;
 
 /// Supported languages for parsing.
 #[derive(Clone, Copy)]
@@ -16,6 +18,8 @@ pub enum Lang {
     JavaScript,
     Css,
     Html,
+    Go,
+    TypeScript,
 }
 
 /// Get a tree-sitter [`Language`] from [`Lang`].
@@ -26,6 +30,8 @@ fn language(lang: Lang) -> Language {
         Lang::JavaScript => javascript::language(),
         Lang::Css => css::language(),
         Lang::Html => html::language(),
+        Lang::Go => go::language(),
+        Lang::TypeScript => typescript::language(),
     }
 }
 
@@ -96,6 +102,11 @@ mod tests {
             (Lang::JavaScript, "function main() { console.log('hi'); }"),
             (Lang::Css, "body { color: red; }"),
             (Lang::Html, "<html></html>"),
+            (Lang::Go, "package main\nfunc main() { println(\"hi\") }"),
+            (
+                Lang::TypeScript,
+                "function main(): void { console.log('hi'); }",
+            ),
         ];
 
         for (lang, source) in cases {

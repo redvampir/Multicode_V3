@@ -17,6 +17,8 @@ tree-sitter-python = "0.23"
 tree-sitter-javascript = "0.23"
 tree-sitter-css = "0.23"
 tree-sitter-html = "0.23"
+tree-sitter-go = "0.23"
+tree-sitter-typescript = "0.23"
 syn = { version = "2", features = ["full"] }
 quote = "1"
 prettyplease = "0.2"
