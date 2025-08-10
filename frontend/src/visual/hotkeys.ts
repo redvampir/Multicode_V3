@@ -9,7 +9,8 @@ interface HotkeyMap {
   zoomToFit: string;
 }
 
-const cfg: { hotkeys?: Partial<HotkeyMap> } = settings as any;
+const cfg: { hotkeys?: Partial<HotkeyMap>; visual?: { gridSize?: number } } = settings as any;
+const MOVE_STEP = cfg.visual?.gridSize || 10;
 
 export const hotkeys: HotkeyMap = {
   copyBlock: cfg.hotkeys?.copyBlock || 'Ctrl+C',
@@ -64,6 +65,30 @@ function handleKey(e: KeyboardEvent) {
     case hotkeys.zoomToFit:
       e.preventDefault();
       zoomToFit();
+      break;
+    case 'ArrowUp':
+    case 'ArrowDown':
+    case 'ArrowLeft':
+    case 'ArrowRight':
+      if (canvasRef?.selected?.size === 1) {
+        e.preventDefault();
+        const block = Array.from(canvasRef.selected)[0];
+        switch (combo) {
+          case 'ArrowUp':
+            block.y -= MOVE_STEP;
+            break;
+          case 'ArrowDown':
+            block.y += MOVE_STEP;
+            break;
+          case 'ArrowLeft':
+            block.x -= MOVE_STEP;
+            break;
+          case 'ArrowRight':
+            block.x += MOVE_STEP;
+            break;
+        }
+        canvasRef.moveCallback?.(block);
+      }
       break;
   }
 }
