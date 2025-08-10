@@ -1,11 +1,13 @@
+pub mod debugger;
 pub mod export;
 pub mod meta;
-pub mod debugger;
-pub mod search;
 pub mod plugins;
+pub mod search;
 
+use crate::meta::{AiNote, Translations};
 use once_cell::sync::Lazy;
 use plugins::Plugin;
+use serde::Serialize;
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
@@ -14,6 +16,34 @@ use tree_sitter::Tree;
 /// Stored parse trees for opened documents.
 static DOCUMENT_TREES: Lazy<Mutex<HashMap<String, Tree>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
+
+/// Cached blocks for documents identified by path or hash.
+static BLOCK_CACHE: Lazy<Mutex<HashMap<String, (String, Vec<BlockInfo>)>>> =
+    Lazy::new(|| Mutex::new(HashMap::new()));
+
+#[derive(Clone, Serialize)]
+pub struct BlockInfo {
+    pub visual_id: String,
+    pub kind: String,
+    pub translations: Translations,
+    pub range: (usize, usize),
+    pub x: f64,
+    pub y: f64,
+    pub ai: Option<AiNote>,
+}
+
+/// Retrieve cached [`BlockInfo`] entries if the content matches.
+pub fn get_cached_blocks(id: &str, content: &str) -> Option<Vec<BlockInfo>> {
+    let cache = BLOCK_CACHE.lock().unwrap();
+    cache
+        .get(id)
+        .and_then(|(stored, blocks)| (stored == content).then(|| blocks.clone()))
+}
+
+/// Update the cache for the given document identifier.
+pub fn update_cached_blocks(id: String, content: String, blocks: Vec<BlockInfo>) {
+    BLOCK_CACHE.lock().unwrap().insert(id, (content, blocks));
+}
 
 /// Retrieve the last parsed [`Tree`] for the given document identifier.
 pub fn get_document_tree(id: &str) -> Option<Tree> {
