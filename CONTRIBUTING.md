@@ -7,8 +7,8 @@
 ## 🛠 Начало работы
 
 ```bash
-git clone https://github.com/your-username/multicode.git
-cd multicode
+git clone https://github.com/redvampir/Multicode_V3.git
+cd Multicode_V3
 
 # Установка зависимостей frontend
 cd frontend && npm install && npm test
