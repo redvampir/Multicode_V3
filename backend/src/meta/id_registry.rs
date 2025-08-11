@@ -1,6 +1,7 @@
+use once_cell::sync::Lazy;
 use std::collections::{HashMap, HashSet};
 use std::sync::Mutex;
-use once_cell::sync::Lazy;
+use tracing::error;
 
 use super::VisualMeta;
 
@@ -14,32 +15,46 @@ static REGISTRY: Lazy<Mutex<Registry>> = Lazy::new(|| Mutex::new(Registry::defau
 
 /// Register a [`VisualMeta`] entry, tracking duplicates.
 pub fn register(meta: VisualMeta) {
-    let mut reg = REGISTRY.lock().unwrap();
-    if reg.metas.contains_key(&meta.id) {
-        reg.dups.insert(meta.id.clone());
+    match REGISTRY.lock() {
+        Ok(mut reg) => {
+            if reg.metas.contains_key(&meta.id) {
+                reg.dups.insert(meta.id.clone());
+            }
+            reg.metas.insert(meta.id.clone(), meta);
+        }
+        Err(e) => error!("failed to lock ID registry for register: {e}"),
     }
-    reg.metas.insert(meta.id.clone(), meta);
 }
 
 /// Retrieve a [`VisualMeta`] by id.
 pub fn get(id: &str) -> Option<VisualMeta> {
-    REGISTRY.lock().unwrap().metas.get(id).cloned()
+    match REGISTRY.lock() {
+        Ok(reg) => reg.metas.get(id).cloned(),
+        Err(e) => {
+            error!("failed to lock ID registry for get: {e}");
+            None
+        }
+    }
 }
 
 /// Return a list of duplicate ids encountered so far.
 pub fn duplicates() -> Vec<String> {
-    REGISTRY
-        .lock()
-        .unwrap()
-        .dups
-        .iter()
-        .cloned()
-        .collect()
+    match REGISTRY.lock() {
+        Ok(reg) => reg.dups.iter().cloned().collect(),
+        Err(e) => {
+            error!("failed to lock ID registry for duplicates: {e}");
+            Vec::new()
+        }
+    }
 }
 
 /// Clear the registry. Useful for tests.
 pub fn clear() {
-    let mut reg = REGISTRY.lock().unwrap();
-    reg.metas.clear();
-    reg.dups.clear();
+    match REGISTRY.lock() {
+        Ok(mut reg) => {
+            reg.metas.clear();
+            reg.dups.clear();
+        }
+        Err(e) => error!("failed to lock ID registry for clear: {e}"),
+    }
 }
