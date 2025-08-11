@@ -15,7 +15,15 @@ Multicode V3 — редактор исходного кода, который о
 - Переключение между текстовым и визуальным режимами.
 - Сохранение метаданных в комментариях к исходному коду.
 - Поддержка плагинов для расширения набора блоков.
-- Работа с языками Rust, Python, JavaScript, TypeScript, CSS, HTML и Go (см. [backend/src/parser/mod.rs](backend/src/parser/mod.rs)).
+- Работа с несколькими языками программирования:
+  - Rust
+  - Python
+  - JavaScript
+  - TypeScript
+  - CSS
+  - HTML
+  - Go
+  *(см. [backend/src/parser/mod.rs](backend/src/parser/mod.rs))*
 
 ## Структура метакомментариев
 Служебная информация сохраняется в комментариях `@VISUAL_META` в формате JSON. Актуальное определение описано в [backend/meta.schema.json](backend/meta.schema.json).
