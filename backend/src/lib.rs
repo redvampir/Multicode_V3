@@ -26,6 +26,8 @@ static BLOCK_CACHE: Lazy<Mutex<HashMap<String, (String, Vec<BlockInfo>)>>> =
 #[derive(Clone, Serialize)]
 pub struct BlockInfo {
     pub visual_id: String,
+    #[serde(default)]
+    pub node_id: Option<u32>,
     pub kind: String,
     pub translations: HashMap<String, String>,
     pub range: (usize, usize),

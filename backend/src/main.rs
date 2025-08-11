@@ -23,6 +23,7 @@ use meta::{fix_all, read_all, remove_all, upsert, AiNote, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
 use syn::{File, Item};
 use tauri::State;
+use tree_sitter::{InputEdit, Point};
 
 #[derive(Default)]
 struct EditorState(Mutex<String>);
@@ -127,7 +128,35 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
         return Some(blocks);
     }
     let old = get_document_tree("current");
-    let tree = parse(&content, lang, old.as_ref())?;
+    let tree = if let Some(mut old_tree) = old {
+        let old_root = old_tree.root_node();
+        let old_end_byte = old_root.end_byte();
+        let old_end_position = old_root.end_position();
+        let new_end_byte = content.as_bytes().len();
+        let mut row = 0;
+        let mut column = 0;
+        for b in content.bytes() {
+            if b == b'\n' {
+                row += 1;
+                column = 0;
+            } else {
+                column += 1;
+            }
+        }
+        let new_end_position = Point { row, column };
+        let edit = InputEdit {
+            start_byte: 0,
+            old_end_byte,
+            new_end_byte,
+            start_position: Point { row: 0, column: 0 },
+            old_end_position,
+            new_end_position,
+        };
+        old_tree.edit(&edit);
+        parse(&content, lang, Some(&old_tree))?
+    } else {
+        parse(&content, lang, None)?
+    };
     update_document_tree("current".to_string(), tree.clone());
     let blocks = parse_to_blocks(&tree);
     let metas = read_all(&content);
@@ -149,6 +178,7 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
             let pos = map.get(&b.visual_id);
             BlockInfo {
                 visual_id: b.visual_id,
+                node_id: Some(b.node_id),
                 kind: label,
                 translations,
                 range: (b.range.start, b.range.end),
