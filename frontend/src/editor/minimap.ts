@@ -1,4 +1,4 @@
-import { EditorView } from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.21.3/dist/index.js";
+import { EditorView } from "@codemirror/view";
 
 /**
  * Attach a simple minimap to a CodeMirror editor.

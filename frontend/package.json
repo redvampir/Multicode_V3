@@ -9,6 +9,9 @@
     "build": "tauri build"
   },
   "dependencies": {
+    "@codemirror/language": "^6.10.1",
+    "@codemirror/state": "^6.4.0",
+    "@codemirror/view": "^6.21.3",
     "@tauri-apps/api": "^1.0.0",
     "ajv": "^8.17.1",
     "ajv-formats": "^2.1.1",

@@ -1,6 +1,6 @@
-import { StateField, RangeSetBuilder } from "https://cdn.jsdelivr.net/npm/@codemirror/state@6.4.0/dist/index.js";
-import { Decoration, EditorView } from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.21.3/dist/index.js";
-import { hoverTooltip } from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.10.1/dist/index.js";
+import { StateField, RangeSetBuilder } from "@codemirror/state";
+import { Decoration, EditorView } from "@codemirror/view";
+import { hoverTooltip } from "@codemirror/language";
 import schema from "./meta.schema.json" with { type: "json" };
 
 const tmplObj = () => ({
