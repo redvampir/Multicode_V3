@@ -1,6 +1,6 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 mod comment_detector;
 pub mod id_registry;
 
@@ -119,6 +119,46 @@ pub fn remove_all(content: &str) -> String {
     comment_detector::strip(content)
 }
 
+/// Convenience wrapper returning all visual metadata entries from `content`.
+pub fn list(content: &str) -> Vec<VisualMeta> {
+    read_all(content)
+}
+
+/// Fix issues in metadata comments, such as duplicate identifiers.
+///
+/// When duplicate ids are found, new unique ones are generated and the
+/// updated metadata comments are reinserted into the document.
+pub fn fix_all(content: &str) -> String {
+    let mut metas = read_all(content);
+    let mut seen = HashSet::new();
+    let mut changed = false;
+    for meta in &mut metas {
+        if !seen.insert(meta.id.clone()) {
+            meta.id = unique_id();
+            changed = true;
+        }
+    }
+
+    if !changed {
+        return content.to_string();
+    }
+
+    let mut out = remove_all(content);
+    for meta in &metas {
+        out = upsert(&out, meta);
+    }
+    out
+}
+
+fn unique_id() -> String {
+    use std::time::{SystemTime, UNIX_EPOCH};
+    let nanos = SystemTime::now()
+        .duration_since(UNIX_EPOCH)
+        .unwrap()
+        .as_nanos();
+    format!("m{}", nanos)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -168,5 +208,17 @@ mod tests {
         assert!(!cleaned.contains(MARKER));
         assert!(cleaned.contains("line1"));
         assert!(cleaned.contains("line2"));
+    }
+
+    #[test]
+    fn fix_all_replaces_duplicate_ids() {
+        let content = format!(
+            "<!-- {} {{\"id\":\"1\",\"x\":0.0,\"y\":0.0}} -->\n<!-- {} {{\"id\":\"1\",\"x\":1.0,\"y\":1.0}} -->",
+            MARKER, MARKER
+        );
+        let fixed = fix_all(&content);
+        let metas = read_all(&fixed);
+        assert_eq!(metas.len(), 2);
+        assert_ne!(metas[0].id, metas[1].id);
     }
 }
