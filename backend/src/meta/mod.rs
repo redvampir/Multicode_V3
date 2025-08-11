@@ -38,6 +38,9 @@ pub struct VisualMeta {
     /// Optional AI-generated note.
     #[serde(default)]
     pub ai: Option<AiNote>,
+    /// Optional plugin-specific metadata.
+    #[serde(default)]
+    pub extras: Option<serde_json::Value>,
     /// Timestamp of last update in UTC.
     #[serde(default)]
     pub updated_at: DateTime<Utc>,
@@ -104,6 +107,7 @@ mod tests {
     use super::*;
     use std::collections::HashMap;
     use chrono::Utc;
+    use serde_json::json;
 
     #[test]
     fn upsert_and_read_roundtrip() {
@@ -118,6 +122,7 @@ mod tests {
                 description: Some("desc".into()),
                 hints: vec!["hint".into()],
             }),
+            extras: Some(json!({"foo": "bar"})),
             updated_at: Utc::now(),
         };
         let content = "fn main() {}";
@@ -131,6 +136,7 @@ mod tests {
             metas[0].ai.as_ref().unwrap().description.as_deref(),
             Some("desc")
         );
+        assert_eq!(metas[0].extras, Some(json!({"foo": "bar"})));
         assert!(metas[0].updated_at.timestamp() > 0);
     }
 

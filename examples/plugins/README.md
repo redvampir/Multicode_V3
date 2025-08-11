@@ -36,9 +36,14 @@ impl Plugin for MyPlugin {
 // my-block.js
 export function register({ Block, registerBlock }) {
   class MyBlock extends Block {
+    constructor(id, x, y, w, h, label, color, extras = {}) {
+      super(id, x, y, w, h, label, color);
+      this.extras = extras;
+    }
+
     draw(ctx) {
       super.draw(ctx);
-      ctx.strokeStyle = 'red';
+      ctx.strokeStyle = this.extras.outline || 'red';
       ctx.strokeRect(this.x, this.y, this.w, this.h);
     }
   }
@@ -51,4 +56,12 @@ export function register({ Block, registerBlock }) {
 
 ```javascript
 await loadBlockPlugins(['./my-block.js']);
+```
+
+Поле `extras` из структуры [`VisualMeta`](../../backend/src/meta/mod.rs) позволяет
+передавать в блок произвольные данные плагина. В примере выше цвет обводки
+блока можно настроить с помощью метаданных:
+
+```text
+// @VISUAL_META {"id":"1","x":0,"y":0,"extras":{"outline":"blue"}}
 ```

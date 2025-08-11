@@ -43,6 +43,10 @@
         }
       }
     },
+    "extras": {
+      "type": "object",
+      "description": "Arbitrary plugin-specific data."
+    },
     "updated_at": {
       "type": "string",
       "format": "date-time",

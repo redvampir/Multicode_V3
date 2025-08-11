@@ -359,6 +359,7 @@ mod tests {
                 m
             },
             ai: None,
+            extras: None,
             updated_at: Utc::now(),
         };
         let updated = upsert_meta(src, meta.clone(), "rust".into());
