@@ -19,9 +19,10 @@ describe('split view', () => {
     let received: any = null;
     canvas.onMeta = (meta) => { received = meta; };
 
-    editor.setMetadata({ '@VISUAL_META': { id: '1', x: 5 } });
+    const vm = { id: '1', x: 5, y: 0, updated_at: new Date().toISOString() };
+    editor.setMetadata({ '@VISUAL_META': vm });
 
-    expect(received).toEqual({ '@VISUAL_META': { id: '1', x: 5 } });
-    expect(canvas.metadata['@VISUAL_META']).toEqual({ id: '1', x: 5 });
+    expect(received).toEqual({ '@VISUAL_META': vm });
+    expect(canvas.metadata['@VISUAL_META']).toEqual(vm);
   });
 });

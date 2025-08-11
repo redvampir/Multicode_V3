@@ -1,5 +1,13 @@
 export type PanelType = 'editor' | 'canvas' | 'terminal';
 
+import Ajv from 'ajv';
+import addFormats from 'ajv-formats';
+import schema from '../editor/meta.schema.json' with { type: 'json' };
+
+const ajv = new Ajv({ allErrors: true });
+addFormats(ajv);
+const validateMeta = ajv.compile(schema);
+
 interface Panel {
   id: string;
   type: PanelType;
@@ -71,6 +79,11 @@ export class SplitManager {
       element: el,
       metadata: {},
       setMetadata: (meta) => {
+        const vm = meta['@VISUAL_META'];
+        if (vm && !validateMeta(vm)) {
+          console.warn('invalid @VISUAL_META', validateMeta.errors);
+          return;
+        }
         panel.metadata = { ...panel.metadata, ...meta };
         this.updateMetadata(meta, panel.id);
       }
