@@ -5,6 +5,7 @@ import schema from "./visual-meta-schema.json" with { type: "json" };
 
 const tmplObj = () => ({
   id: crypto.randomUUID(),
+  version: 1,
   x: 0,
   y: 0,
   tags: [],
@@ -34,6 +35,9 @@ export function updateMetaComment(view, meta) {
     try {
       const obj = JSON.parse(json);
       if (obj.id === meta.id) {
+        if (typeof obj.version !== "number") {
+          obj.version = 1;
+        }
         obj.x = meta.x;
         obj.y = meta.y;
         if (Array.isArray(meta.tags)) {

@@ -7,6 +7,10 @@ pub mod id_registry;
 /// Marker used to identify visual metadata comments in documents.
 const MARKER: &str = "@VISUAL_META";
 
+fn default_version() -> u32 {
+    1
+}
+
 /// Additional notes provided by AI.
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct AiNote {
@@ -20,6 +24,9 @@ pub struct AiNote {
 /// Metadata stored inside `@VISUAL_META` comments.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct VisualMeta {
+    /// Schema version of this metadata.
+    #[serde(default = "default_version")]
+    pub version: u32,
     /// Identifier linking this metadata to AST nodes.
     pub id: String,
     /// X coordinate on the canvas.
@@ -47,6 +54,12 @@ pub struct VisualMeta {
     /// Timestamp of last update in UTC.
     #[serde(default)]
     pub updated_at: DateTime<Utc>,
+}
+
+fn migrate(meta: &mut VisualMeta) {
+    if meta.version == 0 {
+        meta.version = 1;
+    }
 }
 
 /// Insert or update a visual metadata comment in `content`.
@@ -92,7 +105,8 @@ pub fn read_all(content: &str) -> Vec<VisualMeta> {
     id_registry::clear();
     let mut metas = Vec::new();
     for json in comment_detector::extract_json(content) {
-        if let Ok(meta) = serde_json::from_str::<VisualMeta>(&json) {
+        if let Ok(mut meta) = serde_json::from_str::<VisualMeta>(&json) {
+            migrate(&mut meta);
             id_registry::register(meta.clone());
             metas.push(meta);
         }
@@ -115,6 +129,7 @@ mod tests {
     #[test]
     fn upsert_and_read_roundtrip() {
         let meta = VisualMeta {
+            version: 1,
             id: "1".into(),
             x: 10.0,
             y: 20.0,
@@ -143,6 +158,7 @@ mod tests {
         );
         assert_eq!(metas[0].extras, Some(json!({"foo": "bar"})));
         assert!(metas[0].updated_at.timestamp() > 0);
+        assert_eq!(metas[0].version, 1);
     }
 
     #[test]

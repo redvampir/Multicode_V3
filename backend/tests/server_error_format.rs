@@ -67,6 +67,7 @@ async fn metadata_endpoint_unauthorized() {
     let req = MetadataRequest {
         content: String::new(),
         meta: VisualMeta {
+            version: 1,
             id: "1".into(),
             x: 0.0,
             y: 0.0,

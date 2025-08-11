@@ -21,6 +21,7 @@ export async function annotateExternalFile(sourcePath, projectDir, view, lang) {
 
   const meta = {
     id: crypto.randomUUID(),
+    version: 1,
     x: 0,
     y: 0,
     origin: sourcePath,

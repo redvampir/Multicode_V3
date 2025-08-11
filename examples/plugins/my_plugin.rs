@@ -28,6 +28,7 @@ impl Plugin for MyPlugin {
 #[allow(dead_code)]
 fn example_meta_with_extras() -> VisualMeta {
     VisualMeta {
+        version: 1,
         id: "1".into(),
         x: 0.0,
         y: 0.0,

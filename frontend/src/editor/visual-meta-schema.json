@@ -8,6 +8,11 @@
       "type": "string",
       "description": "Identifier linking this metadata to blocks."
     },
+    "version": {
+      "type": "integer",
+      "description": "Schema version of the metadata.",
+      "default": 1
+    },
     "x": {
       "type": "number",
       "description": "X coordinate on the canvas."
