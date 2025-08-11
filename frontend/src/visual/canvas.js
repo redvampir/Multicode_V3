@@ -144,6 +144,18 @@ export class VisualCanvas {
     });
   }
 
+  search(label) {
+    const query = (label || '').trim().toLowerCase();
+    if (!query) {
+      this.highlightBlocks([]);
+      return;
+    }
+    const ids = this.blocks
+      .filter(b => b.label.toLowerCase().includes(query))
+      .map(b => b.id);
+    this.highlightBlocks(ids);
+  }
+
   getGroupId(blockId) {
     for (const [id, set] of this.groups.entries()) {
       if (set.has(blockId)) return id;
