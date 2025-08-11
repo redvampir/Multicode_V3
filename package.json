@@ -1,0 +1,7 @@
+{
+  "name": "multicode-v3",
+  "private": true,
+  "scripts": {
+    "dev": "npm --prefix frontend run dev"
+  }
+}
