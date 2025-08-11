@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
+use tracing::error;
 use tree_sitter::Tree;
 
 /// Stored parse trees for opened documents.
@@ -40,28 +41,51 @@ pub struct BlockInfo {
 
 /// Retrieve the last parsed [`Tree`] for the given document identifier.
 pub fn get_document_tree(id: &str) -> Option<Tree> {
-    DOCUMENT_TREES.lock().unwrap().get(id).cloned()
+    match DOCUMENT_TREES.lock() {
+        Ok(trees) => trees.get(id).cloned(),
+        Err(e) => {
+            error!("failed to lock document trees: {e}");
+            None
+        }
+    }
 }
 
 /// Update the stored [`Tree`] for the given document identifier.
 pub fn update_document_tree(id: String, tree: Tree) {
-    DOCUMENT_TREES.lock().unwrap().insert(id, tree);
+    match DOCUMENT_TREES.lock() {
+        Ok(mut trees) => {
+            trees.insert(id, tree);
+        }
+        Err(e) => error!("failed to lock document trees for update: {e}"),
+    }
 }
 
 /// Retrieve cached blocks if the content matches.
 pub fn get_cached_blocks(key: &str, content: &str) -> Option<Vec<BlockInfo>> {
-    let cache = BLOCK_CACHE.lock().unwrap();
-    if let Some((cached_content, blocks)) = cache.get(key) {
-        if cached_content == content {
-            return Some(blocks.clone());
+    match BLOCK_CACHE.lock() {
+        Ok(cache) => {
+            if let Some((cached_content, blocks)) = cache.get(key) {
+                if cached_content == content {
+                    return Some(blocks.clone());
+                }
+            }
+            None
+        }
+        Err(e) => {
+            error!("failed to lock block cache: {e}");
+            None
         }
     }
-    None
 }
 
 /// Update the block cache for the given key.
 pub fn update_block_cache(key: String, content: String, blocks: Vec<BlockInfo>) {
-    BLOCK_CACHE.lock().unwrap().insert(key, (content, blocks));
+    match BLOCK_CACHE.lock() {
+        Ok(mut cache) => {
+            cache.insert(key, (content, blocks));
+        }
+        Err(e) => error!("failed to lock block cache for update: {e}"),
+    }
 }
 
 /// Load all backend plugins from the `plugins/` directory.
