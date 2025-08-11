@@ -55,10 +55,13 @@ Multicode V3 — редактор исходного кода, который о
    cd frontend && npm install && npm test
    cd ../backend && cargo test
    ```
-2. Запуск режима разработки:
+2. Запуск режима разработки (после добавления корневого скрипта `dev` доступен из корня репозитория):
    ```
-   cd frontend
    npm run dev
+   ```
+   или из каталога `frontend`:
+   ```
+   cd frontend && npm run dev
    ```
 3. Сборка десктопного приложения:
    ```
