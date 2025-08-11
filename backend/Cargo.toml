@@ -35,6 +35,7 @@ notify = "5"
 reqwest = { version = "0.11", default-features = false, features = ["json", "rustls-tls"] }
 clap = { version = "4", features = ["derive"] }
 wasmtime = "10"
+chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
 tempfile = "3"

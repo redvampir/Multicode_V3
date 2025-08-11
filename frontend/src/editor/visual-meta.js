@@ -3,7 +3,13 @@ import { Decoration, EditorView } from "https://cdn.jsdelivr.net/npm/@codemirror
 import { hoverTooltip } from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.10.1/dist/index.js";
 import schema from "./visual-meta-schema.json" with { type: "json" };
 
-const tmplObj = () => ({ id: crypto.randomUUID(), x: 0, y: 0, tags: [] });
+const tmplObj = () => ({
+  id: crypto.randomUUID(),
+  x: 0,
+  y: 0,
+  tags: [],
+  updated_at: new Date().toISOString(),
+});
 const templates = {
   rust: () => `// @VISUAL_META ${JSON.stringify(tmplObj())}`,
   javascript: () => `// @VISUAL_META ${JSON.stringify(tmplObj())}`,
