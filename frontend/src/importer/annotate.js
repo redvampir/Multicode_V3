@@ -1,6 +1,6 @@
 import { readTextFile, writeTextFile } from "@tauri-apps/api/fs";
 import path from "path";
-import { EditorView } from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.21.3/dist/index.js";
+import { EditorView } from "@codemirror/view";
 import { insertVisualMeta } from "../editor/visual-meta.js";
 
 /**

@@ -1,17 +1,17 @@
 import { describe, it, expect, vi } from 'vitest';
 
 // Mock Codemirror modules used by visual-meta.js
-vi.mock('https://cdn.jsdelivr.net/npm/@codemirror/state@6.4.0/dist/index.js', () => ({
+vi.mock('@codemirror/state', () => ({
   StateField: { define: vi.fn() },
   RangeSetBuilder: class {},
 }));
 
-vi.mock('https://cdn.jsdelivr.net/npm/@codemirror/view@6.21.3/dist/index.js', () => ({
+vi.mock('@codemirror/view', () => ({
   Decoration: { mark: () => ({}) },
   EditorView: { decorations: { from: vi.fn() }, updateListener: { of: vi.fn() } },
 }));
 
-vi.mock('https://cdn.jsdelivr.net/npm/@codemirror/language@6.10.1/dist/index.js', () => ({
+vi.mock('@codemirror/language', () => ({
   hoverTooltip: () => ({})
 }));
 
