@@ -39,13 +39,12 @@ const MAX_CONNECTIONS: usize = 100;
 const PING_INTERVAL: Duration = Duration::from_secs(30);
 
 #[derive(Clone)]
-struct AppState {
+pub struct AppState {
     tx: broadcast::Sender<String>,
     connections: Arc<AtomicUsize>,
     db: SqlitePool,
 }
 
-#[cfg(test)]
 pub fn test_state() -> AppState {
     use tokio::sync::broadcast;
     let (tx, _rx) = broadcast::channel(1);
@@ -70,14 +69,14 @@ fn auth(headers: &HeaderMap) -> bool {
 
 #[derive(Deserialize)]
 pub struct ParseRequest {
-    content: String,
-    lang: String,
+    pub content: String,
+    pub lang: String,
 }
 
 #[derive(Serialize, Deserialize, Debug, PartialEq)]
 pub struct ErrorResponse {
-    code: u16,
-    message: String,
+    pub code: u16,
+    pub message: String,
 }
 
 pub async fn parse_endpoint(
@@ -110,9 +109,9 @@ pub async fn parse_endpoint(
 
 #[derive(Deserialize)]
 pub struct ExportRequest {
-    content: String,
+    pub content: String,
     #[serde(default)]
-    strip_meta: bool,
+    pub strip_meta: bool,
 }
 
 pub async fn export_endpoint(
@@ -139,9 +138,9 @@ pub async fn export_endpoint(
 
 #[derive(Deserialize)]
 pub struct MetadataRequest {
-    content: String,
-    meta: VisualMeta,
-    lang: String,
+    pub content: String,
+    pub meta: VisualMeta,
+    pub lang: String,
 }
 
 /// Insert or update metadata in the database.
@@ -174,7 +173,7 @@ pub async fn metadata_upsert_endpoint(
 }
 
 #[derive(Deserialize)]
-struct MetaQuery {
+pub struct MetaQuery {
     q: Option<String>,
 }
 
@@ -247,7 +246,7 @@ pub async fn meta_history_endpoint(
 
 #[derive(Deserialize)]
 pub struct RollbackRequest {
-    timestamp: String,
+    pub timestamp: String,
 }
 
 pub async fn meta_rollback_endpoint(
