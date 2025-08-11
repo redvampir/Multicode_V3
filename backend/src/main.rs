@@ -15,10 +15,10 @@ pub use backend::BlockInfo;
 use backend::{
     get_cached_blocks, get_document_tree, update_block_cache, update_document_tree, BlockInfo,
 };
+use chrono::Utc;
 use clap::{Parser, Subcommand};
 use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
-use chrono::Utc;
 use meta::{fix_all, read_all, remove_all, upsert, AiNote, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
 use syn::{File, Item};
@@ -395,6 +395,7 @@ mod tests {
             y: 2.0,
             tags: vec![],
             links: vec![],
+            extends: None,
             origin: None,
             translations: {
                 let mut m = HashMap::new();
