@@ -3,7 +3,10 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "test": "vitest"
+    "test": "vitest",
+    "tauri": "tauri",
+    "dev": "tauri dev",
+    "build": "tauri build"
   },
   "dependencies": {
     "@tauri-apps/api": "^1.0.0",
