@@ -210,6 +210,9 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
     meta.updated_at = Utc::now();
     let mut metas = read_all(&content);
     if let Some(existing) = metas.iter().find(|m| m.id == meta.id) {
+        if meta.version == 0 {
+            meta.version = existing.version;
+        }
         if meta.translations.is_empty() {
             meta.translations = existing.translations.clone();
         }
@@ -222,6 +225,9 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
         if meta.links.is_empty() {
             meta.links = existing.links.clone();
         }
+    }
+    if meta.version == 0 {
+        meta.version = 1;
     }
     metas.retain(|m| m.id != meta.id);
     metas.push(meta);
@@ -352,6 +358,7 @@ mod tests {
     fn upsert_meta_synchronizes_data() {
         let src = "fn main() {}".to_string();
         let meta = VisualMeta {
+            version: 1,
             id: "0".into(),
             x: 1.0,
             y: 2.0,

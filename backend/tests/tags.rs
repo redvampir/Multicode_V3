@@ -14,6 +14,7 @@ fn read_tags_from_comment() {
 #[test]
 fn upsert_preserves_tags() {
     let meta = VisualMeta {
+        version: 1,
         id: "1".into(),
         x: 0.0,
         y: 0.0,
