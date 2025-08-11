@@ -26,6 +26,11 @@ Multicode V3 — редактор исходного кода, который о
 ```
 Комментарий не влияет на выполнение программы и может быть удалён при экспорте.
 
+## Установка окружения
+- **Node.js:** перейдите на [nodejs.org](https://nodejs.org) или используйте `nvm`, например `nvm install --lts`.
+- **Rust:** установка через `rustup`, например `curl https://sh.rustup.rs -sSf | sh`.
+- **Tauri CLI:** установка через `npm install -g @tauri-apps/cli` или `cargo install tauri-cli`, проверка `tauri --version`.
+
 ## Инструкции по запуску и сборке
 1. Установите Rust, Node.js и [Tauri CLI](https://tauri.app).
 2. Установите зависимости и выполните тесты:
