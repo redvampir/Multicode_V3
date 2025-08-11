@@ -86,11 +86,11 @@ impl WasmPlugin {
             func: &str,
         ) -> Option<String> {
             let f = instance
-                .get_typed_func::<(), (i32, i32)>(store, func)
+                .get_typed_func::<(), (i32, i32)>(&mut *store, func)
                 .ok()?;
-            let (ptr, len) = f.call(store, ()).ok()?;
+            let (ptr, len) = f.call(&mut *store, ()).ok()?;
             let data = memory
-                .data(store)
+                .data(&mut *store)
                 .get(ptr as usize..(ptr as usize + len as usize))?;
             String::from_utf8(data.to_vec()).ok()
         }
