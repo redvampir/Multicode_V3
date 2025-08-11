@@ -18,13 +18,42 @@ Multicode V3 — редактор исходного кода, который о
 - Работа с языками Rust, Python, JavaScript, TypeScript, CSS, HTML и Go (см. [backend/src/parser/mod.rs](backend/src/parser/mod.rs)).
 
 ## Структура метакомментариев
-Служебная информация сохраняется в комментариях `@VISUAL_META` в формате JSON. Общая структура:
+Служебная информация сохраняется в комментариях `@VISUAL_META` в формате JSON. Актуальное определение описано в [backend/meta.schema.json](backend/meta.schema.json).
+
+Доступные поля:
+- `id` (`string`, обязательное) — идентификатор, связывающий метаданные с блоком.
+- `version` (`integer`, по умолчанию 1) — версия схемы метаданных.
+- `x` (`number`, обязательное) — координата X на холсте.
+- `y` (`number`, обязательное) — координата Y на холсте.
+- `tags` (`string[]`) — произвольные теги, связанные с блоком.
+- `links` (`string[]`) — ссылки на другие блоки по `id`.
+- `extends` (`string`) — идентификатор записи, из которой наследуются данные.
+- `origin` (`string`) — обратный путь до исходного внешнего файла.
+- `translations` (`object`) — переводы подписей блока по коду языка.
+- `ai` (`object`) — заметка, сгенерированная ИИ:
+  - `description` (`string`) — описание от ИИ.
+  - `hints` (`string[]`) — полезные подсказки.
+- `extras` (`object`) — произвольные данные плагинов.
+- `updated_at` (`string`, формат `date-time`, обязательное) — время последнего обновления в UTC.
+
+Пример:
 ```json
 {
-  "id": "уникальный идентификатор блока",
-  "x": координатаX,
-  "y": координатаY,
-  "note": "произвольный текст"
+  "id": "child",
+  "version": 1,
+  "x": 42,
+  "y": 13,
+  "tags": ["math", "demo"],
+  "links": ["parent"],
+  "extends": "parent",
+  "origin": "path/to/original",
+  "translations": { "en": "Child block", "ru": "Дочерний блок" },
+  "ai": {
+    "description": "Automatically summarized",
+    "hints": ["Consider refactoring"]
+  },
+  "extras": { "plugin": "value" },
+  "updated_at": "2024-01-01T00:00:00Z"
 }
 ```
 Комментарий не влияет на выполнение программы и может быть удалён при экспорте.
