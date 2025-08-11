@@ -21,6 +21,11 @@
       "description": "Tags associated with this block.",
       "items": { "type": "string" }
     },
+    "links": {
+      "type": "array",
+      "description": "Links to other blocks by id.",
+      "items": { "type": "string" }
+    },
     "origin": {
       "type": "string",
       "description": "Reverse path to the original external file."

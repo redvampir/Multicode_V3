@@ -136,6 +136,7 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
                 x: pos.map(|m| m.x).unwrap_or(0.0),
                 y: pos.map(|m| m.y).unwrap_or(0.0),
                 ai: pos.and_then(|m| m.ai.clone()),
+                links: pos.map(|m| m.links.clone()).unwrap_or_default(),
             }
         })
         .collect();
@@ -217,6 +218,9 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
         }
         if meta.tags.is_empty() {
             meta.tags = existing.tags.clone();
+        }
+        if meta.links.is_empty() {
+            meta.links = existing.links.clone();
         }
     }
     metas.retain(|m| m.id != meta.id);
@@ -352,6 +356,7 @@ mod tests {
             x: 1.0,
             y: 2.0,
             tags: vec![],
+            links: vec![],
             origin: None,
             translations: {
                 let mut m = HashMap::new();

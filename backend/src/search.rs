@@ -41,6 +41,30 @@ pub fn search_metadata(root: &Path, query: &str) -> Vec<SearchResult> {
     out
 }
 
+/// Search for metadata entries linking to `target` id.
+pub fn search_links(root: &Path, target: &str) -> Vec<SearchResult> {
+    let mut out = Vec::new();
+    for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
+        if !entry.file_type().is_file() {
+            continue;
+        }
+        let path = entry.path();
+        if let Ok(content) = fs::read_to_string(path) {
+            for caps in META_RE.captures_iter(&content) {
+                let json = &caps[1];
+                if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
+                    if meta.links.iter().any(|l| l == target) {
+                        let start = caps.get(0).map(|m| m.start()).unwrap_or(0);
+                        let line = content[..start].lines().count() + 1;
+                        out.push(SearchResult { file: path.to_path_buf(), line, meta });
+                    }
+                }
+            }
+        }
+    }
+    out
+}
+
 /// Find definition of metadata with a specific `id`.
 pub fn goto_definition(root: &Path, id: &str) -> Option<SearchResult> {
     search_metadata(root, id).into_iter().find(|r| r.meta.id == id)

@@ -8,6 +8,7 @@ const tmplObj = () => ({
   x: 0,
   y: 0,
   tags: [],
+  links: [],
   updated_at: new Date().toISOString(),
 });
 const templates = {
@@ -37,6 +38,9 @@ export function updateMetaComment(view, meta) {
         obj.y = meta.y;
         if (Array.isArray(meta.tags)) {
           obj.tags = meta.tags;
+        }
+        if (Array.isArray(meta.links)) {
+          obj.links = meta.links;
         }
         const newJson = JSON.stringify(obj);
         const start = m.index + m[0].indexOf(json);
