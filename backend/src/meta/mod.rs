@@ -2,6 +2,7 @@ use chrono::Utc;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 mod comment_detector;
+pub mod db;
 pub mod id_registry;
 mod types;
 pub use types::{AiNote, VisualMeta};
