@@ -32,6 +32,8 @@ pub struct BlockInfo {
     pub x: f64,
     pub y: f64,
     pub ai: Option<AiNote>,
+    #[serde(default)]
+    pub links: Vec<String>,
 }
 
 /// Retrieve the last parsed [`Tree`] for the given document identifier.

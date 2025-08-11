@@ -71,6 +71,7 @@ async fn metadata_endpoint_unauthorized() {
             x: 0.0,
             y: 0.0,
             tags: vec![],
+            links: vec![],
             origin: None,
             translations: HashMap::new(),
             ai: Some(AiNote::default()),

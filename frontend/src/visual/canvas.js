@@ -116,6 +116,16 @@ export class VisualCanvas {
     this.updateLabels();
     this.highlightBlocks([]);
     this.connections = [];
+    const byId = new Map(this.blocks.map(b => [b.id, b]));
+    blocks.forEach(b => {
+      if (Array.isArray(b.links)) {
+        b.links.forEach(l => {
+          const from = byId.get(b.visual_id);
+          const to = byId.get(l);
+          if (from && to) this.connections.push([from, to]);
+        });
+      }
+    });
     if (this.debugMode) this.analyze();
   }
 

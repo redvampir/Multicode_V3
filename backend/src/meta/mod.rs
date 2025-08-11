@@ -29,6 +29,9 @@ pub struct VisualMeta {
     /// Optional tags associated with this block.
     #[serde(default)]
     pub tags: Vec<String>,
+    /// Optional links to other blocks.
+    #[serde(default)]
+    pub links: Vec<String>,
     /// Optional reverse path to the original external file.
     #[serde(default)]
     pub origin: Option<String>,
@@ -116,6 +119,7 @@ mod tests {
             x: 10.0,
             y: 20.0,
             tags: vec!["alpha".into(), "beta".into()],
+            links: vec![],
             origin: None,
             translations: HashMap::new(),
             ai: Some(AiNote {
@@ -132,6 +136,7 @@ mod tests {
         assert_eq!(metas.len(), 1);
         assert_eq!(metas[0].x, 10.0);
         assert_eq!(metas[0].tags, vec!["alpha", "beta"]);
+        assert!(metas[0].links.is_empty());
         assert_eq!(
             metas[0].ai.as_ref().unwrap().description.as_deref(),
             Some("desc")
