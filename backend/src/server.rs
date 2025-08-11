@@ -315,7 +315,7 @@ async fn plugins_update(
     Ok(Json(get_plugins_info()))
 }
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize)]
 struct SuggestRequest {
     content: String,
     lang: String,
