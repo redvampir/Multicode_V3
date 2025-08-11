@@ -2,6 +2,7 @@ pub mod blocks;
 pub mod config;
 pub mod debugger;
 pub mod export;
+pub mod git;
 mod i18n;
 pub mod meta;
 pub mod parser;
