@@ -7,7 +7,8 @@ use tempfile::tempdir;
 
 #[test]
 fn read_links_from_comment() {
-    let src = "// @VISUAL_META {\"id\":\"1\",\"x\":0.0,\"y\":0.0,\"links\":[\"a\",\"b\"]}\nfn main() {}";
+    let src =
+        "// @VISUAL_META {\"id\":\"1\",\"x\":0.0,\"y\":0.0,\"links\":[\"a\",\"b\"]}\nfn main() {}";
     let metas = read_all(src);
     assert_eq!(metas.len(), 1);
     assert_eq!(metas[0].links, vec!["a", "b"]);
@@ -22,6 +23,7 @@ fn upsert_preserves_links() {
         y: 0.0,
         tags: vec![],
         links: vec!["l".into()],
+        extends: None,
         origin: None,
         translations: HashMap::new(),
         ai: None,
@@ -48,4 +50,3 @@ fn search_finds_by_link() {
     assert_eq!(res[0].file, file);
     assert_eq!(res[0].meta.links, vec!["target"]);
 }
-

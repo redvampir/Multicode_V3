@@ -2,11 +2,11 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::Json;
 use backend::config::ServerConfig;
 use backend::meta::{AiNote, VisualMeta};
-use chrono::Utc;
 use backend::server::{
     export_endpoint, metadata_endpoint, parse_endpoint, ErrorResponse, ExportRequest,
     MetadataRequest, ParseRequest, SERVER_CONFIG,
 };
+use chrono::Utc;
 use std::collections::HashMap;
 
 #[tokio::test]
@@ -73,6 +73,7 @@ async fn metadata_endpoint_unauthorized() {
             y: 0.0,
             tags: vec![],
             links: vec![],
+            extends: None,
             origin: None,
             translations: HashMap::new(),
             ai: Some(AiNote::default()),

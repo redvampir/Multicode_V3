@@ -31,6 +31,10 @@
       "description": "Links to other blocks by id.",
       "items": { "type": "string" }
     },
+    "extends": {
+      "type": "string",
+      "description": "Identifier of a base metadata entry to inherit from."
+    },
     "origin": {
       "type": "string",
       "description": "Reverse path to the original external file."
@@ -62,5 +66,14 @@
       "format": "date-time",
       "description": "Timestamp of last update in UTC."
     }
-  }
+  },
+  "examples": [
+    {
+      "id": "child",
+      "extends": "parent",
+      "x": 0,
+      "y": 0,
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  ]
 }

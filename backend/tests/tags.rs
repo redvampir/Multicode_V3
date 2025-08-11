@@ -20,6 +20,7 @@ fn upsert_preserves_tags() {
         y: 0.0,
         tags: vec!["t".into()],
         links: vec![],
+        extends: None,
         origin: None,
         translations: HashMap::new(),
         ai: None,

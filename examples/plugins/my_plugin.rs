@@ -34,6 +34,7 @@ fn example_meta_with_extras() -> VisualMeta {
         y: 0.0,
         tags: vec![],
         links: vec![],
+        extends: None,
         origin: None,
         translations: HashMap::new(),
         ai: None,

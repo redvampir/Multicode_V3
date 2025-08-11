@@ -39,6 +39,9 @@ pub struct VisualMeta {
     /// Optional links to other blocks.
     #[serde(default)]
     pub links: Vec<String>,
+    /// Optional identifier of a base metadata this entry extends.
+    #[serde(default)]
+    pub extends: Option<String>,
     /// Optional reverse path to the original external file.
     #[serde(default)]
     pub origin: Option<String>,
@@ -103,15 +106,79 @@ pub fn upsert(content: &str, meta: &VisualMeta) -> String {
 /// Read all visual metadata comments from `content`.
 pub fn read_all(content: &str) -> Vec<VisualMeta> {
     id_registry::clear();
-    let mut metas = Vec::new();
+    let mut ids = Vec::new();
     for json in comment_detector::extract_json(content) {
         if let Ok(mut meta) = serde_json::from_str::<VisualMeta>(&json) {
             migrate(&mut meta);
-            id_registry::register(meta.clone());
-            metas.push(meta);
+            let id = meta.id.clone();
+            id_registry::register(meta);
+            ids.push(id);
         }
     }
-    metas
+    ids.into_iter()
+        .filter_map(|id| merge_base_meta(&id))
+        .collect()
+}
+
+/// Recursively merge metadata with its base entries using the `extends` chain.
+pub fn merge_base_meta(id: &str) -> Option<VisualMeta> {
+    fn inner(id: &str, visited: &mut HashSet<String>) -> Option<VisualMeta> {
+        if !visited.insert(id.to_string()) {
+            return id_registry::get(id);
+        }
+        let mut meta = id_registry::get(id)?;
+        if let Some(parent_id) = meta.extends.clone() {
+            if let Some(base) = inner(&parent_id, visited) {
+                meta = merge_two(base, meta);
+            }
+        }
+        meta.extends = None;
+        Some(meta)
+    }
+
+    fn merge_two(mut base: VisualMeta, mut child: VisualMeta) -> VisualMeta {
+        for tag in base.tags {
+            if !child.tags.contains(&tag) {
+                child.tags.insert(0, tag);
+            }
+        }
+        for link in base.links {
+            if !child.links.contains(&link) {
+                child.links.insert(0, link);
+            }
+        }
+        if child.origin.is_none() {
+            child.origin = base.origin;
+        }
+        for (k, v) in base.translations {
+            child.translations.entry(k).or_insert(v);
+        }
+        child.ai = match (child.ai, base.ai) {
+            (Some(mut c), Some(b)) => {
+                if c.description.is_none() {
+                    c.description = b.description;
+                }
+                for hint in b.hints.into_iter().rev() {
+                    if !c.hints.contains(&hint) {
+                        c.hints.insert(0, hint);
+                    }
+                }
+                Some(c)
+            }
+            (Some(c), None) => Some(c),
+            (None, Some(b)) => Some(b),
+            (None, None) => None,
+        };
+        if child.extras.is_none() {
+            child.extras = base.extras;
+        }
+        if child.updated_at.timestamp() == 0 {
+            child.updated_at = base.updated_at;
+        }
+        child
+    }
+
+    inner(id, &mut HashSet::new())
 }
 
 /// Remove all visual metadata comments from `content`.
@@ -162,9 +229,9 @@ fn unique_id() -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use chrono::Utc;
     use serde_json::json;
+    use std::collections::HashMap;
 
     #[test]
     fn upsert_and_read_roundtrip() {
@@ -175,6 +242,7 @@ mod tests {
             y: 20.0,
             tags: vec!["alpha".into(), "beta".into()],
             links: vec![],
+            extends: None,
             origin: None,
             translations: HashMap::new(),
             ai: Some(AiNote {
@@ -220,5 +288,69 @@ mod tests {
         let metas = read_all(&fixed);
         assert_eq!(metas.len(), 2);
         assert_ne!(metas[0].id, metas[1].id);
+    }
+
+    #[test]
+    fn merge_base_meta_combines_fields() {
+        let parent = VisualMeta {
+            version: 1,
+            id: "p".into(),
+            x: 0.0,
+            y: 0.0,
+            tags: vec!["base".into()],
+            links: vec!["l1".into()],
+            extends: None,
+            origin: Some("orig".into()),
+            translations: {
+                let mut m = HashMap::new();
+                m.insert("en".into(), "Parent".into());
+                m
+            },
+            ai: Some(AiNote {
+                description: Some("pdesc".into()),
+                hints: vec!["h1".into()],
+            }),
+            extras: None,
+            updated_at: Utc::now(),
+        };
+
+        let child = VisualMeta {
+            version: 1,
+            id: "c".into(),
+            x: 1.0,
+            y: 1.0,
+            tags: vec!["child".into()],
+            links: vec!["l2".into()],
+            extends: Some("p".into()),
+            origin: None,
+            translations: {
+                let mut m = HashMap::new();
+                m.insert("ru".into(), "Дитя".into());
+                m
+            },
+            ai: Some(AiNote {
+                description: None,
+                hints: vec!["h2".into()],
+            }),
+            extras: None,
+            updated_at: Utc::now(),
+        };
+
+        let content = format!(
+            "// @VISUAL_META {}\n// @VISUAL_META {}\n",
+            serde_json::to_string(&parent).unwrap(),
+            serde_json::to_string(&child).unwrap()
+        );
+
+        let metas = read_all(&content);
+        let merged = metas.iter().find(|m| m.id == "c").unwrap();
+        assert_eq!(merged.tags, vec!["base", "child"]);
+        assert_eq!(merged.links, vec!["l1", "l2"]);
+        assert_eq!(merged.origin.as_deref(), Some("orig"));
+        assert_eq!(merged.translations.get("en").unwrap(), "Parent");
+        assert_eq!(merged.translations.get("ru").unwrap(), "Дитя");
+        let ai = merged.ai.as_ref().unwrap();
+        assert_eq!(ai.description.as_deref(), Some("pdesc"));
+        assert_eq!(ai.hints, vec!["h1", "h2"]);
     }
 }
