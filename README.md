@@ -51,6 +51,13 @@ Multicode V3 — редактор исходного кода, который о
      «`identifier` is a required property» и «Additional properties are not allowed».
      Удалите старую версию и поставьте CLI v2.
    - Проверьте установку командой `tauri --version`.
+4. **Системные библиотеки GTK/GLib**
+   - Установите пакеты:
+     ```bash
+     sudo apt-get install -y libglib2.0-dev libgtk-3-dev pkg-config
+     ```
+   - После установки задайте переменную окружения `PKG_CONFIG_PATH`, указывающую на каталог с файлами `gobject-2.0.pc` и `glib-2.0.pc` (обычно `/usr/lib/x86_64-linux-gnu/pkgconfig` или `/usr/lib/pkgconfig`).
+   - Добавьте строку `export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig` в `~/.bashrc` или аналогичный профиль, чтобы переменная сохранялась между сессиями.
 
 ## Инструкции по запуску и сборке
 1. Установите зависимости и выполните тесты:
