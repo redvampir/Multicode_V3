@@ -1,4 +1,4 @@
-use crate::{parser::parse_blocks, BlockInfo};
+use crate::{blocks::parse_blocks, BlockInfo};
 use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Watcher};
 use std::{env, fs, path::PathBuf, sync::mpsc::channel, thread};
 use tokio::sync::broadcast::Sender;

@@ -1,10 +1,14 @@
+pub mod blocks;
 pub mod debugger;
 pub mod export;
+mod i18n;
 pub mod meta;
 pub mod parser;
 pub mod plugins;
 pub mod search;
 pub mod server;
+
+pub use blocks::{parse_blocks, upsert_meta};
 
 use crate::meta::AiNote;
 use once_cell::sync::Lazy;

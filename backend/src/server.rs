@@ -28,8 +28,8 @@ use tracing::{error, info};
 use crate::meta::db;
 use crate::meta::{remove_all, watch, AiNote, VisualMeta};
 use crate::{
-    get_plugins_info, parse_blocks, reload_plugins_state, set_plugin_enabled, upsert_meta,
-    BlockInfo, PluginInfo,
+    blocks::{parse_blocks, upsert_meta},
+    get_plugins_info, reload_plugins_state, set_plugin_enabled, BlockInfo, PluginInfo,
 };
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 
