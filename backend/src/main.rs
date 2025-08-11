@@ -18,6 +18,7 @@ use backend::{
 use clap::{Parser, Subcommand};
 use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
+use chrono::Utc;
 use meta::{read_all, remove_all, upsert, AiNote, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
 use syn::{File, Item};
@@ -205,6 +206,7 @@ fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
 
 #[cfg_attr(not(test), tauri::command)]
 pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> String {
+    meta.updated_at = Utc::now();
     let mut metas = read_all(&content);
     if let Some(existing) = metas.iter().find(|m| m.id == meta.id) {
         if meta.translations.is_empty() {
@@ -332,6 +334,7 @@ fn main() {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
 
     #[test]
     fn parses_source_into_blockinfo() {
@@ -356,6 +359,7 @@ mod tests {
                 m
             },
             ai: None,
+            updated_at: Utc::now(),
         };
         let updated = upsert_meta(src, meta.clone(), "rust".into());
         assert!(updated.contains("@VISUAL_META"));

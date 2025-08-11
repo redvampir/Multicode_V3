@@ -1,4 +1,5 @@
 use backend::meta::{read_all, upsert, VisualMeta};
+use chrono::Utc;
 use std::collections::HashMap;
 
 #[test]
@@ -20,6 +21,7 @@ fn upsert_preserves_tags() {
         origin: None,
         translations: HashMap::new(),
         ai: None,
+        updated_at: Utc::now(),
     };
     let updated = upsert("fn main() {}", &meta);
     assert!(updated.contains("\"tags\":[\"t\"]"));

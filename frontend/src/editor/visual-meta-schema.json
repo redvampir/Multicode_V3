@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "type": "object",
-  "required": ["id", "x", "y"],
+  "required": ["id", "x", "y", "updated_at"],
   "additionalProperties": false,
   "properties": {
     "id": {
@@ -42,6 +42,11 @@
           "items": { "type": "string" }
         }
       }
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "Timestamp of last update in UTC."
     }
   }
 }

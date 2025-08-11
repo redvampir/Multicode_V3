@@ -2,6 +2,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::Json;
 use backend::config::ServerConfig;
 use backend::meta::{AiNote, VisualMeta};
+use chrono::Utc;
 use backend::server::{
     export_endpoint, metadata_endpoint, parse_endpoint, ErrorResponse, ExportRequest,
     MetadataRequest, ParseRequest, SERVER_CONFIG,
@@ -73,6 +74,7 @@ async fn metadata_endpoint_unauthorized() {
             origin: None,
             translations: HashMap::new(),
             ai: Some(AiNote::default()),
+            updated_at: Utc::now(),
         },
         lang: "rust".into(),
     };
