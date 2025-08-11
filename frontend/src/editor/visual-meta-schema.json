@@ -16,6 +16,11 @@
       "type": "number",
       "description": "Y coordinate on the canvas."
     },
+    "tags": {
+      "type": "array",
+      "description": "Tags associated with this block.",
+      "items": { "type": "string" }
+    },
     "origin": {
       "type": "string",
       "description": "Reverse path to the original external file."

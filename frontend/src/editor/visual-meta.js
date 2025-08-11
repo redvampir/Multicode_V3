@@ -3,12 +3,13 @@ import { Decoration, EditorView } from "https://cdn.jsdelivr.net/npm/@codemirror
 import { hoverTooltip } from "https://cdn.jsdelivr.net/npm/@codemirror/language@6.10.1/dist/index.js";
 import schema from "./visual-meta-schema.json" with { type: "json" };
 
+const tmplObj = () => ({ id: crypto.randomUUID(), x: 0, y: 0, tags: [] });
 const templates = {
-  rust: () => `// @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})}`,
-  javascript: () => `// @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})}`,
-  python: () => `# @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})}`,
-  html: () => `<!-- @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})} -->`,
-  css: () => `/* @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})} */`,
+  rust: () => `// @VISUAL_META ${JSON.stringify(tmplObj())}`,
+  javascript: () => `// @VISUAL_META ${JSON.stringify(tmplObj())}`,
+  python: () => `# @VISUAL_META ${JSON.stringify(tmplObj())}`,
+  html: () => `<!-- @VISUAL_META ${JSON.stringify(tmplObj())} -->`,
+  css: () => `/* @VISUAL_META ${JSON.stringify(tmplObj())} */`,
 };
 
 export function insertVisualMeta(view, lang) {
@@ -28,6 +29,9 @@ export function updateMetaComment(view, meta) {
       if (obj.id === meta.id) {
         obj.x = meta.x;
         obj.y = meta.y;
+        if (Array.isArray(meta.tags)) {
+          obj.tags = meta.tags;
+        }
         const newJson = JSON.stringify(obj);
         const start = m.index + m[0].indexOf(json);
         const end = start + json.length;

@@ -25,6 +25,9 @@ pub struct VisualMeta {
     pub x: f64,
     /// Y coordinate on the canvas.
     pub y: f64,
+    /// Optional tags associated with this block.
+    #[serde(default)]
+    pub tags: Vec<String>,
     /// Optional reverse path to the original external file.
     #[serde(default)]
     pub origin: Option<String>,
@@ -101,6 +104,7 @@ mod tests {
             id: "1".into(),
             x: 10.0,
             y: 20.0,
+            tags: vec!["alpha".into(), "beta".into()],
             origin: None,
             translations: HashMap::new(),
             ai: Some(AiNote {
@@ -114,6 +118,7 @@ mod tests {
         let metas = read_all(&updated);
         assert_eq!(metas.len(), 1);
         assert_eq!(metas[0].x, 10.0);
+        assert_eq!(metas[0].tags, vec!["alpha", "beta"]);
         assert_eq!(
             metas[0].ai.as_ref().unwrap().description.as_deref(),
             Some("desc")

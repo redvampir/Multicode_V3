@@ -213,6 +213,9 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
         if meta.ai.is_none() {
             meta.ai = existing.ai.clone();
         }
+        if meta.tags.is_empty() {
+            meta.tags = existing.tags.clone();
+        }
     }
     metas.retain(|m| m.id != meta.id);
     metas.push(meta);
@@ -345,6 +348,8 @@ mod tests {
             id: "0".into(),
             x: 1.0,
             y: 2.0,
+            tags: vec![],
+            origin: None,
             translations: {
                 let mut m = HashMap::new();
                 m.insert("en".into(), "Main".into());
