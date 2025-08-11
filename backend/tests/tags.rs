@@ -21,6 +21,7 @@ fn upsert_preserves_tags() {
         origin: None,
         translations: HashMap::new(),
         ai: None,
+        extras: None,
         updated_at: Utc::now(),
     };
     let updated = upsert("fn main() {}", &meta);

@@ -74,6 +74,7 @@ async fn metadata_endpoint_unauthorized() {
             origin: None,
             translations: HashMap::new(),
             ai: Some(AiNote::default()),
+            extras: None,
             updated_at: Utc::now(),
         },
         lang: "rust".into(),

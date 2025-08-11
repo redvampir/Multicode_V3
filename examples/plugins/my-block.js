@@ -3,9 +3,13 @@
 // class and a helper for registration.
 export function register({ Block, registerBlock }) {
   class MyBlock extends Block {
+    constructor(id, x, y, w, h, label, color, extras = {}) {
+      super(id, x, y, w, h, label, color);
+      this.extras = extras;
+    }
     draw(ctx) {
       super.draw(ctx);
-      ctx.strokeStyle = 'red';
+      ctx.strokeStyle = this.extras.outline || 'red';
       ctx.strokeRect(this.x, this.y, this.w, this.h);
     }
   }
