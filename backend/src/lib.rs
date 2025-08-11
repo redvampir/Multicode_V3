@@ -1,4 +1,5 @@
 pub mod blocks;
+pub mod config;
 pub mod debugger;
 pub mod export;
 mod i18n;
