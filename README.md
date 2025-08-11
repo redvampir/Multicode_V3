@@ -39,14 +39,17 @@ Multicode V3 — редактор исходного кода, который о
      ```
    - После установки перезапустите терминал и выполните `rustc --version`.
 3. **Tauri CLI**
-   - Установите глобально с помощью npm:
+   - Проект использует конфигурацию **Tauri v2**. Установите CLI версии 2:
      ```bash
-     npm install -g @tauri-apps/cli
+     npm install -g @tauri-apps/cli@^2
      ```
    - Либо через Cargo:
      ```bash
-     cargo install tauri-cli
+     cargo install tauri-cli --version ^2
      ```
+   - Если установлен CLI версии 1, команда `npm run dev` завершится ошибками вида
+     «`identifier` is a required property» и «Additional properties are not allowed».
+     Удалите старую версию и поставьте CLI v2.
    - Проверьте установку командой `tauri --version`.
 
 ## Инструкции по запуску и сборке
