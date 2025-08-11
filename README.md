@@ -46,12 +46,14 @@ Multicode V3 — редактор исходного кода, который о
    Скомпилированные бинарные файлы появятся в `frontend/src-tauri/target/release`.
 
 ## Использование CLI
-Бэкенд содержит минимальный интерфейс командной строки. Примеры запуска:
+Бэкенд содержит минимальный интерфейс командной строки для работы с кодом и метаданными. Примеры запуска:
 
 ```
 cargo run -- parse path/to/file.rs --lang rust
 cargo run -- export input.rs output.rs --strip-meta
-cargo run -- metadata path/to/file.rs
+cargo run -- meta list path/to/file.rs
+cargo run -- meta fix path/to/file.rs
+cargo run -- meta remove path/to/file.rs
 ```
 
 ## Добавление модулей

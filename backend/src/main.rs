@@ -19,7 +19,7 @@ use clap::{Parser, Subcommand};
 use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
 use chrono::Utc;
-use meta::{read_all, remove_all, upsert, AiNote, VisualMeta};
+use meta::{fix_all, read_all, remove_all, upsert, AiNote, VisualMeta};
 use parser::{parse, parse_to_blocks, Lang};
 use syn::{File, Item};
 use tauri::State;
@@ -54,8 +54,27 @@ enum Commands {
         #[arg(long)]
         strip_meta: bool,
     },
+    /// Work with metadata comments
+    Meta {
+        #[command(subcommand)]
+        command: MetaCommands,
+    },
+}
+
+#[derive(Subcommand)]
+enum MetaCommands {
     /// Show all metadata comments from a file as JSON
-    Metadata {
+    List {
+        /// Path to the source file
+        path: String,
+    },
+    /// Fix metadata issues like duplicate identifiers
+    Fix {
+        /// Path to the source file
+        path: String,
+    },
+    /// Remove all metadata comments from a file
+    Remove {
         /// Path to the source file
         path: String,
     },
@@ -292,14 +311,26 @@ fn main() {
                 let out = prepare_for_export(&content, strip_meta);
                 std::fs::write(output, out).expect("write file");
             }
-            Commands::Metadata { path } => {
-                let content = std::fs::read_to_string(path).expect("read file");
-                let metas = read_all(&content);
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&metas).expect("serialize metadata")
-                );
-            }
+            Commands::Meta { command } => match command {
+                MetaCommands::List { path } => {
+                    let content = std::fs::read_to_string(path).expect("read file");
+                    let metas = read_all(&content);
+                    println!(
+                        "{}",
+                        serde_json::to_string_pretty(&metas).expect("serialize metadata")
+                    );
+                }
+                MetaCommands::Fix { path } => {
+                    let content = std::fs::read_to_string(&path).expect("read file");
+                    let fixed = fix_all(&content);
+                    std::fs::write(path, fixed).expect("write file");
+                }
+                MetaCommands::Remove { path } => {
+                    let content = std::fs::read_to_string(&path).expect("read file");
+                    let cleaned = remove_all(&content);
+                    std::fs::write(path, cleaned).expect("write file");
+                }
+            },
         }
         return;
     }
