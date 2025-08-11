@@ -154,7 +154,7 @@ fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
         .into_iter()
         .zip(roots.into_iter())
         .map(|(it, id)| {
-            let vid = map.get(&id).cloned().unwrap_or_default();
+            let vid = map.get(&(id as u32)).cloned().unwrap_or_default();
             let pos = metas
                 .iter()
                 .find(|m| m.id == vid)

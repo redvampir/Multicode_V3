@@ -19,7 +19,7 @@ pub fn parse(input: &str) -> Expr {
     parse_or(&tokens, 0).0
 }
 
-fn parse_or(tokens: &[&str], mut pos: usize) -> (Expr, usize) {
+fn parse_or(tokens: &[&str], pos: usize) -> (Expr, usize) {
     let (mut expr, mut i) = parse_and(tokens, pos);
     while i < tokens.len() {
         if tokens[i].eq_ignore_ascii_case("OR") {
@@ -33,8 +33,8 @@ fn parse_or(tokens: &[&str], mut pos: usize) -> (Expr, usize) {
     (expr, i)
 }
 
-fn parse_and(tokens: &[&str], mut pos: usize) -> (Expr, usize) {
-    let (mut expr, mut i) = parse_term(tokens, pos);
+fn parse_and(tokens: &[&str], pos: usize) -> (Expr, usize) {
+    let (expr, mut i) = parse_term(tokens, pos);
     let mut terms = vec![expr];
     while i < tokens.len() {
         if tokens[i].eq_ignore_ascii_case("AND") {

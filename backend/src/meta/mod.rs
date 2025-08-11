@@ -1,6 +1,6 @@
 use chrono::Utc;
 use serde::Serialize;
-use std::collections::{HashMap, HashSet};
+use std::collections::HashSet;
 mod comment_detector;
 pub mod db;
 pub mod id_registry;
@@ -159,7 +159,7 @@ pub fn merge_base_meta(id: &str) -> Option<VisualMeta> {
         Some(meta)
     }
 
-    fn merge_two(mut base: VisualMeta, mut child: VisualMeta) -> VisualMeta {
+    fn merge_two(base: VisualMeta, mut child: VisualMeta) -> VisualMeta {
         for tag in base.tags {
             if !child.tags.contains(&tag) {
                 child.tags.insert(0, tag);
