@@ -51,7 +51,7 @@ pub struct Block {
     /// Identifier linking this node with [`VisualMeta`].
     pub visual_id: String,
     /// Unique identifier of the underlying AST node.
-    pub node_id: usize,
+    pub node_id: u32,
     /// Node kind as reported by tree-sitter.
     pub kind: String,
     /// Byte range of the node within the source.
@@ -70,7 +70,7 @@ pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
     fn walk(node: Node, blocks: &mut Vec<Block>, counter: &mut u64) {
         blocks.push(Block {
             visual_id: counter.to_string(),
-            node_id: node.id(),
+            node_id: node.id() as u32,
             kind: node.kind().to_string(),
             range: node.byte_range(),
         });
