@@ -6,6 +6,7 @@ pub mod db;
 pub mod id_registry;
 pub mod watch;
 mod types;
+pub mod query;
 pub use types::{AiNote, VisualMeta};
 
 /// Marker used to identify visual metadata comments in documents.

@@ -4,11 +4,15 @@ import { exportPNG } from './canvas.js';
 export function createSearchInput(canvas: any) {
   const input = document.createElement('input');
   input.type = 'search';
-  input.placeholder = 'Search';
+  input.placeholder = 'Search (e.g. id:foo AND tag:bar)';
   input.addEventListener('input', () => {
     canvas.search(input.value);
   });
+  const hint = document.createElement('div');
+  hint.textContent = 'Use field:value and combine with AND/OR';
+  hint.className = 'search-hint';
   document.body.appendChild(input);
+  document.body.appendChild(hint);
   return input;
 }
 

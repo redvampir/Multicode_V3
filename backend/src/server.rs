@@ -3,7 +3,7 @@ use axum::extract::ws::Message;
 use axum::{
     extract::{
         ws::{WebSocket, WebSocketUpgrade},
-        Path, State,
+        Path, State, Query as AxumQuery,
     },
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
@@ -43,6 +43,17 @@ struct AppState {
     tx: broadcast::Sender<String>,
     connections: Arc<AtomicUsize>,
     db: SqlitePool,
+}
+
+#[cfg(test)]
+pub fn test_state() -> AppState {
+    use tokio::sync::broadcast;
+    let (tx, _rx) = broadcast::channel(1);
+    AppState {
+        tx,
+        connections: Arc::new(AtomicUsize::new(0)),
+        db: SqlitePool::connect_lazy("sqlite::memory:").expect("mem db"),
+    }
 }
 
 fn auth(headers: &HeaderMap) -> bool {
@@ -133,7 +144,8 @@ pub struct MetadataRequest {
     lang: String,
 }
 
-pub async fn metadata_endpoint(
+/// Insert or update metadata in the database.
+pub async fn metadata_upsert_endpoint(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<MetadataRequest>,
@@ -159,6 +171,51 @@ pub async fn metadata_endpoint(
         ));
     }
     Ok(Json(upsert_meta(req.content, req.meta, req.lang)))
+}
+
+#[derive(Deserialize)]
+struct MetaQuery {
+    q: Option<String>,
+}
+
+/// List metadata entries filtered by query.
+pub async fn metadata_endpoint(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    AxumQuery(params): AxumQuery<MetaQuery>,
+) -> Result<Json<Vec<VisualMeta>>, (StatusCode, Json<ErrorResponse>)> {
+    use crate::meta::query::{matches, parse};
+    if !auth(&headers) {
+        let status = StatusCode::UNAUTHORIZED;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: "Unauthorized".into(),
+            }),
+        ));
+    }
+    let mut metas = match db::list(&state.db).await {
+        Ok(m) => m,
+        Err(e) => {
+            let status = StatusCode::INTERNAL_SERVER_ERROR;
+            return Err((
+                status,
+                Json(ErrorResponse {
+                    code: status.as_u16(),
+                    message: format!("DB error: {e}"),
+                }),
+            ));
+        }
+    };
+    if let Some(q) = params.q.as_deref() {
+        let expr = parse(q);
+        metas = metas
+            .into_iter()
+            .filter(|m| matches(m, &expr))
+            .collect();
+    }
+    Ok(Json(metas))
 }
 
 pub async fn meta_history_endpoint(
@@ -393,7 +450,7 @@ pub async fn run() {
         .route("/ws", get(ws_handler))
         .route("/parse", post(parse_endpoint))
         .route("/export", post(export_endpoint))
-        .route("/metadata", post(metadata_endpoint))
+        .route("/metadata", get(metadata_endpoint).post(metadata_upsert_endpoint))
         .route("/meta/:id/history", get(meta_history_endpoint))
         .route("/meta/:id/rollback", post(meta_rollback_endpoint))
         .route("/plugins", get(plugins_get).post(plugins_update))
