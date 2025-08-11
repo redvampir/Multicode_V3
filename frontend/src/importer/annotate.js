@@ -1,5 +1,6 @@
 import { readTextFile, writeTextFile } from "@tauri-apps/api/fs";
 import { basename, join } from "@tauri-apps/api/path";
+import { EditorView } from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.21.3/dist/index.js";
 import { insertVisualMeta } from "../editor/visual-meta.js";
 
 /**
@@ -15,9 +16,39 @@ import { insertVisualMeta } from "../editor/visual-meta.js";
  * @returns {Promise<string>} Path to the copied file inside the project.
  */
 export async function annotateExternalFile(sourcePath, projectDir, view, lang) {
-  const content = await readTextFile(sourcePath);
-  const fileName = await basename(sourcePath);
-  const destPath = await join(projectDir, fileName);
+  if (typeof sourcePath !== "string") {
+    throw new TypeError("sourcePath must be a string");
+  }
+  if (typeof projectDir !== "string") {
+    throw new TypeError("projectDir must be a string");
+  }
+  if (!(view instanceof EditorView)) {
+    throw new TypeError("view must be an instance of EditorView");
+  }
+  if (typeof lang !== "string") {
+    throw new TypeError("lang must be a string");
+  }
+
+  let content;
+  try {
+    content = await readTextFile(sourcePath);
+  } catch (error) {
+    throw new Error(`Failed to read file at ${sourcePath}: ${error.message}`);
+  }
+
+  let fileName;
+  try {
+    fileName = await basename(sourcePath);
+  } catch (error) {
+    throw new Error(`Failed to get basename for ${sourcePath}: ${error.message}`);
+  }
+
+  let destPath;
+  try {
+    destPath = await join(projectDir, fileName);
+  } catch (error) {
+    throw new Error(`Failed to join path for ${projectDir}: ${error.message}`);
+  }
 
   const meta = {
     id: crypto.randomUUID(),
@@ -27,7 +58,11 @@ export async function annotateExternalFile(sourcePath, projectDir, view, lang) {
     origin: sourcePath,
   };
   const comment = `// @VISUAL_META ${JSON.stringify(meta)}\n`;
-  await writeTextFile(destPath, comment + content);
+  try {
+    await writeTextFile(destPath, comment + content);
+  } catch (error) {
+    throw new Error(`Failed to write file at ${destPath}: ${error.message}`);
+  }
 
   // focus the editor and allow further annotations
   view.focus();
