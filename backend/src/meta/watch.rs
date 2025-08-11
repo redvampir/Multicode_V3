@@ -1,6 +1,6 @@
-use crate::{parse_blocks, BlockInfo};
-use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
-use std::{env, fs, path::PathBuf, sync::mpsc::channel, thread, time::Duration};
+use crate::{parser::parse_blocks, BlockInfo};
+use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Watcher};
+use std::{env, fs, path::PathBuf, sync::mpsc::channel, thread};
 use tokio::sync::broadcast::Sender;
 
 /// Spawn a background thread watching the current directory for changes to
@@ -9,20 +9,27 @@ use tokio::sync::broadcast::Sender;
 /// provided broadcast channel as a JSON string.
 pub fn spawn(tx: Sender<String>) {
     thread::spawn(move || {
-        let (fs_tx, fs_rx) = channel();
-        let mut watcher = watcher(fs_tx, Duration::from_secs(1)).expect("watcher");
+        let (fs_tx, fs_rx) = channel::<Event>();
+        let mut watcher = recommended_watcher(move |res| {
+            if let Ok(event) = res {
+                let _ = fs_tx.send(event);
+            }
+        })
+        .expect("watcher");
         let path = env::current_dir().expect("cwd");
         watcher
             .watch(&path, RecursiveMode::Recursive)
             .expect("watch");
         while let Ok(event) = fs_rx.recv() {
-            if let DebouncedEvent::Write(path) = event {
-                if let Some(src_path) = source_path(&path) {
-                    if let Some(lang) = language_from_path(&src_path) {
-                        if let Ok(content) = fs::read_to_string(&src_path) {
-                            if let Some(blocks) = parse_blocks(content, lang.into()) {
-                                if let Ok(json) = serde_json::to_string(&blocks) {
-                                    let _ = tx.send(json);
+            if let EventKind::Modify(_) = event.kind {
+                if let Some(path) = event.paths.first() {
+                    if let Some(src_path) = source_path(path) {
+                        if let Some(lang) = language_from_path(&src_path) {
+                            if let Ok(content) = fs::read_to_string(&src_path) {
+                                if let Some(blocks) = parse_blocks(content, lang.into()) {
+                                    if let Ok(json) = serde_json::to_string(&blocks) {
+                                        let _ = tx.send(json);
+                                    }
                                 }
                             }
                         }
