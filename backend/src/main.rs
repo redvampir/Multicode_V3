@@ -1,20 +1,15 @@
 use std::collections::HashMap;
 use std::sync::Mutex;
-mod config;
-mod debugger;
-mod export;
-mod git;
-mod meta;
-mod parser;
-mod plugins;
-mod server;
-pub use crate::BlockInfo;
-use crate::blocks::{parse_blocks, to_lang, upsert_meta};
+
+use backend::blocks::{parse_blocks, to_lang, upsert_meta};
+use backend::debugger::{debug_break, debug_run, debug_step};
+use backend::export::prepare_for_export;
+use backend::git;
+use backend::meta::{fix_all, read_all, remove_all, upsert, AiNote, VisualMeta};
+use backend::parser::{parse, parse_to_blocks, Lang};
+use backend::server;
+pub use backend::BlockInfo;
 use clap::{Parser, Subcommand};
-use debugger::{debug_break, debug_run, debug_step};
-use export::prepare_for_export;
-use meta::{fix_all, read_all, remove_all, upsert, AiNote, VisualMeta};
-use parser::{parse, parse_to_blocks, Lang};
 use tauri::State;
 
 #[derive(Default)]
@@ -90,8 +85,6 @@ fn suggest_ai_note(_content: String, _lang: String) -> AiNote {
         hints: Vec::new(),
     }
 }
-
-
 
 #[cfg_attr(not(test), tauri::command)]
 fn export_file(path: String, strip_meta: bool, state: State<EditorState>) -> Result<(), String> {
@@ -244,7 +237,7 @@ mod tests {
         };
         let updated = upsert_meta(src, meta.clone(), "rust".into());
         assert!(updated.contains("@VISUAL_META"));
-        let metas = meta::read_all(&updated);
+        let metas = read_all(&updated);
         assert_eq!(metas.len(), 1);
         assert_eq!(
             metas[0].translations.get("en").map(|s| s.as_str()),
@@ -255,7 +248,7 @@ mod tests {
     #[test]
     fn export_removes_metadata() {
         let src = format!("<!-- @VISUAL_META {{\"id\":\"1\"}} -->\nfn main() {{}}\n");
-        let cleaned = export::prepare_for_export(&src, true);
+        let cleaned = prepare_for_export(&src, true);
         assert!(!cleaned.contains("@VISUAL_META"));
         assert!(cleaned.contains("fn main"));
     }
