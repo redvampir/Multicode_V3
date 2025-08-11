@@ -374,7 +374,9 @@ fn main() {
         .with_ansi(false)
         .init();
     tauri::async_runtime::spawn(async {
-        server::run().await;
+        if let Err(e) = server::run().await {
+            tracing::error!("server error: {e}");
+        }
     });
     tauri::Builder::default()
         .manage(EditorState::default())

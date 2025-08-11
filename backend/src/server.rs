@@ -3,7 +3,7 @@ use axum::extract::ws::Message;
 use axum::{
     extract::{
         ws::{WebSocket, WebSocketUpgrade},
-        Path, State, Query as AxumQuery,
+        Path, Query as AxumQuery, State,
     },
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
@@ -210,10 +210,7 @@ pub async fn metadata_endpoint(
     };
     if let Some(q) = params.q.as_deref() {
         let expr = parse(q);
-        metas = metas
-            .into_iter()
-            .filter(|m| matches(m, &expr))
-            .collect();
+        metas = metas.into_iter().filter(|m| matches(m, &expr)).collect();
     }
     Ok(Json(metas))
 }
@@ -425,7 +422,7 @@ async fn handle_socket(
     connections.fetch_sub(1, Ordering::SeqCst);
 }
 
-pub async fn run() {
+pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cfg = ServerConfig::from_env();
     let _ = SERVER_CONFIG.set(cfg.clone());
 
@@ -437,8 +434,14 @@ pub async fn run() {
         .max_connections(5)
         .connect("sqlite:visual_meta.db")
         .await
-        .expect("connect db");
-    db::init(&db).await.expect("init db");
+        .map_err(|e| {
+            error!("connect db: {e}");
+            e
+        })?;
+    db::init(&db).await.map_err(|e| {
+        error!("init db: {e}");
+        e
+    })?;
 
     watch::spawn(tx.clone());
     let state = AppState {
@@ -450,19 +453,23 @@ pub async fn run() {
         .route("/ws", get(ws_handler))
         .route("/parse", post(parse_endpoint))
         .route("/export", post(export_endpoint))
-        .route("/metadata", get(metadata_endpoint).post(metadata_upsert_endpoint))
+        .route(
+            "/metadata",
+            get(metadata_endpoint).post(metadata_upsert_endpoint),
+        )
         .route("/meta/:id/history", get(meta_history_endpoint))
         .route("/meta/:id/rollback", post(meta_rollback_endpoint))
         .route("/plugins", get(plugins_get).post(plugins_update))
         .route("/suggest_ai_note", post(suggest_endpoint))
         .with_state(state);
 
-    let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port)
-        .parse()
-        .expect("invalid address");
+    let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port).parse().map_err(|e| {
+        error!("invalid address: {e}");
+        e
+    })?;
     info!("Listening on {}", addr);
     let ctrl_c = signal::ctrl_c();
-    if let Err(e) = axum::Server::bind(&addr)
+    axum::Server::bind(&addr)
         .serve(app.into_make_service())
         .with_graceful_shutdown(async move {
             if let Err(e) = ctrl_c.await {
@@ -470,7 +477,9 @@ pub async fn run() {
             }
         })
         .await
-    {
-        error!("server error: {e}");
-    }
+        .map_err(|e| {
+            error!("server error: {e}");
+            e
+        })?;
+    Ok(())
 }
