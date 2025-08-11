@@ -38,8 +38,8 @@ Multicode V3 — редактор исходного кода, который о
      curl https://sh.rustup.rs -sSf | sh
      ```
    - После установки перезапустите терминал и выполните `rustc --version`.
-3. **Tauri CLI**
-   - Проект использует конфигурацию **Tauri v2**. Установите CLI версии 2:
+3. **Tauri CLI и зависимости**
+   - Проект и его зависимости используют **Tauri v2**. Установите CLI версии 2:
      ```bash
      npm install -g @tauri-apps/cli@^2
      ```
@@ -47,9 +47,6 @@ Multicode V3 — редактор исходного кода, который о
      ```bash
      cargo install tauri-cli --version ^2
      ```
-   - Если установлен CLI версии 1, команда `npm run dev` завершится ошибками вида
-     «`identifier` is a required property» и «Additional properties are not allowed».
-     Удалите старую версию и поставьте CLI v2.
    - Проверьте установку командой `tauri --version`.
 4. **Системные библиотеки GTK/GLib**
    - Установите пакеты:
