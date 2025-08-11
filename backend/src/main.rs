@@ -1,17 +1,30 @@
-use std::collections::HashMap;
+#[cfg(not(test))]
 use std::sync::Mutex;
 
+#[cfg(not(test))]
 use backend::blocks::{parse_blocks, to_lang, upsert_meta};
+#[cfg(not(test))]
+use backend::blocks::{__cmd__parse_blocks, __cmd__upsert_meta};
+#[cfg(not(test))]
+use backend::debugger::{__cmd__debug_break, __cmd__debug_run, __cmd__debug_step};
+#[cfg(not(test))]
 use backend::debugger::{debug_break, debug_run, debug_step};
 use backend::export::prepare_for_export;
+#[cfg(not(test))]
 use backend::git;
-use backend::meta::{fix_all, read_all, remove_all, upsert, AiNote, VisualMeta};
-use backend::parser::{parse, parse_to_blocks, Lang};
+use backend::meta::read_all;
+#[cfg(not(test))]
+use backend::meta::{fix_all, remove_all, AiNote};
+#[cfg(not(test))]
+use backend::parser::{parse, parse_to_blocks};
+#[cfg(not(test))]
 use backend::server;
 pub use backend::BlockInfo;
 use clap::{Parser, Subcommand};
+#[cfg(not(test))]
 use tauri::State;
 
+#[cfg(not(test))]
 #[derive(Default)]
 struct EditorState(Mutex<String>);
 
@@ -69,16 +82,19 @@ enum MetaCommands {
 }
 
 #[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 fn save_state(state: State<EditorState>, content: String) {
     *state.0.lock().unwrap() = content;
 }
 
 #[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 fn load_state(state: State<EditorState>) -> String {
     state.0.lock().unwrap().clone()
 }
 
 #[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 fn suggest_ai_note(_content: String, _lang: String) -> AiNote {
     AiNote {
         description: Some("Not implemented".into()),
@@ -87,6 +103,7 @@ fn suggest_ai_note(_content: String, _lang: String) -> AiNote {
 }
 
 #[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 fn export_file(path: String, strip_meta: bool, state: State<EditorState>) -> Result<(), String> {
     let content = state.0.lock().unwrap().clone();
     let out = prepare_for_export(&content, strip_meta);
@@ -94,21 +111,25 @@ fn export_file(path: String, strip_meta: bool, state: State<EditorState>) -> Res
 }
 
 #[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 fn git_commit_cmd(message: String) -> Result<(), String> {
     git::commit(&message).map_err(|e| e.to_string())
 }
 
 #[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 fn git_diff_cmd() -> Result<String, String> {
     git::diff().map_err(|e| e.to_string())
 }
 
 #[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 fn git_branches_cmd() -> Result<Vec<String>, String> {
     git::branches().map_err(|e| e.to_string())
 }
 
 #[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 fn git_log_cmd() -> Result<Vec<String>, String> {
     git::log().map_err(|e| e.to_string())
 }
@@ -174,7 +195,7 @@ fn main() {
             tracing::error!("server error: {e}");
         }
     });
-    tauri::Builder::default()
+    tauri::Builder::<tauri::Wry>::default()
         .manage(EditorState::default())
         .invoke_handler(tauri::generate_handler![
             save_state,
@@ -204,6 +225,8 @@ fn main() {}
 mod tests {
     use super::*;
     use backend::blocks::{parse_blocks, upsert_meta};
+    use backend::meta::VisualMeta;
+    use std::collections::HashMap;
     use chrono::Utc;
 
     #[test]

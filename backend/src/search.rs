@@ -29,9 +29,9 @@ pub fn search_metadata(root: &Path, query: &str) -> Vec<SearchResult> {
             for caps in META_RE.captures_iter(&content) {
                 let json = &caps[1];
                 if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
-                    if serde_json::to_string(&meta).unwrap_or_default().contains(query) {
+                    if meta.id == query {
                         let start = caps.get(0).map(|m| m.start()).unwrap_or(0);
-                        let line = content[..start].lines().count() + 1;
+                        let line = content[..start].chars().filter(|&c| c == '\n').count() + 1;
                         out.push(SearchResult { file: path.to_path_buf(), line, meta });
                     }
                 }
@@ -55,7 +55,7 @@ pub fn search_links(root: &Path, target: &str) -> Vec<SearchResult> {
                 if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
                     if meta.links.iter().any(|l| l == target) {
                         let start = caps.get(0).map(|m| m.start()).unwrap_or(0);
-                        let line = content[..start].lines().count() + 1;
+                        let line = content[..start].chars().filter(|&c| c == '\n').count() + 1;
                         out.push(SearchResult { file: path.to_path_buf(), line, meta });
                     }
                 }
