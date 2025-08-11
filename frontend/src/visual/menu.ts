@@ -1,5 +1,16 @@
-import { hotkeys, showHotkeyHelp, zoomToFit } from './hotkeys';
+import { hotkeys, showHotkeyHelp, zoomToFit, focusSearch } from './hotkeys';
 import { exportPNG } from './canvas.js';
+
+export function createSearchInput(canvas: any) {
+  const input = document.createElement('input');
+  input.type = 'search';
+  input.placeholder = 'Search';
+  input.addEventListener('input', () => {
+    canvas.search(input.value);
+  });
+  document.body.appendChild(input);
+  return input;
+}
 
 export interface MenuItem {
   label: string;
@@ -25,7 +36,7 @@ export const mainMenu: MenuItem[] = [
       { label: 'Сгруппировать', action: () => console.log('group') },
       { label: 'Разгруппировать', action: () => console.log('ungroup') },
       { label: 'Select Connections', action: () => console.log('select'), shortcut: hotkeys.selectConnections },
-      { label: 'Focus Search', action: () => console.log('focus search'), shortcut: hotkeys.focusSearch }
+      { label: 'Focus Search', action: focusSearch, shortcut: hotkeys.focusSearch }
     ]
   },
   {
