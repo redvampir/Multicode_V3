@@ -29,11 +29,13 @@ use std::{
 use tokio::{signal, sync::broadcast, time};
 use tracing::{error, info};
 
+use crate::meta::db;
 use crate::meta::{remove_all, AiNote, VisualMeta};
 use crate::{
     get_plugins_info, parse_blocks, reload_plugins_state, set_plugin_enabled, upsert_meta,
     BlockInfo, PluginInfo,
 };
+use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 
 pub static SERVER_CONFIG: OnceCell<ServerConfig> = OnceCell::new();
 
@@ -44,6 +46,7 @@ const PING_INTERVAL: Duration = Duration::from_secs(30);
 struct AppState {
     tx: broadcast::Sender<String>,
     connections: Arc<AtomicUsize>,
+    db: SqlitePool,
 }
 
 fn auth(headers: &HeaderMap) -> bool {
@@ -84,16 +87,18 @@ pub async fn parse_endpoint(
             }),
         ));
     }
-    parse_blocks(req.content, req.lang).map(Json).ok_or_else(|| {
-        let status = StatusCode::BAD_REQUEST;
-        (
-            status,
-            Json(ErrorResponse {
-                code: status.as_u16(),
-                message: "Bad Request".into(),
-            }),
-        )
-    })
+    parse_blocks(req.content, req.lang)
+        .map(Json)
+        .ok_or_else(|| {
+            let status = StatusCode::BAD_REQUEST;
+            (
+                status,
+                Json(ErrorResponse {
+                    code: status.as_u16(),
+                    message: "Bad Request".into(),
+                }),
+            )
+        })
 }
 
 #[derive(Deserialize)]
@@ -133,6 +138,7 @@ pub struct MetadataRequest {
 }
 
 pub async fn metadata_endpoint(
+    State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<MetadataRequest>,
 ) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
@@ -143,6 +149,16 @@ pub async fn metadata_endpoint(
             Json(ErrorResponse {
                 code: status.as_u16(),
                 message: "Unauthorized".into(),
+            }),
+        ));
+    }
+    if let Err(e) = db::upsert(&state.db, &req.meta).await {
+        let status = StatusCode::INTERNAL_SERVER_ERROR;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: format!("DB error: {e}"),
             }),
         ));
     }
@@ -169,8 +185,7 @@ async fn plugins_update(
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    set_plugin_enabled(req.name, req.enabled)
-        .map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
+    set_plugin_enabled(req.name, req.enabled).map_err(|_| StatusCode::INTERNAL_SERVER_ERROR)?;
     Ok(Json(get_plugins_info()))
 }
 
@@ -289,6 +304,13 @@ pub async fn run() {
 
     let (tx, _rx) = broadcast::channel::<String>(100);
 
+    let db = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect("sqlite:visual_meta.db")
+        .await
+        .expect("connect db");
+    db::init(&db).await.expect("init db");
+
     let watch_tx = tx.clone();
     thread::spawn(move || {
         let (fs_tx, fs_rx) = channel();
@@ -320,6 +342,7 @@ pub async fn run() {
     let state = AppState {
         tx,
         connections: Arc::new(AtomicUsize::new(0)),
+        db,
     };
     let app = Router::new()
         .route("/ws", get(ws_handler))
