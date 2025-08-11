@@ -4,7 +4,7 @@
   "build": {
     "beforeDevCommand": "cargo run --manifest-path ../backend/Cargo.toml",
     "beforeBuildCommand": "cargo build --release --manifest-path ../backend/Cargo.toml",
-    "devUrl": "../dist",
+    "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
   "bundle": {
