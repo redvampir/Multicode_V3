@@ -3,7 +3,7 @@ use axum::extract::ws::Message;
 use axum::{
     extract::{
         ws::{WebSocket, WebSocketUpgrade},
-        State,
+        Path, State,
     },
     http::{HeaderMap, StatusCode},
     response::IntoResponse,
@@ -26,7 +26,7 @@ use tokio::{signal, sync::broadcast, time};
 use tracing::{error, info};
 
 use crate::meta::db;
-use crate::meta::{remove_all, AiNote, VisualMeta, watch};
+use crate::meta::{remove_all, watch, AiNote, VisualMeta};
 use crate::{
     get_plugins_info, parse_blocks, reload_plugins_state, set_plugin_enabled, upsert_meta,
     BlockInfo, PluginInfo,
@@ -159,6 +159,82 @@ pub async fn metadata_endpoint(
         ));
     }
     Ok(Json(upsert_meta(req.content, req.meta, req.lang)))
+}
+
+pub async fn meta_history_endpoint(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+) -> Result<Json<Vec<db::HistoryEntry>>, (StatusCode, Json<ErrorResponse>)> {
+    if !auth(&headers) {
+        let status = StatusCode::UNAUTHORIZED;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: "Unauthorized".into(),
+            }),
+        ));
+    }
+    match db::history(&state.db, &id).await {
+        Ok(hist) => Ok(Json(hist)),
+        Err(e) => {
+            let status = StatusCode::INTERNAL_SERVER_ERROR;
+            Err((
+                status,
+                Json(ErrorResponse {
+                    code: status.as_u16(),
+                    message: format!("DB error: {e}"),
+                }),
+            ))
+        }
+    }
+}
+
+#[derive(Deserialize)]
+pub struct RollbackRequest {
+    timestamp: String,
+}
+
+pub async fn meta_rollback_endpoint(
+    State(state): State<AppState>,
+    headers: HeaderMap,
+    Path(id): Path<String>,
+    Json(req): Json<RollbackRequest>,
+) -> Result<Json<VisualMeta>, (StatusCode, Json<ErrorResponse>)> {
+    if !auth(&headers) {
+        let status = StatusCode::UNAUTHORIZED;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: "Unauthorized".into(),
+            }),
+        ));
+    }
+    match db::rollback(&state.db, &id, &req.timestamp).await {
+        Ok(meta) => Ok(Json(meta)),
+        Err(sqlx::Error::RowNotFound) => {
+            let status = StatusCode::NOT_FOUND;
+            Err((
+                status,
+                Json(ErrorResponse {
+                    code: status.as_u16(),
+                    message: "History entry not found".into(),
+                }),
+            ))
+        }
+        Err(e) => {
+            let status = StatusCode::INTERNAL_SERVER_ERROR;
+            Err((
+                status,
+                Json(ErrorResponse {
+                    code: status.as_u16(),
+                    message: format!("DB error: {e}"),
+                }),
+            ))
+        }
+    }
 }
 
 async fn plugins_get(headers: HeaderMap) -> Result<Json<Vec<PluginInfo>>, StatusCode> {
@@ -318,6 +394,8 @@ pub async fn run() {
         .route("/parse", post(parse_endpoint))
         .route("/export", post(export_endpoint))
         .route("/metadata", post(metadata_endpoint))
+        .route("/meta/:id/history", get(meta_history_endpoint))
+        .route("/meta/:id/rollback", post(meta_rollback_endpoint))
         .route("/plugins", get(plugins_get).post(plugins_update))
         .route("/suggest_ai_note", post(suggest_endpoint))
         .with_state(state);
