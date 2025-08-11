@@ -11,26 +11,22 @@ use axum::{
     Json, Router,
 };
 use futures::{SinkExt, StreamExt};
-use notify::{watcher, DebouncedEvent, RecursiveMode, Watcher};
 use once_cell::sync::OnceCell;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
 use std::{
-    env, fs,
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
-        mpsc::channel,
         Arc,
     },
-    thread,
     time::Duration,
 };
 use tokio::{signal, sync::broadcast, time};
 use tracing::{error, info};
 
 use crate::meta::db;
-use crate::meta::{remove_all, AiNote, VisualMeta};
+use crate::meta::{remove_all, AiNote, VisualMeta, watch};
 use crate::{
     get_plugins_info, parse_blocks, reload_plugins_state, set_plugin_enabled, upsert_meta,
     BlockInfo, PluginInfo,
@@ -311,34 +307,7 @@ pub async fn run() {
         .expect("connect db");
     db::init(&db).await.expect("init db");
 
-    let watch_tx = tx.clone();
-    thread::spawn(move || {
-        let (fs_tx, fs_rx) = channel();
-        let mut watcher = watcher(fs_tx, Duration::from_secs(1)).expect("watcher");
-        let path = env::current_dir().expect("cwd");
-        watcher
-            .watch(&path, RecursiveMode::Recursive)
-            .expect("watch");
-        while let Ok(event) = fs_rx.recv() {
-            if let DebouncedEvent::Write(path) = event {
-                let lang = match path.extension().and_then(|s| s.to_str()) {
-                    Some("rs") => "rust",
-                    Some("py") => "python",
-                    Some("js") => "javascript",
-                    Some("css") => "css",
-                    Some("html") => "html",
-                    _ => continue,
-                };
-                if let Ok(content) = fs::read_to_string(&path) {
-                    if let Some(blocks) = parse_blocks(content, lang.into()) {
-                        if let Ok(json) = serde_json::to_string(&blocks) {
-                            let _ = watch_tx.send(json);
-                        }
-                    }
-                }
-            }
-        }
-    });
+    watch::spawn(tx.clone());
     let state = AppState {
         tx,
         connections: Arc::new(AtomicUsize::new(0)),

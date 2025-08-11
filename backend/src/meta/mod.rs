@@ -4,6 +4,7 @@ use std::collections::{HashMap, HashSet};
 mod comment_detector;
 pub mod db;
 pub mod id_registry;
+pub mod watch;
 mod types;
 pub use types::{AiNote, VisualMeta};
 
