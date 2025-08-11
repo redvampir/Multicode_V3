@@ -74,8 +74,8 @@ impl WasmPlugin {
         let memory = instance.get_memory(&mut store, "memory")?;
 
         // Restrict memory to a single page (64 KiB).
-        let limits = memory.ty(&store).limits();
-        if limits.minimum() > 1 || limits.maximum().map_or(true, |m| m > 1) {
+        let ty = memory.ty(&store);
+        if ty.minimum() > 1 || ty.maximum().map_or(true, |m| m > 1) {
             return None;
         }
 
@@ -86,11 +86,11 @@ impl WasmPlugin {
             func: &str,
         ) -> Option<String> {
             let f = instance
-                .get_typed_func::<(), (i32, i32)>(store, func)
+                .get_typed_func::<(), (i32, i32)>(&mut *store, func)
                 .ok()?;
-            let (ptr, len) = f.call(store, ()).ok()?;
+            let (ptr, len) = f.call(&mut *store, ()).ok()?;
             let data = memory
-                .data(store)
+                .data(&store)
                 .get(ptr as usize..(ptr as usize + len as usize))?;
             String::from_utf8(data.to_vec()).ok()
         }
