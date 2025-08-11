@@ -1,6 +1,10 @@
 {
   "name": "multicode-v3",
   "private": true,
+  "workspaces": [
+    "frontend",
+    "plugins/*"
+  ],
   "scripts": {
     "dev": "npm --prefix frontend run dev"
   }
