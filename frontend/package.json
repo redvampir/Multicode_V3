@@ -6,7 +6,8 @@
     "test": "vitest",
     "tauri": "tauri",
     "dev": "tauri dev",
-    "build": "tauri build"
+    "build": "tauri build",
+    "lint": "npx eslint ."
   },
   "dependencies": {
     "@codemirror/language": "^6.10.1",

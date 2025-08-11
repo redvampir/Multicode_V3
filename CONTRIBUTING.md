@@ -32,8 +32,25 @@ npm run dev
 1. Сделайте форк репозитория и клонируйте его локально.
 2. Создайте новую ветку для своей задачи.
 3. Установите зависимости для frontend и backend.
-4. Запустите тесты: `npm test` и `cargo test`.
-5. Отправьте pull request с описанием изменений.
+4. Перед отправкой PR запустите проверки:
+   - `cargo fmt -- --check` и `cargo clippy` для Rust;
+   - `npm run lint` для JavaScript/TypeScript;
+   - `npm test` и `cargo test`.
+5. Убедитесь, что все команды завершились без ошибок.
+6. Отправьте pull request с описанием изменений.
+
+### Настройка форматеров
+
+- **Rust**: убедитесь, что установлены компоненты `rustfmt` и `clippy`:
+  ```bash
+  rustup component add rustfmt clippy
+  ```
+- **JavaScript/TypeScript**: установите и настройте `eslint` и `prettier`:
+  ```bash
+  cd frontend
+  npm install --save-dev eslint prettier
+  ```
+  Создайте `.eslintrc` и `.prettierrc` по необходимости.
 
 ### Стиль коммитов и оформление PR
 
