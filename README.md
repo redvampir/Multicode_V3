@@ -89,25 +89,65 @@ Multicode V3 — редактор исходного кода, который о
    - Добавьте строку `export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig` в `~/.bashrc` или аналогичный профиль, чтобы переменная сохранялась между сессиями.
 
 ## Инструкции по запуску и сборке
-1. Установите зависимости и выполните тесты:
+1. **Клонирование репозитория**
+   ```bash
+   git clone https://github.com/<user>/Multicode_V3.git
+   cd Multicode_V3
    ```
-   cd frontend && npm install && npm test
-   cd ../backend && cargo test
+2. **Проверка версий Node.js и Rust**
+   ```bash
+   node -v
+   rustc --version
    ```
-2. Запуск режима разработки (после добавления корневого скрипта `dev` доступен из корня репозитория):
-   ```
-   npm run dev
-   ```
-   или из каталога `frontend`:
-   ```
-   cd frontend && npm run dev
-   ```
-3. Сборка десктопного приложения:
-   ```
-   cd frontend
-   npm run build
-   ```
-   Скомпилированные бинарные файлы появятся в `frontend/src-tauri/target/release`.
+3. **Установка зависимостей**
+   - Frontend
+     ```bash
+     cd frontend
+     npm install
+     ```
+   - Backend
+     ```bash
+     cd ../backend
+     cargo build
+     ```
+4. **Запуск в режиме разработки**
+   - Backend отдельно
+     ```bash
+     cd backend
+     cargo run
+     ```
+   - Frontend вместе с бэкендом
+     ```bash
+     cd frontend
+     npm run tauri dev
+     ```
+5. **Сборка релизной версии**
+   - Backend
+     ```bash
+     cd backend
+     cargo build --release
+     ```
+   - Frontend
+     ```bash
+     cd frontend
+     npm run tauri build
+     ```
+     Скомпилированные бинарные файлы появятся в `frontend/src-tauri/target/release`.
+6. **Запуск тестов**
+   - Frontend
+     ```bash
+     cd frontend
+     npm test
+     ```
+   - Backend
+     ```bash
+     cd backend
+     cargo test
+     ```
+
+### Устранение неполадок
+- Ошибки `GTK`/`GLib` или `pkg-config`: установите пакеты `libglib2.0-dev`, `libgtk-3-dev`, `pkg-config` и проверьте `PKG_CONFIG_PATH`.
+- Тесты `npm test` или `cargo test` падают: переустановите зависимости (`npm ci`, `cargo clean && cargo test`) и убедитесь в корректности версий Node.js и Rust.
 
 ## Использование CLI
 Бэкенд содержит минимальный интерфейс командной строки для работы с кодом и метаданными. Примеры запуска:
