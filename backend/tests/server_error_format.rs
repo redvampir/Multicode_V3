@@ -1,10 +1,9 @@
-use axum::http::{HeaderMap, StatusCode};
-use axum::Json;
+use axum::{extract::State, http::{HeaderMap, StatusCode}, Json};
 use backend::config::ServerConfig;
 use backend::meta::{AiNote, VisualMeta};
 use backend::server::{
-    export_endpoint, metadata_endpoint, parse_endpoint, ErrorResponse, ExportRequest,
-    MetadataRequest, ParseRequest, SERVER_CONFIG,
+    export_endpoint, metadata_upsert_endpoint, metadata_endpoint, parse_endpoint, test_state, ErrorResponse,
+    ExportRequest, MetadataRequest, ParseRequest, SERVER_CONFIG,
 };
 use chrono::Utc;
 use std::collections::HashMap;
@@ -82,7 +81,9 @@ async fn metadata_endpoint_unauthorized() {
         },
         lang: "rust".into(),
     };
-    let (status, Json(err)) = metadata_endpoint(headers, Json(req)).await.unwrap_err();
+    let (status, Json(err)) = metadata_upsert_endpoint(State(test_state()), headers, Json(req))
+        .await
+        .unwrap_err();
     assert_eq!(status, StatusCode::UNAUTHORIZED);
     assert_eq!(
         err,
