@@ -36,6 +36,16 @@
     setCanvas(vc);
     registerHotkeys();
 
+    const ws = new WebSocket('ws://localhost:3000/ws');
+    ws.addEventListener('message', ev => {
+      try {
+        const blocks = JSON.parse(ev.data);
+        vc.setBlocks(blocks);
+      } catch (e) {
+        console.error('invalid ws message', e);
+      }
+    });
+
     vc.onBlockMove(async block => {
       if (updateMetaComment(view, { id: block.id, x: block.x, y: block.y })) {
         await invoke('save_state', { content: view.state.doc.toString() });
