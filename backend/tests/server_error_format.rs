@@ -7,6 +7,7 @@ use backend::server::{
     MetadataRequest, ParseRequest, SERVER_CONFIG,
 };
 use std::collections::HashMap;
+use chrono::Utc;
 
 #[tokio::test]
 async fn parse_endpoint_bad_request() {
@@ -72,6 +73,7 @@ async fn metadata_endpoint_unauthorized() {
             origin: None,
             translations: HashMap::new(),
             ai: Some(AiNote::default()),
+            updated_at: Utc::now(),
         },
         lang: "rust".into(),
     };

@@ -7,6 +7,7 @@ export function widgetToCode(widget) {
     kind: widget.kind,
     x: widget.x,
     y: widget.y,
+    updated_at: new Date().toISOString(),
   };
   if (widget.kind === 'button') meta.label = widget.label;
   if (widget.kind === 'text') meta.text = widget.text;

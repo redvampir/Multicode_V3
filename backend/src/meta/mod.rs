@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 mod comment_detector;
@@ -34,14 +35,23 @@ pub struct VisualMeta {
     /// Optional AI-generated note.
     #[serde(default)]
     pub ai: Option<AiNote>,
+    /// Timestamp of the last update.
+    #[serde(default = "default_ts")]
+    pub updated_at: DateTime<Utc>,
+}
+
+fn default_ts() -> DateTime<Utc> {
+    Utc::now()
 }
 
 /// Insert or update a visual metadata comment in `content`.
 ///
 /// The comment will be placed at the top of the document if it does not exist.
 pub fn upsert(content: &str, meta: &VisualMeta) -> String {
+    let mut meta = meta.clone();
+    meta.updated_at = Utc::now();
     let marker = format!("<!-- {} ", MARKER);
-    let serialized = match serde_json::to_string(meta) {
+    let serialized = match serde_json::to_string(&meta) {
         Ok(s) => s,
         Err(_) => return content.to_string(),
     };
@@ -94,6 +104,7 @@ pub fn remove_all(content: &str) -> String {
 mod tests {
     use super::*;
     use std::collections::HashMap;
+    use chrono::Utc;
 
     #[test]
     fn upsert_and_read_roundtrip() {
@@ -107,6 +118,7 @@ mod tests {
                 description: Some("desc".into()),
                 hints: vec!["hint".into()],
             }),
+            updated_at: Utc::now(),
         };
         let content = "fn main() {}";
         let updated = upsert(content, &meta);

@@ -19,6 +19,7 @@ tree-sitter-css = "0.23"
 tree-sitter-html = "0.23"
 tree-sitter-go = "0.23"
 tree-sitter-typescript = "0.23"
+chrono = { version = "0.4", features = ["serde"] }
 syn = { version = "2", features = ["full"] }
 quote = "1"
 prettyplease = "0.2"

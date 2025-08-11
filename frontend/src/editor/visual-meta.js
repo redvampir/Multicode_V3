@@ -4,11 +4,11 @@ import { hoverTooltip } from "https://cdn.jsdelivr.net/npm/@codemirror/language@
 import schema from "./visual-meta-schema.json" with { type: "json" };
 
 const templates = {
-  rust: () => `// @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})}`,
-  javascript: () => `// @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})}`,
-  python: () => `# @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})}`,
-  html: () => `<!-- @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})} -->`,
-  css: () => `/* @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0})} */`,
+  rust: () => `// @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0, updated_at: new Date().toISOString()})}`,
+  javascript: () => `// @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0, updated_at: new Date().toISOString()})}`,
+  python: () => `# @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0, updated_at: new Date().toISOString()})}`,
+  html: () => `<!-- @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0, updated_at: new Date().toISOString()})} -->`,
+  css: () => `/* @VISUAL_META ${JSON.stringify({id: crypto.randomUUID(), x:0, y:0, updated_at: new Date().toISOString()})} */`,
 };
 
 export function insertVisualMeta(view, lang) {
@@ -28,6 +28,7 @@ export function updateMetaComment(view, meta) {
       if (obj.id === meta.id) {
         obj.x = meta.x;
         obj.y = meta.y;
+        obj.updated_at = new Date().toISOString();
         const newJson = JSON.stringify(obj);
         const start = m.index + m[0].indexOf(json);
         const end = start + json.length;

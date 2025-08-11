@@ -19,6 +19,7 @@ use clap::{Parser, Subcommand};
 use debugger::{debug_break, debug_run, debug_step};
 use export::prepare_for_export;
 use meta::{read_all, remove_all, upsert, AiNote, VisualMeta};
+use chrono::Utc;
 use parser::{parse, parse_to_blocks, Lang};
 use syn::{File, Item};
 use tauri::State;
@@ -214,6 +215,7 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
             meta.ai = existing.ai.clone();
         }
     }
+    meta.updated_at = Utc::now();
     metas.retain(|m| m.id != meta.id);
     metas.push(meta);
 
@@ -329,6 +331,7 @@ fn main() {}
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::Utc;
 
     #[test]
     fn parses_source_into_blockinfo() {
@@ -351,6 +354,7 @@ mod tests {
                 m
             },
             ai: None,
+            updated_at: Utc::now(),
         };
         let updated = upsert_meta(src, meta.clone(), "rust".into());
         assert!(updated.contains("@VISUAL_META"));

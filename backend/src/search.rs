@@ -57,8 +57,8 @@ mod tests {
         let dir = tempdir().unwrap();
         let file1 = dir.path().join("a.rs");
         let file2 = dir.path().join("b.rs");
-        fs::write(&file1, "// @VISUAL_META {\"id\":\"one\",\"x\":0,\"y\":0}\n").unwrap();
-        fs::write(&file2, "// @VISUAL_META {\"id\":\"two\",\"x\":0,\"y\":0}\n").unwrap();
+        fs::write(&file1, "// @VISUAL_META {\"id\":\"one\",\"x\":0,\"y\":0,\"updated_at\":\"2024-01-01T00:00:00Z\"}\n").unwrap();
+        fs::write(&file2, "// @VISUAL_META {\"id\":\"two\",\"x\":0,\"y\":0,\"updated_at\":\"2024-01-01T00:00:00Z\"}\n").unwrap();
 
         let res = search_metadata(dir.path(), "one");
         assert_eq!(res.len(), 1);

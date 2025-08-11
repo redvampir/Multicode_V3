@@ -24,6 +24,7 @@ export async function annotateExternalFile(sourcePath, projectDir, view, lang) {
     x: 0,
     y: 0,
     origin: sourcePath,
+    updated_at: new Date().toISOString(),
   };
   const comment = `// @VISUAL_META ${JSON.stringify(meta)}\n`;
   await writeTextFile(destPath, comment + content);
