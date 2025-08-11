@@ -1,5 +1,5 @@
 import { readTextFile, writeTextFile } from "@tauri-apps/api/fs";
-import { basename, join } from "@tauri-apps/api/path";
+import path from "path";
 import { EditorView } from "https://cdn.jsdelivr.net/npm/@codemirror/view@6.21.3/dist/index.js";
 import { insertVisualMeta } from "../editor/visual-meta.js";
 
@@ -29,25 +29,30 @@ export async function annotateExternalFile(sourcePath, projectDir, view, lang) {
     throw new TypeError("lang must be a string");
   }
 
+  const normalizedProjectDir = path.resolve(projectDir);
+  const normalizedSourcePath = path.resolve(sourcePath);
+
+  const isInsideProject = (targetPath) => {
+    const relative = path.relative(normalizedProjectDir, targetPath);
+    return !relative.startsWith("..") && !path.isAbsolute(relative);
+  };
+
+  if (!isInsideProject(normalizedSourcePath)) {
+    throw new Error("sourcePath is outside of projectDir");
+  }
+
+  const fileName = path.basename(normalizedSourcePath);
+  const destPath = path.resolve(normalizedProjectDir, fileName);
+
+  if (!isInsideProject(destPath)) {
+    throw new Error("destPath is outside of projectDir");
+  }
+
   let content;
   try {
-    content = await readTextFile(sourcePath);
+    content = await readTextFile(normalizedSourcePath);
   } catch (error) {
-    throw new Error(`Failed to read file at ${sourcePath}: ${error.message}`);
-  }
-
-  let fileName;
-  try {
-    fileName = await basename(sourcePath);
-  } catch (error) {
-    throw new Error(`Failed to get basename for ${sourcePath}: ${error.message}`);
-  }
-
-  let destPath;
-  try {
-    destPath = await join(projectDir, fileName);
-  } catch (error) {
-    throw new Error(`Failed to join path for ${projectDir}: ${error.message}`);
+    throw new Error(`Failed to read file at ${normalizedSourcePath}: ${error.message}`);
   }
 
   const meta = {
@@ -55,7 +60,7 @@ export async function annotateExternalFile(sourcePath, projectDir, view, lang) {
     version: 1,
     x: 0,
     y: 0,
-    origin: sourcePath,
+    origin: normalizedSourcePath,
   };
   const comment = `// @VISUAL_META ${JSON.stringify(meta)}\n`;
   try {
