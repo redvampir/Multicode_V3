@@ -35,6 +35,7 @@ use crate::{
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 
 pub static SERVER_CONFIG: OnceCell<ServerConfig> = OnceCell::new();
+pub static HTTP_CLIENT: OnceCell<Client> = OnceCell::new();
 
 const MAX_CONNECTIONS: usize = 100;
 const PING_INTERVAL: Duration = Duration::from_secs(30);
@@ -394,14 +395,25 @@ async fn suggest_endpoint(
         )
     })?;
 
-    let client = Client::new();
+    let client = HTTP_CLIENT.get().ok_or_else(|| {
+        let status = StatusCode::INTERNAL_SERVER_ERROR;
+        (
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: "Internal Server Error".into(),
+            }),
+        )
+    })?;
+    let url = format!("{}/suggest", cfg.api_base_url);
     let note = client
-        .post("https://api.example.com/suggest")
+        .post(&url)
         .header("Authorization", format!("Bearer {}", api_key))
         .json(&req)
         .send()
         .await
-        .map_err(|_| {
+        .map_err(|e| {
+            error!("network error: {e}");
             let status = StatusCode::BAD_GATEWAY;
             (
                 status,
@@ -413,7 +425,8 @@ async fn suggest_endpoint(
         })?
         .json::<AiNote>()
         .await
-        .map_err(|_| {
+        .map_err(|e| {
+            error!("network error: {e}");
             let status = StatusCode::BAD_GATEWAY;
             (
                 status,
@@ -501,6 +514,16 @@ async fn handle_socket(
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     let cfg = ServerConfig::from_env();
     let _ = SERVER_CONFIG.set(cfg.clone());
+
+    let client = Client::builder()
+        .connect_timeout(Duration::from_secs(cfg.connect_timeout_secs))
+        .timeout(Duration::from_secs(cfg.request_timeout_secs))
+        .build()
+        .map_err(|e| {
+            error!("build client: {e}");
+            e
+        })?;
+    let _ = HTTP_CLIENT.set(client);
 
     reload_plugins_state();
 
