@@ -13,7 +13,7 @@ pub use types::{AiNote, VisualMeta};
 const MARKER: &str = "@VISUAL_META";
 
 fn migrate(meta: &mut VisualMeta) {
-    if meta.version == 0 {
+    if meta.version < 1 {
         meta.version = 1;
     }
 }
