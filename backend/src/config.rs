@@ -7,6 +7,9 @@ pub struct ServerConfig {
     pub port: u16,
     pub token: Option<String>,
     pub api_key: Option<String>,
+    pub api_base_url: String,
+    pub connect_timeout_secs: u64,
+    pub request_timeout_secs: u64,
     /// Disable authentication (debug builds only)
     pub disable_auth: bool,
 }
@@ -18,6 +21,9 @@ impl Default for ServerConfig {
             port: 3001,
             token: None,
             api_key: None,
+            api_base_url: "https://api.example.com".into(),
+            connect_timeout_secs: 5,
+            request_timeout_secs: 30,
             disable_auth: false,
         }
     }
