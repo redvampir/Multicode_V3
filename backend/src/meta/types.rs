@@ -4,8 +4,11 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
 
+/// Начальное значение версии схемы метаданных.
+pub const DEFAULT_VERSION: u32 = 1;
+
 fn default_version() -> u32 {
-    1
+    DEFAULT_VERSION
 }
 
 /// Additional notes provided by AI.

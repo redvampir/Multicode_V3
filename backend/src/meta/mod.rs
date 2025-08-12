@@ -7,14 +7,14 @@ pub mod id_registry;
 pub mod watch;
 mod types;
 pub mod query;
-pub use types::{AiNote, VisualMeta};
+pub use types::{AiNote, VisualMeta, DEFAULT_VERSION};
 
 /// Marker used to identify visual metadata comments in documents.
 const MARKER: &str = "@VISUAL_META";
 
 fn migrate(meta: &mut VisualMeta) {
-    if meta.version < 1 {
-        meta.version = 1;
+    if meta.version < DEFAULT_VERSION {
+        meta.version = DEFAULT_VERSION;
     }
 }
 
