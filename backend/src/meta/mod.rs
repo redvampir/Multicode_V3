@@ -1,6 +1,8 @@
 use chrono::Utc;
+use once_cell::sync::Lazy;
 use serde::Serialize;
 use std::collections::HashSet;
+use std::sync::Mutex;
 mod comment_detector;
 pub mod db;
 pub mod id_registry;
@@ -11,6 +13,16 @@ pub use types::{AiNote, VisualMeta, DEFAULT_VERSION};
 
 /// Marker used to identify visual metadata comments in documents.
 const MARKER: &str = "@VISUAL_META";
+
+/// Mutex used to serialize access to the global [`id_registry`].
+///
+/// Functions like [`read_all`] modify the registry by clearing and
+/// repopulating it, which can race when called from multiple threads.
+/// The tests execute in parallel and previously could interleave these
+/// operations, leaving the registry in an inconsistent state and causing
+/// lookups to fail. By guarding the entire `read_all` operation we ensure
+/// that each call has exclusive access to the registry.
+static REGISTRY_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 fn migrate(meta: &mut VisualMeta) {
     if meta.version < DEFAULT_VERSION {
@@ -128,6 +140,10 @@ pub fn upsert(content: &str, meta: &VisualMeta) -> String {
 
 /// Read all visual metadata comments from `content`.
 pub fn read_all(content: &str) -> Vec<VisualMeta> {
+    // Serialize access so that the registry isn't cleared while another
+    // thread is using it, which previously could result in missing metadata
+    // entries and test flakiness.
+    let _guard = REGISTRY_LOCK.lock().unwrap();
     id_registry::clear();
     let mut ids = Vec::new();
     for json in comment_detector::extract_json(content) {
