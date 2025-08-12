@@ -1,10 +1,9 @@
-#[cfg(not(test))]
 use std::sync::Mutex;
 
 #[cfg(not(test))]
-use backend::blocks::{parse_blocks, to_lang, upsert_meta};
-#[cfg(not(test))]
 use backend::blocks::{__cmd__parse_blocks, __cmd__upsert_meta};
+#[cfg(not(test))]
+use backend::blocks::{parse_blocks, to_lang, upsert_meta};
 #[cfg(not(test))]
 use backend::debugger::{__cmd__debug_break, __cmd__debug_run, __cmd__debug_step};
 #[cfg(not(test))]
@@ -81,16 +80,33 @@ enum MetaCommands {
     },
 }
 
-#[cfg_attr(not(test), tauri::command)]
-#[cfg(not(test))]
-fn save_state(state: State<EditorState>, content: String) {
-    *state.0.lock().unwrap() = content;
+fn save_state_inner(state: &Mutex<String>, content: String) -> Result<(), String> {
+    match state.lock() {
+        Ok(mut guard) => {
+            *guard = content;
+            Ok(())
+        }
+        Err(e) => Err(e.to_string()),
+    }
 }
 
 #[cfg_attr(not(test), tauri::command)]
 #[cfg(not(test))]
-fn load_state(state: State<EditorState>) -> String {
-    state.0.lock().unwrap().clone()
+fn save_state(state: State<EditorState>, content: String) -> Result<(), String> {
+    save_state_inner(&state.0, content)
+}
+
+fn load_state_inner(state: &Mutex<String>) -> Result<String, String> {
+    match state.lock() {
+        Ok(guard) => Ok(guard.clone()),
+        Err(e) => Err(e.to_string()),
+    }
+}
+
+#[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
+fn load_state(state: State<EditorState>) -> Result<String, String> {
+    load_state_inner(&state.0)
 }
 
 #[cfg_attr(not(test), tauri::command)]
@@ -102,12 +118,19 @@ fn suggest_ai_note(_content: String, _lang: String) -> AiNote {
     }
 }
 
+fn export_file_inner(path: String, strip_meta: bool, state: &Mutex<String>) -> Result<(), String> {
+    let content = match state.lock() {
+        Ok(guard) => guard.clone(),
+        Err(e) => return Err(e.to_string()),
+    };
+    let out = prepare_for_export(&content, strip_meta);
+    std::fs::write(path, out).map_err(|e| e.to_string())
+}
+
 #[cfg_attr(not(test), tauri::command)]
 #[cfg(not(test))]
 fn export_file(path: String, strip_meta: bool, state: State<EditorState>) -> Result<(), String> {
-    let content = state.0.lock().unwrap().clone();
-    let out = prepare_for_export(&content, strip_meta);
-    std::fs::write(path, out).map_err(|e| e.to_string())
+    export_file_inner(path, strip_meta, &state.0)
 }
 
 #[cfg_attr(not(test), tauri::command)]
@@ -226,8 +249,8 @@ mod tests {
     use super::*;
     use backend::blocks::{parse_blocks, upsert_meta};
     use backend::meta::VisualMeta;
-    use std::collections::HashMap;
     use chrono::Utc;
+    use std::collections::HashMap;
 
     #[test]
     fn parses_source_into_blockinfo() {
@@ -274,5 +297,22 @@ mod tests {
         let cleaned = prepare_for_export(&src, true);
         assert!(!cleaned.contains("@VISUAL_META"));
         assert!(cleaned.contains("fn main"));
+    }
+    #[test]
+    fn state_lock_poisoned_returns_err() {
+        use std::sync::{Arc, Mutex};
+        let state = Arc::new(Mutex::new(String::new()));
+        let poisoned = Arc::clone(&state);
+        let _ = std::thread::spawn(move || {
+            let _lock = poisoned.lock().unwrap();
+            panic!("poison");
+        })
+        .join();
+        let path = std::env::temp_dir().join("export.txt");
+        assert!(save_state_inner(state.as_ref(), "data".into()).is_err());
+        assert!(load_state_inner(state.as_ref()).is_err());
+        assert!(
+            export_file_inner(path.to_string_lossy().to_string(), false, state.as_ref()).is_err()
+        );
     }
 }
