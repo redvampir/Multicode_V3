@@ -3,19 +3,25 @@ use std::collections::{hash_map::DefaultHasher, HashMap};
 use std::hash::{Hash, Hasher};
 
 use chrono::Utc;
-use tree_sitter::{InputEdit, Point};
 use syn::{File, Item};
+use tree_sitter::{InputEdit, Point};
 
 use crate::{
-    get_cached_blocks, get_document_tree, update_block_cache, update_document_tree, BlockInfo,
-    i18n,
+    get_cached_blocks, get_document_tree, i18n,
     meta::{read_all, remove_all, upsert, VisualMeta},
     parser::{parse, parse_to_blocks, Lang},
+    update_block_cache, update_document_tree, BlockInfo,
 };
 
 #[cfg_attr(not(test), tauri::command)]
 pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
-    let lang = to_lang(&lang)?;
+    let lang = match to_lang(&lang) {
+        Some(l) => l,
+        None => {
+            tracing::error!("unsupported language: {}", lang);
+            return None;
+        }
+    };
     let mut hasher = DefaultHasher::new();
     content.hash(&mut hasher);
     let key = hasher.finish().to_string();
@@ -116,10 +122,18 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
     metas.push(meta);
 
     let cleaned = remove_all(&content);
-    let lang = to_lang(&lang).unwrap_or(Lang::Rust);
+    let lang = match to_lang(&lang) {
+        Some(l) => l,
+        None => {
+            tracing::error!("unsupported language: {}", lang);
+            return metas.into_iter().fold(cleaned, |acc, m| upsert(&acc, &m));
+        }
+    };
     let regenerated = regenerate_code(&cleaned, lang, &metas).unwrap_or(cleaned);
 
-    metas.into_iter().fold(regenerated, |acc, m| upsert(&acc, &m))
+    metas
+        .into_iter()
+        .fold(regenerated, |acc, m| upsert(&acc, &m))
 }
 
 fn regenerate_code(content: &str, lang: Lang, metas: &[VisualMeta]) -> Option<String> {
@@ -200,4 +214,3 @@ fn normalize_kind(kind: &str) -> String {
         kind.to_string()
     }
 }
-
