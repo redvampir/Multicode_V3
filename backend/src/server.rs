@@ -339,12 +339,12 @@ async fn plugins_get(headers: HeaderMap) -> Result<Json<Vec<PluginInfo>>, Status
 }
 
 #[derive(Deserialize)]
-struct PluginToggle {
-    name: String,
-    enabled: bool,
+pub struct PluginToggle {
+    pub name: String,
+    pub enabled: bool,
 }
 
-async fn plugins_update(
+pub async fn plugins_update(
     headers: HeaderMap,
     Json(req): Json<PluginToggle>,
 ) -> Result<Json<Vec<PluginInfo>>, StatusCode> {
