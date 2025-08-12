@@ -23,12 +23,13 @@ use std::{
     time::Duration,
 };
 use tokio::{signal, sync::broadcast, time};
+use tower_http::limit::RequestBodyLimitLayer;
 use tracing::{error, info};
 
 use crate::meta::db;
 use crate::meta::{remove_all, watch, AiNote, VisualMeta};
 use crate::{
-    blocks::{parse_blocks, upsert_meta},
+    blocks::{parse_blocks, to_lang, upsert_meta},
     get_plugins_info, reload_plugins_state, set_plugin_enabled, BlockInfo, PluginInfo,
 };
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
@@ -37,6 +38,7 @@ pub static SERVER_CONFIG: OnceCell<ServerConfig> = OnceCell::new();
 
 const MAX_CONNECTIONS: usize = 100;
 const PING_INTERVAL: Duration = Duration::from_secs(30);
+const MAX_BODY_SIZE: usize = 1024 * 1024; // 1 MiB
 
 #[derive(Clone)]
 pub struct AppState {
@@ -97,6 +99,16 @@ pub async fn parse_endpoint(
             Json(ErrorResponse {
                 code: status.as_u16(),
                 message: "Unauthorized".into(),
+            }),
+        ));
+    }
+    if to_lang(&req.lang).is_none() {
+        let status = StatusCode::BAD_REQUEST;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: format!("Unsupported language: {}", req.lang),
             }),
         ));
     }
@@ -163,6 +175,16 @@ pub async fn metadata_upsert_endpoint(
             Json(ErrorResponse {
                 code: status.as_u16(),
                 message: "Unauthorized".into(),
+            }),
+        ));
+    }
+    if to_lang(&req.lang).is_none() {
+        let status = StatusCode::BAD_REQUEST;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: format!("Unsupported language: {}", req.lang),
             }),
         ));
     }
@@ -330,17 +352,47 @@ struct SuggestRequest {
 async fn suggest_endpoint(
     headers: HeaderMap,
     Json(req): Json<SuggestRequest>,
-) -> Result<Json<AiNote>, StatusCode> {
+) -> Result<Json<AiNote>, (StatusCode, Json<ErrorResponse>)> {
     if !auth(&headers) {
-        return Err(StatusCode::UNAUTHORIZED);
+        let status = StatusCode::UNAUTHORIZED;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: "Unauthorized".into(),
+            }),
+        ));
     }
-    let cfg = SERVER_CONFIG
-        .get()
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
-    let api_key = cfg
-        .api_key
-        .as_deref()
-        .ok_or(StatusCode::INTERNAL_SERVER_ERROR)?;
+    if to_lang(&req.lang).is_none() {
+        let status = StatusCode::BAD_REQUEST;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: format!("Unsupported language: {}", req.lang),
+            }),
+        ));
+    }
+    let cfg = SERVER_CONFIG.get().ok_or_else(|| {
+        let status = StatusCode::INTERNAL_SERVER_ERROR;
+        (
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: "Internal Server Error".into(),
+            }),
+        )
+    })?;
+    let api_key = cfg.api_key.as_deref().ok_or_else(|| {
+        let status = StatusCode::INTERNAL_SERVER_ERROR;
+        (
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: "Internal Server Error".into(),
+            }),
+        )
+    })?;
 
     let client = Client::new();
     let note = client
@@ -349,10 +401,28 @@ async fn suggest_endpoint(
         .json(&req)
         .send()
         .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?
+        .map_err(|_| {
+            let status = StatusCode::BAD_GATEWAY;
+            (
+                status,
+                Json(ErrorResponse {
+                    code: status.as_u16(),
+                    message: "Bad Gateway".into(),
+                }),
+            )
+        })?
         .json::<AiNote>()
         .await
-        .map_err(|_| StatusCode::BAD_GATEWAY)?;
+        .map_err(|_| {
+            let status = StatusCode::BAD_GATEWAY;
+            (
+                status,
+                Json(ErrorResponse {
+                    code: status.as_u16(),
+                    message: "Bad Gateway".into(),
+                }),
+            )
+        })?;
 
     Ok(Json(note))
 }
@@ -467,6 +537,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/meta/:id/rollback", post(meta_rollback_endpoint))
         .route("/plugins", get(plugins_get).post(plugins_update))
         .route("/suggest_ai_note", post(suggest_endpoint))
+        .layer(RequestBodyLimitLayer::new(MAX_BODY_SIZE))
         .with_state(state);
 
     let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port).parse().map_err(|e| {
