@@ -4,9 +4,9 @@ use std::collections::HashSet;
 mod comment_detector;
 pub mod db;
 pub mod id_registry;
-pub mod watch;
-mod types;
 pub mod query;
+mod types;
+pub mod watch;
 pub use types::{AiNote, VisualMeta, DEFAULT_VERSION};
 
 /// Marker used to identify visual metadata comments in documents.
@@ -160,16 +160,25 @@ pub fn merge_base_meta(id: &str) -> Option<VisualMeta> {
     }
 
     fn merge_two(base: VisualMeta, mut child: VisualMeta) -> VisualMeta {
-        for tag in base.tags {
-            if !child.tags.contains(&tag) {
-                child.tags.insert(0, tag);
-            }
-        }
-        for link in base.links {
-            if !child.links.contains(&link) {
-                child.links.insert(0, link);
-            }
-        }
+        child.tags =
+            base.tags
+                .into_iter()
+                .chain(child.tags.into_iter())
+                .fold(Vec::new(), |mut acc, tag| {
+                    if !acc.contains(&tag) {
+                        acc.push(tag);
+                    }
+                    acc
+                });
+        child.links = base.links.into_iter().chain(child.links.into_iter()).fold(
+            Vec::new(),
+            |mut acc, link| {
+                if !acc.contains(&link) {
+                    acc.push(link);
+                }
+                acc
+            },
+        );
         if child.origin.is_none() {
             child.origin = base.origin;
         }
