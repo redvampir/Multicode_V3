@@ -361,3 +361,16 @@ cargo build --target wasm32-unknown-unknown --release
 
 ## Лицензия
 Проект распространяется по лицензии MIT. Полный текст приведён в файле [LICENSE](LICENSE).
+
+## Ручное тестирование
+
+Сценарии ручной проверки описаны в [NODE_EDITOR_MANUAL_TESTS.md](NODE_EDITOR_MANUAL_TESTS.md).
+
+1. Выполните `npm run dev`.
+2. После запуска приложения следуйте шагам из документа.
+
+Например, чтобы открыть приложение с тестовым файлом `examples/test.js`:
+
+```bash
+npm run dev -- examples/test.js
+```
