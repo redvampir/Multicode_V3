@@ -1,5 +1,7 @@
-use std::path::Path;
 use std::sync::Mutex;
+
+#[cfg(not(test))]
+use std::path::Path;
 
 #[cfg(not(test))]
 use backend::blocks::{__cmd__parse_blocks, __cmd__upsert_meta};
