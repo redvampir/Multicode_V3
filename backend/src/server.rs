@@ -23,7 +23,7 @@ use std::{
     time::Duration,
 };
 use tokio::{signal, sync::broadcast, time};
-use tower::limit::RateLimitLayer;
+use tower::limit::ConcurrencyLimitLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::{error, info};
 
@@ -620,9 +620,8 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/plugins", get(plugins_get).post(plugins_update))
         .route("/suggest_ai_note", post(suggest_endpoint))
         .layer(RequestBodyLimitLayer::new(cfg.max_body_size))
-        .layer(RateLimitLayer::new(
-            cfg.max_requests_per_second,
-            Duration::from_secs(1),
+        .layer(ConcurrencyLimitLayer::new(
+            cfg.max_requests_per_second as usize,
         ))
         .with_state(state);
 
