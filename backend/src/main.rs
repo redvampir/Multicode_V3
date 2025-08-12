@@ -1,3 +1,4 @@
+use std::path::Path;
 use std::sync::Mutex;
 
 #[cfg(not(test))]
@@ -161,12 +162,17 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
 fn handle_cli_command(command: Commands) -> Result<(), String> {
     match command {
         Commands::Parse { path, lang } => {
+            if !Path::new(&path).exists() {
+                return Err(format!("File {path} does not exist"));
+            }
             let content = std::fs::read_to_string(&path)
                 .map_err(|e| format!("Failed to read file {path}: {e}"))?;
-            let lang = to_lang(&lang)
-                .ok_or_else(|| format!("Unknown language: {lang}"))?;
-            let tree = parse(&content, lang, None)
-                .ok_or_else(|| format!("Failed to parse {path}"))?;
+            let lang = match to_lang(&lang) {
+                Some(l) => l,
+                None => return Err(format!("Unknown language: {lang}")),
+            };
+            let tree =
+                parse(&content, lang, None).ok_or_else(|| format!("Failed to parse {path}"))?;
             let blocks = parse_to_blocks(&tree);
             let json = serde_json::to_string_pretty(&blocks)
                 .map_err(|e| format!("Failed to serialize blocks: {e}"))?;
@@ -178,6 +184,9 @@ fn handle_cli_command(command: Commands) -> Result<(), String> {
             output,
             strip_meta,
         } => {
+            if !Path::new(&input).exists() {
+                return Err(format!("File {input} does not exist"));
+            }
             let content = std::fs::read_to_string(&input)
                 .map_err(|e| format!("Failed to read file {input}: {e}"))?;
             let out = prepare_for_export(&content, strip_meta);
@@ -187,6 +196,9 @@ fn handle_cli_command(command: Commands) -> Result<(), String> {
         }
         Commands::Meta { command } => match command {
             MetaCommands::List { path } => {
+                if !Path::new(&path).exists() {
+                    return Err(format!("File {path} does not exist"));
+                }
                 let content = std::fs::read_to_string(&path)
                     .map_err(|e| format!("Failed to read file {path}: {e}"))?;
                 let metas = read_all(&content);
@@ -196,6 +208,9 @@ fn handle_cli_command(command: Commands) -> Result<(), String> {
                 Ok(())
             }
             MetaCommands::Fix { path } => {
+                if !Path::new(&path).exists() {
+                    return Err(format!("File {path} does not exist"));
+                }
                 let content = std::fs::read_to_string(&path)
                     .map_err(|e| format!("Failed to read file {path}: {e}"))?;
                 let fixed = fix_all(&content);
@@ -204,6 +219,9 @@ fn handle_cli_command(command: Commands) -> Result<(), String> {
                 Ok(())
             }
             MetaCommands::Remove { path } => {
+                if !Path::new(&path).exists() {
+                    return Err(format!("File {path} does not exist"));
+                }
                 let content = std::fs::read_to_string(&path)
                     .map_err(|e| format!("Failed to read file {path}: {e}"))?;
                 let cleaned = remove_all(&content);
