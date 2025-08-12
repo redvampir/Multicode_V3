@@ -478,34 +478,43 @@ export class VisualCanvas {
   }
 
   updateAlignGuides() {
-    const lines = [];
     if (!this.dragged) {
-      this.alignGuides = lines;
+      this.alignGuides = [];
       return;
     }
+
     const threshold = 5;
     const d = this.dragged;
+
+    // Potential x and y lines for the dragged block (left, center, right / top, middle, bottom)
     const dxs = [d.x, d.x + d.w / 2, d.x + d.w];
     const dys = [d.y, d.y + d.h / 2, d.y + d.h];
+
+    const vSet = new Set();
+    const hSet = new Set();
+
     for (const b of this.blocks) {
       if (b === d) continue;
       const bx = [b.x, b.x + b.w / 2, b.x + b.w];
       const by = [b.y, b.y + b.h / 2, b.y + b.h];
+
       for (const x1 of dxs) {
         for (const x2 of bx) {
-          if (Math.abs(x1 - x2) < threshold) {
-            lines.push({ type: 'v', x: x2 });
-          }
+          if (Math.abs(x1 - x2) < threshold) vSet.add(x2);
         }
       }
+
       for (const y1 of dys) {
         for (const y2 of by) {
-          if (Math.abs(y1 - y2) < threshold) {
-            lines.push({ type: 'h', y: y2 });
-          }
+          if (Math.abs(y1 - y2) < threshold) hSet.add(y2);
         }
       }
     }
+
+    const lines = [
+      ...Array.from(vSet, x => ({ type: 'v', x })),
+      ...Array.from(hSet, y => ({ type: 'h', y })),
+    ];
     this.alignGuides = lines;
   }
 
