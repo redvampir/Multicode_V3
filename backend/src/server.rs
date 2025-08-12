@@ -37,14 +37,15 @@ use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 pub static SERVER_CONFIG: OnceCell<ServerConfig> = OnceCell::new();
 pub static HTTP_CLIENT: OnceCell<Client> = OnceCell::new();
 
-const MAX_CONNECTIONS: usize = 100;
+pub const MAX_CONNECTIONS: usize = 100;
 const PING_INTERVAL: Duration = Duration::from_secs(30);
+const IO_TIMEOUT: Duration = Duration::from_secs(5);
 const MAX_BODY_SIZE: usize = 1024 * 1024; // 1 MiB
 
 #[derive(Clone)]
 pub struct AppState {
     tx: broadcast::Sender<String>,
-    connections: Arc<AtomicUsize>,
+    pub connections: Arc<AtomicUsize>,
     db: SqlitePool,
 }
 
@@ -55,6 +56,16 @@ pub fn test_state() -> AppState {
         tx,
         connections: Arc::new(AtomicUsize::new(0)),
         db: SqlitePool::connect_lazy("sqlite::memory:").expect("mem db"),
+    }
+}
+
+fn check_connection_limit(connections: &Arc<AtomicUsize>) -> Result<(), StatusCode> {
+    let current = connections.fetch_add(1, Ordering::SeqCst);
+    if current >= MAX_CONNECTIONS {
+        connections.fetch_sub(1, Ordering::SeqCst);
+        Err(StatusCode::SERVICE_UNAVAILABLE)
+    } else {
+        Ok(())
     }
 }
 
@@ -440,7 +451,7 @@ async fn suggest_endpoint(
     Ok(Json(note))
 }
 
-async fn ws_handler(
+pub async fn ws_handler(
     headers: HeaderMap,
     ws: WebSocketUpgrade,
     State(state): State<AppState>,
@@ -448,11 +459,7 @@ async fn ws_handler(
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
     }
-    let current = state.connections.fetch_add(1, Ordering::SeqCst);
-    if current >= MAX_CONNECTIONS {
-        state.connections.fetch_sub(1, Ordering::SeqCst);
-        return Err(StatusCode::SERVICE_UNAVAILABLE);
-    }
+    check_connection_limit(&state.connections)?;
     Ok(ws.on_upgrade(move |socket| {
         handle_socket(socket, state.tx.clone(), state.connections.clone())
     }))
@@ -470,15 +477,23 @@ async fn handle_socket(
     let pong_flag = awaiting_pong.clone();
 
     tokio::spawn(async move {
-        while let Some(Ok(msg)) = receiver.next().await {
-            match msg {
-                Message::Text(text) => {
-                    let _ = tx_incoming.send(text);
+        while let Some(result) = receiver.next().await {
+            match result {
+                Ok(msg) => match msg {
+                    Message::Text(text) => {
+                        if let Err(e) = tx_incoming.send(text) {
+                            error!("broadcast send error: {e}");
+                        }
+                    }
+                    Message::Pong(_) => {
+                        pong_flag.store(false, Ordering::SeqCst);
+                    }
+                    _ => {}
+                },
+                Err(e) => {
+                    error!("websocket receive error: {e}");
+                    break;
                 }
-                Message::Pong(_) => {
-                    pong_flag.store(false, Ordering::SeqCst);
-                }
-                _ => {}
             }
         }
     });
@@ -488,27 +503,71 @@ async fn handle_socket(
         tokio::select! {
             _ = interval.tick() => {
                 if awaiting_pong.swap(true, Ordering::SeqCst) {
-                    let _ = sender.send(Message::Close(None)).await;
+                    match time::timeout(IO_TIMEOUT, sender.send(Message::Close(None))).await {
+                        Ok(Ok(_)) => {}
+                        Ok(Err(e)) => error!("failed to send close frame: {e}"),
+                        Err(e) => error!("timeout sending close frame: {e}"),
+                    }
                     break;
                 }
-                if sender.send(Message::Ping(Vec::new())).await.is_err() {
-                    break;
+                match time::timeout(IO_TIMEOUT, sender.send(Message::Ping(Vec::new()))).await {
+                    Ok(Ok(_)) => {}
+                    Ok(Err(e)) => {
+                        error!("failed to send ping: {e}");
+                        break;
+                    }
+                    Err(e) => {
+                        error!("timeout sending ping: {e}");
+                        break;
+                    }
                 }
             }
-            msg = rx.recv() => {
+            msg = time::timeout(IO_TIMEOUT, rx.recv()) => {
                 match msg {
-                    Ok(msg) => {
-                        if sender.send(Message::Text(msg)).await.is_err() {
-                            break;
+                    Ok(Ok(msg)) => {
+                        match time::timeout(IO_TIMEOUT, sender.send(Message::Text(msg))).await {
+                            Ok(Ok(_)) => {}
+                            Ok(Err(e)) => {
+                                error!("failed to send text message: {e}");
+                                break;
+                            }
+                            Err(e) => {
+                                error!("timeout sending text message: {e}");
+                                break;
+                            }
                         }
                     }
-                    Err(_) => break,
+                    Ok(Err(e)) => {
+                        error!("broadcast receive error: {e}");
+                        break;
+                    }
+                    Err(e) => {
+                        error!("timeout waiting for broadcast message: {e}");
+                        break;
+                    }
                 }
             }
         }
     }
 
     connections.fetch_sub(1, Ordering::SeqCst);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[tokio::test]
+    async fn connection_limit_exceeded() {
+        let state = test_state();
+        for _ in 0..MAX_CONNECTIONS {
+            state.connections.fetch_add(1, Ordering::SeqCst);
+        }
+        assert_eq!(
+            check_connection_limit(&state.connections),
+            Err(StatusCode::SERVICE_UNAVAILABLE)
+        );
+    }
 }
 
 pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
