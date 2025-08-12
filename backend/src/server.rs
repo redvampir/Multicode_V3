@@ -108,7 +108,7 @@ pub async fn parse_endpoint(
             status,
             Json(ErrorResponse {
                 code: status.as_u16(),
-                message: format!("Unsupported language: {}", req.lang),
+                message: "Bad Request".into(),
             }),
         ));
     }
@@ -184,7 +184,7 @@ pub async fn metadata_upsert_endpoint(
             status,
             Json(ErrorResponse {
                 code: status.as_u16(),
-                message: format!("Unsupported language: {}", req.lang),
+                message: "Bad Request".into(),
             }),
         ));
     }
@@ -369,7 +369,7 @@ async fn suggest_endpoint(
             status,
             Json(ErrorResponse {
                 code: status.as_u16(),
-                message: format!("Unsupported language: {}", req.lang),
+                message: "Bad Request".into(),
             }),
         ));
     }
