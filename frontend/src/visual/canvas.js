@@ -85,7 +85,7 @@ export class VisualCanvas {
     this.dragStart = { x: 0, y: 0 };
     this.highlighted = new Set();
     this.hovered = null;
-    this.gridEnabled = false;
+    this.gridEnabled = cfg.showGrid ?? false;
     this.selected = new Set();
     this.groups = new Map();
     this.nextGroupId = 1;
@@ -374,6 +374,28 @@ export class VisualCanvas {
         this.draggingConnection = null;
       }
       if (this.dragged) {
+        if (this.gridEnabled) {
+          const snap = b => {
+            b.x = Math.round(b.x / GRID_SIZE) * GRID_SIZE;
+            b.y = Math.round(b.y / GRID_SIZE) * GRID_SIZE;
+          };
+          const targets = [this.dragged];
+          const gid = this.getGroupId(this.dragged.id);
+          if (gid !== null) {
+            const set = this.groups.get(gid);
+            for (const id of set) {
+              if (id === this.dragged.id) continue;
+              const b = this.blocks.find(bb => bb.id === id);
+              if (b) targets.push(b);
+            }
+          } else if (this.selected.has(this.dragged)) {
+            for (const b of this.selected) {
+              if (b === this.dragged) continue;
+              targets.push(b);
+            }
+          }
+          targets.forEach(snap);
+        }
         if (this.dragged.x !== this.dragStart.x || this.dragged.y !== this.dragStart.y) {
           this.undoStack.push({ id: this.dragged.id, from: { x: this.dragStart.x, y: this.dragStart.y }, to: { x: this.dragged.x, y: this.dragged.y } });
           this.redoStack = [];
