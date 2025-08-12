@@ -257,14 +257,44 @@ examples/plugins/
 ### Пошаговое создание плагина
 1. Скопируйте структуру каталога из примера или создайте аналогичный
    набор файлов.
-2. **Backend:** реализуйте трейт [`Plugin`](backend/src/plugins/mod.rs),
-   возвращающий `BlockDescriptor` с описанием нового блока.
-3. Подключите плагин на серверной стороне и соберите проект.
-4. **Frontend:** реализуйте модуль с функцией `register({ Block,
-   registerBlock })`, в которой объявите класс блока и вызовете
-   `registerBlock`.
+2. **Backend:** реализуйте трейт [`Plugin`](backend/src/plugins/mod.rs).
+   Интерфейс определяет три метода: `name()` — уникальное имя плагина,
+   `version()` — целевая версия API и `blocks()` — список
+   `BlockDescriptor` с описанием новых блоков.
+3. Скомпилируйте серверную часть в WebAssembly и подключите её к
+   приложению:
+   ```bash
+   rustup target add wasm32-unknown-unknown
+   cargo build --target wasm32-unknown-unknown --release
+   cp target/wasm32-unknown-unknown/release/<имя>.wasm ../../plugins/
+   ```
+   Backend загружает `.wasm` через `WasmPlugin` и оборачивает его в
+   реализацию трейта `Plugin`.
+4. **Frontend:** реализуйте модуль с функцией
+   `register({ Block, registerBlock })`, объявите класс блока и вызовите
+   `registerBlock`. Пример:
+   ```javascript
+   export function register({ Block, registerBlock }) {
+     class MyBlock extends Block {}
+     registerBlock('MyBlock', MyBlock);
+   }
+   ```
 5. Передайте путь к модулю в `loadBlockPlugins`, например
-   `loadBlockPlugins(['./my-block.js'])`.
+   `loadBlockPlugins(['./my-block.js'])`. Клиент запрашивает список
+   модулей у сервера и регистрирует блоки, получая метаданные через
+   WebSocket.
+
+#### Сборка примера
+Рабочий пример находится в каталоге
+[examples/plugins](examples/plugins). После создания `Cargo.toml` для
+плагина выполните команды:
+```bash
+cd examples/plugins
+rustup target add wasm32-unknown-unknown
+cargo build --target wasm32-unknown-unknown --release
+```
+Полученный `.wasm` скопируйте в каталог `plugins/`, а файл `my-block.js`
+подключите через `loadBlockPlugins`.
 
 ### Тестирование плагинов
 - Запускайте `cargo test` в каталоге backend для проверки серверной части.
