@@ -56,14 +56,21 @@ pub fn test_state() -> AppState {
 }
 
 fn auth(headers: &HeaderMap) -> bool {
-    match SERVER_CONFIG.get().and_then(|c| c.token.as_deref()) {
+    let cfg = SERVER_CONFIG.get();
+
+    // Allow disabling auth only in debug builds via configuration
+    if cfg!(debug_assertions) && cfg.map(|c| c.disable_auth).unwrap_or(false) {
+        return true;
+    }
+
+    match cfg.and_then(|c| c.token.as_deref()) {
         Some(token) if !token.is_empty() => headers
             .get(axum::http::header::AUTHORIZATION)
             .and_then(|h| h.to_str().ok())
             .and_then(|s| s.strip_prefix("Bearer "))
             .map(|t| t == token)
             .unwrap_or(false),
-        _ => true,
+        _ => false,
     }
 }
 

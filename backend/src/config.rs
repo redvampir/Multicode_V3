@@ -7,6 +7,8 @@ pub struct ServerConfig {
     pub port: u16,
     pub token: Option<String>,
     pub api_key: Option<String>,
+    /// Disable authentication (debug builds only)
+    pub disable_auth: bool,
 }
 
 impl Default for ServerConfig {
@@ -16,6 +18,7 @@ impl Default for ServerConfig {
             port: 3001,
             token: None,
             api_key: None,
+            disable_auth: false,
         }
     }
 }
