@@ -158,49 +158,70 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
 }
 
 #[cfg(not(test))]
+fn handle_cli_command(command: Commands) -> Result<(), String> {
+    match command {
+        Commands::Parse { path, lang } => {
+            let content = std::fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read file {path}: {e}"))?;
+            let lang = to_lang(&lang)
+                .ok_or_else(|| format!("Unknown language: {lang}"))?;
+            let tree = parse(&content, lang, None)
+                .ok_or_else(|| format!("Failed to parse {path}"))?;
+            let blocks = parse_to_blocks(&tree);
+            let json = serde_json::to_string_pretty(&blocks)
+                .map_err(|e| format!("Failed to serialize blocks: {e}"))?;
+            println!("{json}");
+            Ok(())
+        }
+        Commands::Export {
+            input,
+            output,
+            strip_meta,
+        } => {
+            let content = std::fs::read_to_string(&input)
+                .map_err(|e| format!("Failed to read file {input}: {e}"))?;
+            let out = prepare_for_export(&content, strip_meta);
+            std::fs::write(&output, out)
+                .map_err(|e| format!("Failed to write file {output}: {e}"))?;
+            Ok(())
+        }
+        Commands::Meta { command } => match command {
+            MetaCommands::List { path } => {
+                let content = std::fs::read_to_string(&path)
+                    .map_err(|e| format!("Failed to read file {path}: {e}"))?;
+                let metas = read_all(&content);
+                let json = serde_json::to_string_pretty(&metas)
+                    .map_err(|e| format!("Failed to serialize metadata: {e}"))?;
+                println!("{json}");
+                Ok(())
+            }
+            MetaCommands::Fix { path } => {
+                let content = std::fs::read_to_string(&path)
+                    .map_err(|e| format!("Failed to read file {path}: {e}"))?;
+                let fixed = fix_all(&content);
+                std::fs::write(&path, fixed)
+                    .map_err(|e| format!("Failed to write file {path}: {e}"))?;
+                Ok(())
+            }
+            MetaCommands::Remove { path } => {
+                let content = std::fs::read_to_string(&path)
+                    .map_err(|e| format!("Failed to read file {path}: {e}"))?;
+                let cleaned = remove_all(&content);
+                std::fs::write(&path, cleaned)
+                    .map_err(|e| format!("Failed to write file {path}: {e}"))?;
+                Ok(())
+            }
+        },
+    }
+}
+
+#[cfg(not(test))]
 fn main() {
     let cli = Cli::parse();
     if let Some(command) = cli.command {
-        match command {
-            Commands::Parse { path, lang } => {
-                let content = std::fs::read_to_string(path).expect("read file");
-                let lang = to_lang(&lang).expect("unknown language");
-                let tree = parse(&content, lang, None).expect("parse");
-                let blocks = parse_to_blocks(&tree);
-                println!(
-                    "{}",
-                    serde_json::to_string_pretty(&blocks).expect("serialize blocks")
-                );
-            }
-            Commands::Export {
-                input,
-                output,
-                strip_meta,
-            } => {
-                let content = std::fs::read_to_string(&input).expect("read file");
-                let out = prepare_for_export(&content, strip_meta);
-                std::fs::write(output, out).expect("write file");
-            }
-            Commands::Meta { command } => match command {
-                MetaCommands::List { path } => {
-                    let content = std::fs::read_to_string(path).expect("read file");
-                    let metas = read_all(&content);
-                    println!(
-                        "{}",
-                        serde_json::to_string_pretty(&metas).expect("serialize metadata")
-                    );
-                }
-                MetaCommands::Fix { path } => {
-                    let content = std::fs::read_to_string(&path).expect("read file");
-                    let fixed = fix_all(&content);
-                    std::fs::write(path, fixed).expect("write file");
-                }
-                MetaCommands::Remove { path } => {
-                    let content = std::fs::read_to_string(&path).expect("read file");
-                    let cleaned = remove_all(&content);
-                    std::fs::write(path, cleaned).expect("write file");
-                }
-            },
+        if let Err(e) = handle_cli_command(command) {
+            eprintln!("{e}");
+            std::process::exit(1);
         }
         return;
     }
