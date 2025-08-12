@@ -14,7 +14,7 @@ fn parse_reports_missing_file() {
     assert!(!output.status.success());
     let stderr = String::from_utf8_lossy(&output.stderr);
     assert!(
-        stderr.contains("Failed to read file"),
+        stderr.contains("does not exist"),
         "unexpected stderr: {stderr}"
     );
 }
