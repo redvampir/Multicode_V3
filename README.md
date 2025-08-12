@@ -126,118 +126,165 @@ map.insert("fr".into(), "Fonction".into());
 Также при необходимости добавьте французские строки в интерфейсе фронтенда.
 
 ## Установка окружения
-Команды ниже приведены для macOS/Linux (zsh/bash) и Windows (PowerShell).
+Multicode собирается как приложение на **Tauri 2.0**: фронтенд работает на Node.js, бэкенд — на Rust, а Tauri связывает их в одно десктопное приложение.
 
-1. **Node.js**
-   - macOS/Linux:
-     ```bash
-     nvm install --lts
-     ```
-   - Windows:
-     ```powershell
-     winget install OpenJS.NodeJS.LTS
-     # или choco install nodejs-lts
-     ```
-2. **Rust**
-   - macOS/Linux:
-     ```bash
-     curl https://sh.rustup.rs -sSf | sh
-     ```
-   - Windows:
-     ```powershell
-     winget install Rustlang.Rustup
-     # или choco install rustup
-     ```
-   - Для сборки необходим установленный MSVC (Visual Studio Build Tools).
-3. **Tauri CLI и зависимости**
-   - Проект и его зависимости используют **Tauri v2**. Установите CLI версии 2:
-     ```bash
-     npm install -g @tauri-apps/cli@^2
-     ```
-   - Либо через Cargo:
-     ```bash
-     cargo install tauri-cli --version ^2
-     ```
-   - Проверьте установку командой `tauri --version`.
-   - Подробности см. в официальной документации Tauri для [Windows](https://v2.tauri.app/start/prerequisites/#windows) и [macOS](https://v2.tauri.app/start/prerequisites/#macos).
-4. **Системные библиотеки GTK/GLib**
-   - Linux:
-     ```bash
-     sudo apt-get install -y libglib2.0-dev libgtk-3-dev pkg-config
-     export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
-     ```
-   - Windows:
-     - Установите GTK/GLib (например, через [MSYS2](https://www.msys2.org/)).
-     - Укажите путь к их `pkgconfig`:
-       ```powershell
-       $env:PKG_CONFIG_PATH="C:\\msys64\\mingw64\\lib\\pkgconfig"
-       ```
-   - macOS:
-     ```bash
-     brew install gtk+3 glib
-     export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
-     ```
+### Windows
+1. **Node.js** — выполняет фронтенд и инструменты сборки.
+   ```powershell
+   winget install OpenJS.NodeJS.LTS
+   ```
+   Проверка:
+   ```powershell
+   node -v
+   ```
+   *Если версия не выводится, перезапустите PowerShell или проверьте `PATH`.*
+
+2. **Rust** — компилирует backend и плагины.
+   ```powershell
+   winget install Rustlang.Rustup
+   ```
+   Проверка:
+   ```powershell
+   rustc --version
+   ```
+   *Для сборки нужен [MSVC Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/).* 
+
+3. **Tauri CLI** — управляет сборкой и запуском.
+   ```powershell
+   npm install -g @tauri-apps/cli@^2
+   ```
+   Проверка:
+   ```powershell
+   tauri --version
+   ```
+   Документация: [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#windows).
+
+4. **GTK/GLib** — графические библиотеки для Tauri.
+   Установите [MSYS2](https://www.msys2.org/) и выполните в консоли MSYS2:
+   ```bash
+   pacman -S --noconfirm mingw-w64-x86_64-gtk3 pkg-config
+   ```
+   Затем в PowerShell:
+   ```powershell
+   $env:PKG_CONFIG_PATH="C:\msys64\mingw64\lib\pkgconfig"
+   ```
+   Проверка:
+   ```powershell
+   pkg-config --libs gtk+-3.0
+   ```
+   *Если `pkg-config` не видит библиотеки, проверьте переменную `PKG_CONFIG_PATH`.*
+
+### macOS
+1. **Node.js** — выполняет фронтенд и инструменты сборки.
+   ```bash
+   nvm install --lts
+   ```
+   Проверка: `node -v`
+   *Если `nvm` не установлен, следуйте [инструкции](https://github.com/nvm-sh/nvm).* 
+
+2. **Rust** — компилирует backend и плагины.
+   ```bash
+   curl https://sh.rustup.rs -sSf | sh
+   ```
+   Проверка: `rustc --version`
+
+3. **Tauri CLI** — управляет сборкой и запуском.
+   ```bash
+   npm install -g @tauri-apps/cli@^2
+   ```
+   Проверка: `tauri --version`
+   Документация: [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#macos).
+
+4. **GTK/GLib** — требуются для GUI.
+   ```bash
+   brew install gtk+3 glib pkg-config
+   export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
+   ```
+   Проверка: `pkg-config --libs gtk+-3.0`
+   *Если `pkg-config` не найден, установите его через Homebrew.*
+
+### Linux
+1. **Node.js** — выполняет фронтенд и инструменты сборки.
+   ```bash
+   nvm install --lts
+   ```
+   Проверка: `node -v`
+
+2. **Rust** — компилирует backend и плагины.
+   ```bash
+   curl https://sh.rustup.rs -sSf | sh
+   ```
+   Проверка: `rustc --version`
+
+3. **Tauri CLI** — управляет сборкой и запуском.
+   ```bash
+   npm install -g @tauri-apps/cli@^2
+   ```
+   Проверка: `tauri --version`
+   Документация: [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/#linux).
+
+4. **GTK/GLib** — графические библиотеки для Tauri.
+   ```bash
+   sudo apt-get install -y libglib2.0-dev libgtk-3-dev pkg-config
+   export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
+   ```
+   Проверка: `pkg-config --libs gtk+-3.0`
+   *Если `pkg-config` не видит библиотеки, проверьте `PKG_CONFIG_PATH`.*
 
 ## Инструкции по запуску и сборке
-1. **Клонирование репозитория**
+
+### Скрипты автоматизации
+
+В корне доступны вспомогательные команды:
+
+- `npm run setup` — проверяет и устанавливает npm-зависимости во всех workspace.
+- `npm run dev` — запускает бэкенд и фронтенд вместе; при ошибках пытается выполнить `setup`.
+- `npm run build` — собирает приложение; при необходимости вызывает `setup`.
+- `npm run test` — запускает фронтенд‑тесты, при проблемах также обращается к `setup`.
+- `npm run clean` — удаляет артефакты сборки и каталоги `node_modules`.
+
+### Подготовка проекта
+1. **Клонируйте репозиторий**
    ```bash
    git clone https://github.com/<user>/Multicode_V3.git
    cd Multicode_V3
    ```
-2. **Проверка версий Node.js и Rust**
-   ```bash
-   node -v
-   rustc --version
-   ```
-3. **Установка зависимостей**
-   - Frontend
-     ```bash
-     cd frontend
-     npm install
-     ```
-   - Backend
-     ```bash
-     cd ../backend
-     cargo build
-     ```
-4. **Запуск в режиме разработки**
-   - Backend отдельно
-     ```bash
-     cd backend
-     cargo run
-     ```
-   - Frontend вместе с бэкендом
-     ```bash
-     cd frontend
-     npm run tauri dev
-     ```
-5. **Сборка релизной версии**
-   - Backend
-     ```bash
-     cd backend
-     cargo build --release
-     ```
-   - Frontend
-     ```bash
-     cd frontend
-     npm run tauri build
-     ```
-     Скомпилированные бинарные файлы появятся в `frontend/src-tauri/target/release`.
-6. **Запуск тестов**
-   - Frontend
-     ```bash
-     cd frontend
-     npm test
-     ```
-   - Backend
-     ```bash
-     cd backend
-     cargo test
-     ```
+   Проверка: `git status`
 
-### Устранение неполадок
-- Ошибки `GTK`/`GLib` или `pkg-config`: установите пакеты `libglib2.0-dev`, `libgtk-3-dev`, `pkg-config` и проверьте `PKG_CONFIG_PATH`.
-- Тесты `npm test` или `cargo test` падают: переустановите зависимости (`npm ci`, `cargo clean && cargo test`) и убедитесь в корректности версий Node.js и Rust.
+2. **Запустите автоматическую установку зависимостей**
+   ```bash
+   npm run setup
+   ```
+   Скрипт поставит отсутствующие npm-пакеты и подготовит workspace. Проверка: `npm test`
+
+3. **Соберите и проверьте бэкенд**
+   ```bash
+   cd backend
+   cargo build
+   cargo test
+   cd ..
+   ```
+   *Ошибки `glib-2.0` или `pkg-config` означают, что не установлены GTK/GLib.*
+
+### Запуск в режиме разработки
+```bash
+npm run dev
+```
+*Команда запускает бэкенд и фронтенд вместе и выводит адрес локального приложения.*
+
+### Сборка релизной версии
+```bash
+npm run build
+```
+*Готовые бинарники появятся в `frontend/src-tauri/target/release`.*
+
+### Быстрая проверка
+```bash
+npm test
+cargo test
+npm run dev -- examples/test.js
+```
+*Если тесты проходят и приложение запускается с примером, окружение настроено правильно.*
 
 ## Логирование
 Бэкенд пишет журналы в каталог `logs/`, создавая ежедневные файлы `backend.log.<дата>` при каждом запуске (см. [backend/src/main.rs](backend/src/main.rs)).
