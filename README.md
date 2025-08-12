@@ -100,17 +100,29 @@ Multicode V3 — редактор исходного кода, который о
 Комментарий не влияет на выполнение программы и может быть удалён при экспорте.
 
 ## Установка окружения
+Команды ниже приведены для macOS/Linux (zsh/bash) и Windows (PowerShell).
+
 1. **Node.js**
-   - Скачайте пакет с [nodejs.org](https://nodejs.org) или установите через менеджер `nvm`:
+   - macOS/Linux:
      ```bash
      nvm install --lts
      ```
+   - Windows:
+     ```powershell
+     winget install OpenJS.NodeJS.LTS
+     # или choco install nodejs-lts
+     ```
 2. **Rust**
-   - Установите через `rustup`:
+   - macOS/Linux:
      ```bash
      curl https://sh.rustup.rs -sSf | sh
      ```
-   - После установки перезапустите терминал и выполните `rustc --version`.
+   - Windows:
+     ```powershell
+     winget install Rustlang.Rustup
+     # или choco install rustup
+     ```
+   - Для сборки необходим установленный MSVC (Visual Studio Build Tools).
 3. **Tauri CLI и зависимости**
    - Проект и его зависимости используют **Tauri v2**. Установите CLI версии 2:
      ```bash
@@ -121,13 +133,24 @@ Multicode V3 — редактор исходного кода, который о
      cargo install tauri-cli --version ^2
      ```
    - Проверьте установку командой `tauri --version`.
+   - Подробности см. в официальной документации Tauri для [Windows](https://v2.tauri.app/start/prerequisites/#windows) и [macOS](https://v2.tauri.app/start/prerequisites/#macos).
 4. **Системные библиотеки GTK/GLib**
-   - Установите пакеты:
+   - Linux:
      ```bash
      sudo apt-get install -y libglib2.0-dev libgtk-3-dev pkg-config
+     export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig
      ```
-   - После установки задайте переменную окружения `PKG_CONFIG_PATH`, указывающую на каталог с файлами `gobject-2.0.pc` и `glib-2.0.pc` (обычно `/usr/lib/x86_64-linux-gnu/pkgconfig` или `/usr/lib/pkgconfig`).
-   - Добавьте строку `export PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig` в `~/.bashrc` или аналогичный профиль, чтобы переменная сохранялась между сессиями.
+   - Windows:
+     - Установите GTK/GLib (например, через [MSYS2](https://www.msys2.org/)).
+     - Укажите путь к их `pkgconfig`:
+       ```powershell
+       $env:PKG_CONFIG_PATH="C:\\msys64\\mingw64\\lib\\pkgconfig"
+       ```
+   - macOS:
+     ```bash
+     brew install gtk+3 glib
+     export PKG_CONFIG_PATH="/opt/homebrew/lib/pkgconfig"
+     ```
 
 ## Инструкции по запуску и сборке
 1. **Клонирование репозитория**
