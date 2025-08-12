@@ -23,6 +23,7 @@ use std::{
     time::Duration,
 };
 use tokio::{signal, sync::broadcast, time};
+use tower::limit::RateLimitLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::{error, info};
 
@@ -40,7 +41,6 @@ pub static HTTP_CLIENT: OnceCell<Client> = OnceCell::new();
 pub const MAX_CONNECTIONS: usize = 100;
 const PING_INTERVAL: Duration = Duration::from_secs(30);
 const IO_TIMEOUT: Duration = Duration::from_secs(5);
-const MAX_BODY_SIZE: usize = 1024 * 1024; // 1 MiB
 
 #[derive(Clone)]
 pub struct AppState {
@@ -619,7 +619,11 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/meta/:id/rollback", post(meta_rollback_endpoint))
         .route("/plugins", get(plugins_get).post(plugins_update))
         .route("/suggest_ai_note", post(suggest_endpoint))
-        .layer(RequestBodyLimitLayer::new(MAX_BODY_SIZE))
+        .layer(RequestBodyLimitLayer::new(cfg.max_body_size))
+        .layer(RateLimitLayer::new(
+            cfg.max_requests_per_second,
+            Duration::from_secs(1),
+        ))
         .with_state(state);
 
     let addr: SocketAddr = format!("{}:{}", cfg.host, cfg.port).parse().map_err(|e| {

@@ -10,6 +10,8 @@ pub struct ServerConfig {
     pub api_base_url: String,
     pub connect_timeout_secs: u64,
     pub request_timeout_secs: u64,
+    pub max_body_size: usize,
+    pub max_requests_per_second: u64,
     /// Disable authentication (debug builds only)
     pub disable_auth: bool,
 }
@@ -24,6 +26,8 @@ impl Default for ServerConfig {
             api_base_url: "https://api.example.com".into(),
             connect_timeout_secs: 5,
             request_timeout_secs: 30,
+            max_body_size: 1024 * 1024,
+            max_requests_per_second: 100,
             disable_auth: false,
         }
     }
