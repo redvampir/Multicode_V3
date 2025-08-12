@@ -1,17 +1,18 @@
 use std::cmp::Ordering;
-use std::collections::{hash_map::DefaultHasher, HashMap};
-use std::hash::{Hash, Hasher};
+use std::collections::HashMap;
 
 use chrono::Utc;
 use syn::{File, Item};
-use tree_sitter::{InputEdit, Point};
 
 use crate::{
-    get_cached_blocks, get_document_tree, i18n,
     meta::{read_all, remove_all, upsert, VisualMeta},
     parser::{parse, parse_to_blocks, Lang},
-    update_block_cache, update_document_tree, BlockInfo,
+    BlockInfo,
 };
+
+mod cache;
+mod enrich;
+mod parsing;
 
 #[cfg_attr(not(test), tauri::command)]
 pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
@@ -22,75 +23,15 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
             return None;
         }
     };
-    let mut hasher = DefaultHasher::new();
-    content.hash(&mut hasher);
-    let key = hasher.finish().to_string();
-    if let Some(blocks) = get_cached_blocks(&key, &content) {
+
+    let key = cache::key(&content);
+    if let Some(blocks) = cache::get(&key, &content) {
         return Some(blocks);
     }
-    let old = get_document_tree("current");
-    let tree = if let Some(mut old_tree) = old {
-        let old_root = old_tree.root_node();
-        let old_end_byte = old_root.end_byte();
-        let old_end_position = old_root.end_position();
-        let new_end_byte = content.as_bytes().len();
-        let mut row = 0;
-        let mut column = 0;
-        for b in content.bytes() {
-            if b == b'\n' {
-                row += 1;
-                column = 0;
-            } else {
-                column += 1;
-            }
-        }
-        let new_end_position = Point { row, column };
-        let edit = InputEdit {
-            start_byte: 0,
-            old_end_byte,
-            new_end_byte,
-            start_position: Point { row: 0, column: 0 },
-            old_end_position,
-            new_end_position,
-        };
-        old_tree.edit(&edit);
-        parse(&content, lang, Some(&old_tree))?
-    } else {
-        parse(&content, lang, None)?
-    };
-    update_document_tree("current".to_string(), tree.clone());
-    let blocks = parse_to_blocks(&tree);
-    let metas = read_all(&content);
-    let map: HashMap<_, _> = metas.into_iter().map(|m| (m.id.clone(), m)).collect();
-    let result: Vec<BlockInfo> = blocks
-        .into_iter()
-        .map(|b| {
-            let label = normalize_kind(&b.kind);
-            let mut translations = i18n::lookup(&label).unwrap_or_else(|| {
-                let mut m = HashMap::new();
-                m.insert("ru".into(), label.clone());
-                m.insert("en".into(), label.clone());
-                m.insert("es".into(), label.clone());
-                m
-            });
-            if let Some(meta) = map.get(&b.visual_id) {
-                translations.extend(meta.translations.clone());
-            }
-            let pos = map.get(&b.visual_id);
-            BlockInfo {
-                visual_id: b.visual_id,
-                node_id: Some(b.node_id),
-                kind: label,
-                translations,
-                range: (b.range.start, b.range.end),
-                x: pos.map(|m| m.x).unwrap_or(0.0),
-                y: pos.map(|m| m.y).unwrap_or(0.0),
-                ai: pos.and_then(|m| m.ai.clone()),
-                links: pos.map(|m| m.links.clone()).unwrap_or_default(),
-            }
-        })
-        .collect();
-    update_block_cache(key, content, result.clone());
+
+    let blocks = parsing::parse(&content, lang)?;
+    let result = enrich::enrich_blocks(blocks, &content);
+    cache::store(key, content, result.clone());
     Some(result)
 }
 
@@ -197,20 +138,5 @@ pub fn to_lang(s: &str) -> Option<Lang> {
         "css" => Some(Lang::Css),
         "html" => Some(Lang::Html),
         _ => None,
-    }
-}
-
-fn normalize_kind(kind: &str) -> String {
-    let k = kind.to_lowercase();
-    if k.contains("function") {
-        "Function".into()
-    } else if k.contains("if") {
-        "Condition".into()
-    } else if k.contains("for") || k.contains("while") || k.contains("loop") {
-        "Loop".into()
-    } else if k.contains("identifier") || k.contains("variable") {
-        "Variable".into()
-    } else {
-        kind.to_string()
     }
 }
