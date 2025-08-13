@@ -12,51 +12,102 @@ const tmplObj = () => ({
   links: [],
   updated_at: new Date().toISOString(),
 });
-const templates = {
-  rust: () => `// @VISUAL_META ${JSON.stringify(tmplObj())}`,
-  javascript: () => `// @VISUAL_META ${JSON.stringify(tmplObj())}`,
-  python: () => `# @VISUAL_META ${JSON.stringify(tmplObj())}`,
-  html: () => `<!-- @VISUAL_META ${JSON.stringify(tmplObj())} -->`,
-  css: () => `/* @VISUAL_META ${JSON.stringify(tmplObj())} */`,
-};
 
-export function insertVisualMeta(view, lang) {
-  const tmpl = (templates[lang] || templates.javascript)() + "\n";
+// Map id -> start position of JSON object inside the meta block
+export const metaPositions = new Map();
+
+function getMetaBlock(text) {
+  const start = text.indexOf("/* @VISUAL_META");
+  if (start === -1) return null;
+  const end = text.indexOf("*/", start);
+  if (end === -1) return null;
+  return { start, end: end + 2 };
+}
+
+function ensureMetaBlock(view) {
+  let text = view.state.doc.toString();
+  let block = getMetaBlock(text);
+  if (!block) {
+    const insert = "\n/* @VISUAL_META\n*/";
+    const pos = text.length;
+    view.dispatch({ changes: { from: pos, to: pos, insert } });
+    text = view.state.doc.toString();
+    block = getMetaBlock(text);
+  }
+  return block;
+}
+
+function rebuildMetaPositions(text) {
+  metaPositions.clear();
+  const block = getMetaBlock(text);
+  if (!block) return;
+  const contentStart = text.indexOf("\n", block.start) + 1;
+  let pos = contentStart;
+  const content = text.slice(contentStart, block.end - 2);
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (trimmed) {
+      try {
+        const obj = JSON.parse(trimmed);
+        if (obj.id) {
+          const offset = pos + line.indexOf(trimmed);
+          metaPositions.set(obj.id, offset);
+        }
+      } catch (_) {
+        // ignore invalid lines
+      }
+    }
+    pos += line.length + 1;
+  }
+}
+
+export function insertVisualMeta(view, _lang) {
+  const meta = tmplObj();
+  const marker = `// @VISUAL_META ${meta.id}\n`;
   const { from } = view.state.selection.main;
-  view.dispatch({ changes: { from, to: from, insert: tmpl } });
+  view.dispatch({ changes: { from, to: from, insert: marker } });
+
+  const block = ensureMetaBlock(view);
+  const insertPos = block.end - 2; // before closing */
+  const jsonLine = `${JSON.stringify(meta)}\n`;
+  view.dispatch({ changes: { from: insertPos, to: insertPos, insert: jsonLine } });
+
+  rebuildMetaPositions(view.state.doc.toString());
 }
 
 export function updateMetaComment(view, meta) {
-  const text = view.state.doc.toString();
-  const re = /@VISUAL_META\s*(\{[^\}]*\})/g;
-  let m;
-  while ((m = re.exec(text)) !== null) {
-    const json = m[1];
-    try {
-      const obj = JSON.parse(json);
-      if (obj.id === meta.id) {
-        if (typeof obj.version !== "number") {
-          obj.version = 1;
-        }
-        obj.x = meta.x;
-        obj.y = meta.y;
-        if (Array.isArray(meta.tags)) {
-          obj.tags = meta.tags;
-        }
-        if (Array.isArray(meta.links)) {
-          obj.links = meta.links;
-        }
-        const newJson = JSON.stringify(obj);
-        const start = m.index + m[0].indexOf(json);
-        const end = start + json.length;
-        view.dispatch({ changes: { from: start, to: end, insert: newJson } });
-        return true;
-      }
-    } catch(_) {
-      // ignore
-    }
+  let pos = metaPositions.get(meta.id);
+  if (pos == null) {
+    rebuildMetaPositions(view.state.doc.toString());
+    pos = metaPositions.get(meta.id);
   }
-  return false;
+  if (pos == null) return false;
+
+  const text = view.state.doc.toString();
+  const end = text.indexOf("\n", pos);
+  const json = text.slice(pos, end === -1 ? undefined : end);
+  try {
+    const obj = JSON.parse(json);
+    if (typeof obj.version !== "number") {
+      obj.version = 1;
+    }
+    if (typeof meta.x === "number") obj.x = meta.x;
+    if (typeof meta.y === "number") obj.y = meta.y;
+    if (Array.isArray(meta.tags)) {
+      obj.tags = meta.tags;
+    }
+    if (Array.isArray(meta.links)) {
+      obj.links = meta.links;
+    }
+    obj.updated_at = new Date().toISOString();
+    const newJson = JSON.stringify(obj);
+    view.dispatch({ changes: { from: pos, to: pos + json.length, insert: newJson } });
+    rebuildMetaPositions(view.state.doc.toString());
+    return true;
+  } catch (_) {
+    return false;
+  }
 }
 
 const regexes = [

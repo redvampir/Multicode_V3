@@ -19,11 +19,12 @@ import { updateMetaComment } from '../src/editor/visual-meta.js';
 
 describe('visual-meta synchronization', () => {
   it('reflects block coordinate changes in comments', () => {
-    const original = '// @VISUAL_META {"id":"1","x":0,"y":0}\nfn main() {}';
+    const original = '// @VISUAL_META 1\nfn main() {}\n/* @VISUAL_META\n{"id":"1","x":0,"y":0}\n*/';
     const view: any = {
       state: { doc: { toString: () => original } },
       dispatch: vi.fn(({ changes: { from, to, insert } }) => {
-        const updated = original.slice(0, from) + insert + original.slice(to);
+        const current = view.state.doc.toString();
+        const updated = current.slice(0, from) + insert + current.slice(to);
         view.state.doc.toString = () => updated;
       }),
     };
@@ -33,5 +34,6 @@ describe('visual-meta synchronization', () => {
     const text = view.state.doc.toString();
     expect(text).toContain('"x":5');
     expect(text).toContain('"y":7');
+    expect(text).toContain('// @VISUAL_META 1');
   });
 });
