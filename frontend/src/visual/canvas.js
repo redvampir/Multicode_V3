@@ -73,9 +73,8 @@ export class VisualCanvas {
     this.locale = 'en';
     this.connections = [];
     this.debugMode = false;
-    this.errorBlocks = new Set();
-    this.errorEdges = new Set();
-    this.cycleBlocks = new Set();
+    this.errorBlocks = new Map();
+    this.errorEdges = new Map();
     this.dragged = null;
     this.dragOffset = { x: 0, y: 0 };
     this.draggingConnection = null;
@@ -134,7 +133,7 @@ export class VisualCanvas {
         });
       }
     });
-    if (this.debugMode) this.analyze();
+    this.analyze();
   }
 
   setLocale(locale) {
@@ -209,7 +208,7 @@ export class VisualCanvas {
 
   connect(a, b) {
     this.connections.push([a, b]);
-    if (this.debugMode) this.analyze();
+    this.analyze();
   }
 
   setDebugMode(enabled) {
@@ -225,13 +224,14 @@ export class VisualCanvas {
     const ids = this.blocks.map(b => b.id);
     const edges = this.connections.map(([a, b]) => [a.id, b.id]);
     const { missing, cycles } = analyzeConnections(ids, edges);
-    this.errorBlocks = missing;
-    this.errorEdges = cycles;
-    this.cycleBlocks = new Set();
+    this.errorBlocks = new Map();
+    this.errorEdges = new Map();
+    missing.forEach(id => this.errorBlocks.set(id, 'Missing connection'));
     cycles.forEach(edge => {
+      this.errorEdges.set(edge, 'Cyclic connection');
       const [from, to] = edge.split('->');
-      this.cycleBlocks.add(from);
-      this.cycleBlocks.add(to);
+      this.errorBlocks.set(from, 'Cyclic connection');
+      this.errorBlocks.set(to, 'Cyclic connection');
     });
   }
 
@@ -344,17 +344,15 @@ export class VisualCanvas {
               if (note.hints) lines.push(...note.hints);
               tooltipText = lines.join('\n');
             }
-            if (this.debugMode) {
-              if (this.errorBlocks.has(hovered.id)) tooltipText = 'Missing connection';
-              else if (this.cycleBlocks.has(hovered.id)) tooltipText = 'Cyclic connection';
-            }
-          } else if (this.debugMode) {
-            for (const edge of this.errorEdges) {
+            const err = this.errorBlocks.get(hovered.id);
+            if (err) tooltipText = err;
+          } else {
+            for (const [edge, msg] of this.errorEdges.entries()) {
               const [fromId, toId] = edge.split('->');
               const a = this.blocks.find(b => b.id === fromId);
               const b = this.blocks.find(b => b.id === toId);
               if (a && b && this.pointToSegmentDist(pos, a.center(), b.center()) < 5) {
-                tooltipText = 'Cyclic connection';
+                tooltipText = msg;
                 break;
               }
             }
@@ -401,7 +399,7 @@ export class VisualCanvas {
             to: target.id
           });
           this.redoStack = [];
-          if (this.debugMode) this.analyze();
+          this.analyze();
         }
         this.draggingConnection = null;
       }
@@ -593,7 +591,7 @@ export class VisualCanvas {
       this.ctx.beginPath();
       this.ctx.moveTo(ac.x, ac.y);
       this.ctx.lineTo(bc.x, bc.y);
-      if (this.debugMode && this.errorEdges.has(key)) {
+      if (this.errorEdges.has(key)) {
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
       } else {
@@ -620,7 +618,7 @@ export class VisualCanvas {
     // Draw blocks
     this.blocks.forEach(b => {
       b.draw(this.ctx);
-      if (this.debugMode && this.errorBlocks.has(b.id)) {
+      if (this.errorBlocks.has(b.id)) {
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(b.x, b.y, b.w, b.h);
@@ -689,7 +687,7 @@ export class VisualCanvas {
         this.connections = this.connections.filter(
           ([a, b]) => !(a.id === action.from && b.id === action.to)
         );
-        if (this.debugMode) this.analyze();
+        this.analyze();
         break;
       }
     }
@@ -714,7 +712,7 @@ export class VisualCanvas {
         const to = this.blocks.find(b => b.id === action.to);
         if (from && to) {
           this.connections.push([from, to]);
-          if (this.debugMode) this.analyze();
+          this.analyze();
         }
         break;
       }
