@@ -1,8 +1,9 @@
 import settings from '../../settings.json' assert { type: 'json' };
 import { createBlock } from './blocks.js';
 import { getTheme } from './theme.ts';
+import { createHotkeyDialog } from './hotkey-dialog.ts';
 
-interface HotkeyMap {
+export interface HotkeyMap {
   copyBlock: string;
   pasteBlock: string;
   selectConnections: string;
@@ -154,41 +155,14 @@ export function focusSearch() {
 }
 
 export function showHotkeyHelp() {
-  if (!hotkeyDialog) buildHotkeyDialog();
-  hotkeyDialog!.showModal();
+  if (!hotkeyDialog) hotkeyDialog = createHotkeyDialog(hotkeys);
+  hotkeyDialog.showModal();
 }
 
 let canvasRef: any = null;
 let clipboard: any = null;
 
 let hotkeyDialog: HTMLDialogElement | null = null;
-
-function buildHotkeyDialog() {
-  hotkeyDialog = document.createElement('dialog');
-  hotkeyDialog.id = 'hotkey-help';
-
-  const title = document.createElement('h2');
-  title.textContent = 'Hotkeys';
-  hotkeyDialog.appendChild(title);
-
-  const list = document.createElement('dl');
-  for (const [name, combo] of Object.entries(hotkeys)) {
-    const dt = document.createElement('dt');
-    dt.textContent = combo;
-    const dd = document.createElement('dd');
-    dd.textContent = name;
-    list.appendChild(dt);
-    list.appendChild(dd);
-  }
-  hotkeyDialog.appendChild(list);
-
-  const closeBtn = document.createElement('button');
-  closeBtn.textContent = 'Close';
-  closeBtn.addEventListener('click', () => hotkeyDialog?.close());
-  hotkeyDialog.appendChild(closeBtn);
-
-  document.body.appendChild(hotkeyDialog);
-}
 
 export function setCanvas(vc: any) {
   canvasRef = vc;
