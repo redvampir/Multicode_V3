@@ -97,6 +97,7 @@ export class VisualCanvas {
     this.nextGroupId = 1;
     this.alignGuides = [];
     this.selectionBox = null;
+    this.missingEdge = null;
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -120,7 +121,7 @@ export class VisualCanvas {
     this.registerEvents();
     registerHoverHighlight(this);
     window.addEventListener('message', e => {
-      const { source, id, type, x, y } = e.data || {};
+      const { source, id, type, x, y, from, to } = e.data || {};
       if (source === 'visual-meta') {
         if (type === 'request-block-info' && id) {
           const data = this.blockDataMap.get(id);
@@ -149,6 +150,11 @@ export class VisualCanvas {
             this.updateLabels();
             this.draw();
           }
+        } else if (type === 'edge-not-found' && from && to) {
+          this.missingEdge = from + '->' + to;
+          setTimeout(() => {
+            if (this.missingEdge === from + '->' + to) this.missingEdge = null;
+          }, 2000);
         } else if (id) {
           this.highlightBlocks([id]);
         }
@@ -328,6 +334,20 @@ export class VisualCanvas {
     this.canvas.addEventListener('mousedown', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       const block = this.blocks.find(b => b.contains(pos.x, pos.y));
+
+      let edge = null;
+      if (!block) {
+        edge = this.connections.find(([a, b]) => this.pointToSegmentDist(pos, a.center(), b.center()) < 5);
+      }
+
+      if (edge) {
+        this.selectBlock(null);
+        window.postMessage({ source: 'visual-canvas', type: 'edgeSelected', from: edge[0].id, to: edge[1].id }, '*');
+        this.dragged = null;
+        this.panning = false;
+        this.tooltip.style.display = 'none';
+        return;
+      }
 
       if (block) this.selectBlock(block.id); else this.selectBlock(null);
 
@@ -731,12 +751,20 @@ export class VisualCanvas {
       if (this.errorEdges.has(key)) {
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
+        if (this.ctx.setLineDash) this.ctx.setLineDash([]);
+      } else if (this.missingEdge === key) {
+        this.ctx.strokeStyle = 'orange';
+        this.ctx.lineWidth = 2;
+        if (this.ctx.setLineDash) this.ctx.setLineDash([5 / this.scale, 5 / this.scale]);
       } else {
         this.ctx.strokeStyle = theme.connection;
         this.ctx.lineWidth = 1;
+        if (this.ctx.setLineDash) this.ctx.setLineDash([]);
       }
       this.ctx.stroke();
     });
+    // reset dash after drawing connections
+    if (this.ctx.setLineDash) this.ctx.setLineDash([]);
 
     // Preview connection while dragging
     if (this.draggingConnection) {
