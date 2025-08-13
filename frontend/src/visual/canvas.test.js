@@ -54,3 +54,43 @@ describe('selection box', () => {
     expect(Array.from(vc.selected)[0].id).toBe('a');
   });
 });
+
+describe('undo and redo', () => {
+  function createCanvas() {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    return canvasEl;
+  }
+
+  it('undoes and redoes block movement', async () => {
+    const vc = new VisualCanvas(createCanvas());
+    vc.blocks = [{ id: 'a', x: 0, y: 0 }];
+    vc.undoStack.push({ type: 'move', id: 'a', from: { x: 0, y: 0 }, to: { x: 10, y: 20 } });
+    vc.blocks[0].x = 10;
+    vc.blocks[0].y = 20;
+    await vc.undo();
+    expect(vc.blocks[0].x).toBe(0);
+    expect(vc.blocks[0].y).toBe(0);
+    await vc.redo();
+    expect(vc.blocks[0].x).toBe(10);
+    expect(vc.blocks[0].y).toBe(20);
+  });
+
+  it('undoes and redoes connections', async () => {
+    const vc = new VisualCanvas(createCanvas());
+    const a = { id: 'a' };
+    const b = { id: 'b' };
+    vc.blocks = [a, b];
+    vc.connections = [[a, b]];
+    vc.undoStack.push({ type: 'connect', from: 'a', to: 'b' });
+    await vc.undo();
+    expect(vc.connections.length).toBe(0);
+    await vc.redo();
+    expect(vc.connections.length).toBe(1);
+    expect(vc.connections[0][0]).toBe(a);
+    expect(vc.connections[0][1]).toBe(b);
+  });
+});

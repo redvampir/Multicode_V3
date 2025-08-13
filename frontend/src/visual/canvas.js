@@ -388,6 +388,12 @@ export class VisualCanvas {
         const target = this.blocks.find(b => b.contains(pos.x, pos.y));
         if (target && target !== this.draggingConnection.from) {
           this.connections.push([this.draggingConnection.from, target]);
+          this.undoStack.push({
+            type: 'connect',
+            from: this.draggingConnection.from.id,
+            to: target.id
+          });
+          this.redoStack = [];
           if (this.debugMode) this.analyze();
         }
         this.draggingConnection = null;
@@ -416,7 +422,12 @@ export class VisualCanvas {
           targets.forEach(snap);
         }
         if (this.dragged.x !== this.dragStart.x || this.dragged.y !== this.dragStart.y) {
-          this.undoStack.push({ id: this.dragged.id, from: { x: this.dragStart.x, y: this.dragStart.y }, to: { x: this.dragged.x, y: this.dragged.y } });
+          this.undoStack.push({
+            type: 'move',
+            id: this.dragged.id,
+            from: { x: this.dragStart.x, y: this.dragStart.y },
+            to: { x: this.dragged.x, y: this.dragged.y }
+          });
           this.redoStack = [];
         }
         if (this.moveCallback) {
@@ -655,28 +666,52 @@ export class VisualCanvas {
 
   async undo() {
     const action = this.undoStack.pop();
-    if (action) {
-      const block = this.blocks.find(b => b.id === action.id);
-      if (block) {
-        block.x = action.from.x;
-        block.y = action.from.y;
-        if (this.moveCallback) await this.moveCallback(block);
+    if (!action) return;
+    switch (action.type) {
+      case 'move': {
+        const block = this.blocks.find(b => b.id === action.id);
+        if (block) {
+          block.x = action.from.x;
+          block.y = action.from.y;
+          if (this.moveCallback) await this.moveCallback(block);
+        }
+        break;
       }
-      this.redoStack.push(action);
+      case 'connect': {
+        this.connections = this.connections.filter(
+          ([a, b]) => !(a.id === action.from && b.id === action.to)
+        );
+        if (this.debugMode) this.analyze();
+        break;
+      }
     }
+    this.redoStack.push(action);
   }
 
   async redo() {
     const action = this.redoStack.pop();
-    if (action) {
-      const block = this.blocks.find(b => b.id === action.id);
-      if (block) {
-        block.x = action.to.x;
-        block.y = action.to.y;
-        if (this.moveCallback) await this.moveCallback(block);
+    if (!action) return;
+    switch (action.type) {
+      case 'move': {
+        const block = this.blocks.find(b => b.id === action.id);
+        if (block) {
+          block.x = action.to.x;
+          block.y = action.to.y;
+          if (this.moveCallback) await this.moveCallback(block);
+        }
+        break;
       }
-      this.undoStack.push(action);
+      case 'connect': {
+        const from = this.blocks.find(b => b.id === action.from);
+        const to = this.blocks.find(b => b.id === action.to);
+        if (from && to) {
+          this.connections.push([from, to]);
+          if (this.debugMode) this.analyze();
+        }
+        break;
+      }
     }
+    this.undoStack.push(action);
   }
 }
 
