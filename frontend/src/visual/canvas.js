@@ -98,6 +98,7 @@ export class VisualCanvas {
     this.alignGuides = [];
     this.selectionBox = null;
     this.missingEdge = null;
+    this.nextAutoPos = { x: 0, y: 0 };
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -121,7 +122,7 @@ export class VisualCanvas {
     this.registerEvents();
     registerHoverHighlight(this);
     window.addEventListener('message', e => {
-      const { source, id, type, x, y, from, to } = e.data || {};
+      const { source, id, type, x, y, from, to, kind } = e.data || {};
       if (source === 'visual-meta') {
         if (type === 'request-block-info' && id) {
           const data = this.blockDataMap.get(id);
@@ -155,6 +156,23 @@ export class VisualCanvas {
           setTimeout(() => {
             if (this.missingEdge === from + '->' + to) this.missingEdge = null;
           }, 2000);
+        } else if (type === 'create-block' && id && kind) {
+          const pos = this.getFreePos();
+          const theme = getTheme();
+          const color = theme.blockKinds[kind] || theme.blockFill;
+          const block = createBlock(kind, id, pos.x, pos.y, kind, color);
+          this.blocks.push(block);
+          const data = { visual_id: id, kind, x: pos.x, y: pos.y, tags: [], links: [], updated_at: new Date().toISOString() };
+          this.blocksData.push(data);
+          this.blockDataMap.set(id, data);
+          if (this.metaView) updateMetaComment(this.metaView, { id, x: pos.x, y: pos.y });
+          this.draw();
+        } else if (type === 'remove-block' && id) {
+          this.blocks = this.blocks.filter(b => b.id !== id);
+          this.blocksData = this.blocksData.filter(b => b.visual_id !== id);
+          this.blockDataMap.delete(id);
+          this.connections = this.connections.filter(([a, b]) => a.id !== id && b.id !== id);
+          this.draw();
         } else if (id) {
           this.highlightBlocks([id]);
         }
@@ -256,6 +274,16 @@ export class VisualCanvas {
 
   setMetaView(view) {
     this.metaView = view;
+  }
+
+  getFreePos() {
+    const pos = { ...this.nextAutoPos };
+    this.nextAutoPos.x += 150;
+    if (this.nextAutoPos.x > 1000) {
+      this.nextAutoPos.x = 0;
+      this.nextAutoPos.y += 150;
+    }
+    return pos;
   }
 
   addBlock(block) {
