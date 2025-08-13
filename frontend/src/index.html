@@ -28,7 +28,7 @@
     import { css } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-css@0.19.7/dist/index.js";
     import { invoke } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/tauri.js";
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
-    import { VisualCanvas } from "./visual/canvas.js";
+    import { VisualCanvas, VIEW_STATE_KEY } from "./visual/canvas.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
     import { insertVisualMeta, updateMetaComment, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
@@ -36,11 +36,26 @@
     import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
     import { writeTextFile, BaseDirectory } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/fs.js";
 
+    const TEXT_CURSOR_KEY = 'text-cursor-pos';
+
     await loadBlockPlugins(window.blockPlugins || []);
 
     const canvasEl = document.getElementById('visual-canvas');
     const minimapEl = document.getElementById('visual-minimap');
     const vc = new VisualCanvas(canvasEl, minimapEl);
+
+    const storedView = localStorage.getItem(VIEW_STATE_KEY);
+    if (storedView) {
+      try {
+        const { offset, scale } = JSON.parse(storedView);
+        if (offset && typeof offset.x === 'number' && typeof offset.y === 'number') {
+          vc.offset = offset;
+        }
+        if (typeof scale === 'number') vc.scale = scale;
+        vc.draw();
+      } catch (_) {}
+    }
+
     setCanvas(vc);
     registerHotkeys();
 
@@ -108,8 +123,29 @@
       document.getElementById('visual-canvas').style.display = 'none';
       document.getElementById('visual-minimap').style.display = 'none';
       document.getElementById('editor').style.height = '90vh';
-      scrollToMeta(id);
+      if (id) {
+        scrollToMeta(id);
+      } else {
+        const raw = localStorage.getItem(TEXT_CURSOR_KEY);
+        if (raw) {
+          try {
+            const { pos } = JSON.parse(raw);
+            if (typeof pos === 'number') {
+              view.dispatch({ selection: { anchor: pos }, scrollIntoView: true });
+            }
+          } catch (_) {}
+        }
+      }
       view.focus();
+    };
+
+    window.openVisualMode = () => {
+      const sel = view.state.selection.main;
+      localStorage.setItem(TEXT_CURSOR_KEY, JSON.stringify({ pos: sel.anchor }));
+      document.getElementById('visual-canvas').style.display = 'block';
+      document.getElementById('visual-minimap').style.display = 'block';
+      document.getElementById('editor').style.height = '40vh';
+      vc.draw();
     };
 
     async function save() {

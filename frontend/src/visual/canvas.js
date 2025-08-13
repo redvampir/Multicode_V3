@@ -4,6 +4,8 @@ import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
 import { Minimap } from './minimap.ts';
 import settings from '../../settings.json' assert { type: 'json' };
 
+export const VIEW_STATE_KEY = 'visual-view-state';
+
 const cfg = settings.visual || {};
 const GRID_SIZE = cfg.gridSize || 20;
 const MIN_SCALE = 0.5;
@@ -274,6 +276,18 @@ export class VisualCanvas {
     this.analyze();
   }
 
+  saveViewState() {
+    if (typeof localStorage === 'undefined') return;
+    try {
+      localStorage.setItem(
+        VIEW_STATE_KEY,
+        JSON.stringify({ offset: this.offset, scale: this.scale })
+      );
+    } catch (_err) {
+      // ignore storage errors
+    }
+  }
+
   connect(a, b) {
     this.connections.push([a, b]);
     this.analyze();
@@ -350,6 +364,7 @@ export class VisualCanvas {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       const block = this.blocks.find(b => b.contains(pos.x, pos.y));
       if (block && typeof window.openInTextEditor === 'function') {
+        this.saveViewState();
         window.openInTextEditor(block.id);
       }
     });
