@@ -115,9 +115,30 @@ export class VisualCanvas {
     this.registerEvents();
     registerHoverHighlight(this);
     window.addEventListener('message', e => {
-      const { source, id } = e.data || {};
-      if (source === 'visual-meta' && id) {
-        this.highlightBlocks([id]);
+      const { source, id, type } = e.data || {};
+      if (source === 'visual-meta') {
+        if (type === 'request-block-info' && id) {
+          const data = this.blockDataMap.get(id);
+          if (data) {
+            const theme = getTheme();
+            const color = theme.blockKinds[data.kind] || theme.blockFill;
+            let thumbnail = null;
+            try {
+              const block = createBlock(data.kind, id, 0, 0, data.kind, color);
+              const off = document.createElement('canvas');
+              off.width = block.w;
+              off.height = block.h;
+              const ctx = off.getContext('2d');
+              block.draw(ctx);
+              thumbnail = off.toDataURL();
+            } catch (_) {
+              thumbnail = null;
+            }
+            window.postMessage({ source: 'visual-canvas', type: 'block-info', id, kind: data.kind, color, thumbnail }, '*');
+          }
+        } else if (id) {
+          this.highlightBlocks([id]);
+        }
       }
     });
     requestAnimationFrame(() => this.draw());
