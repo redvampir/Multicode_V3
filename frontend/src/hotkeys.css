@@ -1,0 +1,24 @@
+#hotkey-help::backdrop {
+  background: rgba(0, 0, 0, 0.5);
+}
+
+#hotkey-help {
+  border: none;
+  padding: 1rem;
+  max-width: 400px;
+}
+
+#hotkey-help dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.5rem 1rem;
+  margin: 0;
+}
+
+#hotkey-help dt {
+  font-weight: bold;
+}
+
+#hotkey-help button {
+  margin-top: 1rem;
+}
