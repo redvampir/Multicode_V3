@@ -139,7 +139,9 @@ pub fn upsert(content: &str, meta: &VisualMeta) -> String {
 }
 
 /// Read all visual metadata comments from `content`.
-pub fn read_all(content: &str) -> Vec<VisualMeta> {
+///
+/// Returns the parsed metadata and a list of duplicate identifiers.
+pub fn read_all_with_dups(content: &str) -> (Vec<VisualMeta>, Vec<String>) {
     // Serialize access so that the registry isn't cleared while another
     // thread is using it, which previously could result in missing metadata
     // entries and test flakiness.
@@ -154,9 +156,17 @@ pub fn read_all(content: &str) -> Vec<VisualMeta> {
             ids.push(id);
         }
     }
-    ids.into_iter()
+    let metas = ids
+        .into_iter()
         .filter_map(|id| merge_base_meta(&id))
-        .collect()
+        .collect();
+    let dups = id_registry::duplicates();
+    (metas, dups)
+}
+
+/// Read all visual metadata comments from `content`, discarding duplicate IDs.
+pub fn read_all(content: &str) -> Vec<VisualMeta> {
+    read_all_with_dups(content).0
 }
 
 /// Recursively merge metadata with its base entries using the `extends` chain.
