@@ -24,6 +24,8 @@ const tmplObj = () => ({
 // Map id -> start position of JSON object inside the meta block
 export const metaPositions = new Map();
 
+let currentView = null;
+
 function getMetaBlock(text) {
   const start = text.indexOf("/* @VISUAL_META");
   if (start === -1) return null;
@@ -81,6 +83,12 @@ function highlightMetaById(view, id) {
   const end = text.indexOf("\n", pos);
   const to = end === -1 ? text.length : end;
   view.dispatch({ selection: { anchor: pos, head: to }, scrollIntoView: true });
+}
+
+export function scrollToMeta(id) {
+  if (currentView) {
+    highlightMetaById(currentView, id);
+  }
 }
 
 export function foldMetaBlock(view) {
@@ -242,6 +250,7 @@ export const visualMetaTooltip = hoverTooltip((view, pos) => {
 export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlugin.fromClass(class {
   constructor(view) {
     this.view = view;
+    currentView = view;
     this.onMessage = this.onMessage.bind(this);
     this.onClick = this.onClick.bind(this);
     window.addEventListener('message', this.onMessage);
@@ -250,6 +259,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
   destroy() {
     window.removeEventListener('message', this.onMessage);
     this.view.dom.removeEventListener('click', this.onClick);
+    if (currentView === this.view) currentView = null;
   }
   onMessage(e) {
     const { source, id } = e.data || {};
