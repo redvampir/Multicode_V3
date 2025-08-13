@@ -124,11 +124,45 @@
       }
     }
 
+    function exportLayout() {
+      const data = JSON.stringify(vc.serialize());
+      const blob = new Blob([data], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'layout.json';
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importLayout() {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'application/json';
+      input.addEventListener('change', e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const layout = JSON.parse(ev.target.result);
+            vc.load(layout);
+          } catch (err) {
+            console.error('Invalid layout', err);
+          }
+        };
+        reader.readAsText(file);
+      });
+      input.click();
+    }
+
     const exportProgress = document.getElementById('export-progress');
 
     document.getElementById('save').addEventListener('click', save);
     document.getElementById('load').addEventListener('click', load);
     document.getElementById('export-clean').addEventListener('click', exportWithoutMeta);
+    document.getElementById('layout-export').addEventListener('click', exportLayout);
+    document.getElementById('layout-import').addEventListener('click', importLayout);
     document.getElementById('undo').addEventListener('click', () => vc.undo());
     document.getElementById('redo').addEventListener('click', () => vc.redo());
     document.getElementById('insert-meta').addEventListener('click', () => insertVisualMeta(view, currentLang));
@@ -198,6 +232,8 @@
     <button id="load">Load</button>
     <button id="export-clean">Экспорт без метаданных</button>
     <span id="export-progress" style="display:none">Exporting…</span>
+    <button id="layout-export">Export</button>
+    <button id="layout-import">Import</button>
     <button id="undo">Undo</button>
     <button id="redo">Redo</button>
     <button id="insert-meta">Insert Meta</button>

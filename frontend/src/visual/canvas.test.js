@@ -94,3 +94,40 @@ describe('undo and redo', () => {
     expect(vc.connections[0][1]).toBe(b);
   });
 });
+
+describe('serialize and load', () => {
+  function createCanvas() {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    return canvasEl;
+  }
+
+  it('restores blocks, connections and view', () => {
+    const vc1 = new VisualCanvas(createCanvas());
+    const a = { id: 'a' };
+    const b = { id: 'b' };
+    vc1.blocks = [a, b];
+    vc1.blocksData = [
+      { visual_id: 'a', kind: 'Function', x: 0, y: 0 },
+      { visual_id: 'b', kind: 'Function', x: 10, y: 10 }
+    ];
+    vc1.connections = [[a, b]];
+    vc1.offset = { x: 5, y: 6 };
+    vc1.scale = 2;
+
+    const data = vc1.serialize();
+
+    const vc2 = new VisualCanvas(createCanvas());
+    vc2.load(data);
+
+    expect(vc2.blocksData).toEqual(vc1.blocksData);
+    expect(vc2.connections.length).toBe(1);
+    expect(vc2.connections[0][0].id).toBe('a');
+    expect(vc2.connections[0][1].id).toBe('b');
+    expect(vc2.offset).toEqual({ x: 5, y: 6 });
+    expect(vc2.scale).toBe(2);
+  });
+});
