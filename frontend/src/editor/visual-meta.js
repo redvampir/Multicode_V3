@@ -421,6 +421,13 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     this.lastHoverId = null;
     this.lastMouse = { x: 0, y: 0 };
     this.prevCoords = extractMetaCoords(view.state.doc.toString());
+    this.knownIds = new Set();
+    const idRegex = /\/\/\s*@VISUAL_META\s+([A-Za-z0-9_-]+)/g;
+    let m;
+    const text = view.state.doc.toString();
+    while ((m = idRegex.exec(text)) !== null) {
+      this.knownIds.add(m[1]);
+    }
     this.debounceTimer = null;
     this.tooltip = document.createElement('div');
     this.tooltip.style.position = 'fixed';
@@ -463,8 +470,46 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     }
     this.prevCoords = current;
   }
+  processDirectives() {
+    const text = this.view.state.doc.toString();
+    const blockRegex = /\/\/\s*@VISUAL_BLOCK\s+([A-Za-z0-9_-]+)/g;
+    let m;
+    const matches = [];
+    while ((m = blockRegex.exec(text)) !== null) {
+      matches.push({ kind: m[1], start: m.index, end: m.index + m[0].length });
+    }
+    for (const match of matches.reverse()) {
+      const id = crypto.randomUUID();
+      const marker = `// @VISUAL_META ${id}`;
+      this.view.dispatch({ changes: { from: match.start, to: match.end, insert: marker } });
+      const block = ensureMetaBlock(this.view);
+      const insertPos = block.end - 2;
+      const metaObj = { id, x: 0, y: 0, updated_at: new Date().toISOString() };
+      const jsonLine = `${JSON.stringify(metaObj)}\n`;
+      this.view.dispatch({ changes: { from: insertPos, to: insertPos, insert: jsonLine } });
+      this.knownIds.add(id);
+      window.postMessage({ source: 'visual-meta', type: 'create-block', id, kind: match.kind }, '*');
+    }
+  }
+  detectRemoved() {
+    const text = this.view.state.doc.toString();
+    const idRegex = /\/\/\s*@VISUAL_META\s+([A-Za-z0-9_-]+)/g;
+    const current = new Set();
+    let m;
+    while ((m = idRegex.exec(text)) !== null) current.add(m[1]);
+    for (const id of Array.from(this.knownIds)) {
+      if (!current.has(id)) {
+        window.postMessage({ source: 'visual-meta', type: 'remove-block', id }, '*');
+      }
+    }
+    this.knownIds = current;
+  }
   update(update) {
-    if (update.docChanged) this.scheduleSync();
+    if (update.docChanged) {
+      this.processDirectives();
+      this.detectRemoved();
+      this.scheduleSync();
+    }
   }
   onMessage(e) {
     const { source, id, type, kind, color, thumbnail, ids, from, to } = e.data || {};
