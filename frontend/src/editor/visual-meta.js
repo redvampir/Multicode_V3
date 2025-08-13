@@ -253,18 +253,47 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     currentView = view;
     this.onMessage = this.onMessage.bind(this);
     this.onClick = this.onClick.bind(this);
+    this.onMouseMove = this.onMouseMove.bind(this);
+    this.onMouseLeave = this.onMouseLeave.bind(this);
+    this.lastHoverId = null;
+    this.lastMouse = { x: 0, y: 0 };
+    this.tooltip = document.createElement('div');
+    this.tooltip.style.position = 'fixed';
+    this.tooltip.style.pointerEvents = 'none';
+    this.tooltip.style.background = '#333';
+    this.tooltip.style.color = '#fff';
+    this.tooltip.style.padding = '4px 8px';
+    this.tooltip.style.borderRadius = '4px';
+    this.tooltip.style.display = 'none';
+    document.body.appendChild(this.tooltip);
     window.addEventListener('message', this.onMessage);
     view.dom.addEventListener('click', this.onClick);
+    view.dom.addEventListener('mousemove', this.onMouseMove);
+    view.dom.addEventListener('mouseleave', this.onMouseLeave);
   }
   destroy() {
     window.removeEventListener('message', this.onMessage);
     this.view.dom.removeEventListener('click', this.onClick);
+    this.view.dom.removeEventListener('mousemove', this.onMouseMove);
+    this.view.dom.removeEventListener('mouseleave', this.onMouseLeave);
+    document.body.removeChild(this.tooltip);
     if (currentView === this.view) currentView = null;
   }
   onMessage(e) {
-    const { source, id } = e.data || {};
-    if (source === 'visual-canvas' && id) {
-      highlightMetaById(this.view, id);
+    const { source, id, type, kind, color, thumbnail } = e.data || {};
+    if (source === 'visual-canvas') {
+      if (type === 'block-info' && id === this.lastHoverId) {
+        if (thumbnail) {
+          this.tooltip.innerHTML = `<img src="${thumbnail}" />`;
+        } else {
+          this.tooltip.textContent = `${kind || ''} ${color || ''}`.trim();
+        }
+        this.tooltip.style.left = this.lastMouse.x + 10 + 'px';
+        this.tooltip.style.top = this.lastMouse.y + 10 + 'px';
+        this.tooltip.style.display = 'block';
+      } else if (id) {
+        highlightMetaById(this.view, id);
+      }
     }
   }
   onClick(e) {
@@ -285,6 +314,43 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
       window.postMessage({ source: 'visual-meta', id: clickedId }, '*');
       highlightMetaById(this.view, clickedId);
     }
+  }
+  onMouseMove(e) {
+    this.lastMouse = { x: e.clientX, y: e.clientY };
+    const pos = this.view.posAtCoords({ x: e.clientX, y: e.clientY });
+    if (pos == null) {
+      this.lastHoverId = null;
+      this.tooltip.style.display = 'none';
+      return;
+    }
+    const text = this.view.state.doc.toString();
+    rebuildMetaPositions(text);
+    let hoverId = null;
+    for (const [id, start] of metaPositions.entries()) {
+      const end = text.indexOf("\n", start);
+      const to = end === -1 ? text.length : end;
+      if (pos >= start && pos <= to) {
+        hoverId = id;
+        break;
+      }
+    }
+    if (hoverId) {
+      if (hoverId !== this.lastHoverId) {
+        this.lastHoverId = hoverId;
+        window.postMessage({ source: 'visual-meta', type: 'request-block-info', id: hoverId }, '*');
+      }
+      if (this.tooltip.style.display !== 'none') {
+        this.tooltip.style.left = this.lastMouse.x + 10 + 'px';
+        this.tooltip.style.top = this.lastMouse.y + 10 + 'px';
+      }
+    } else {
+      this.lastHoverId = null;
+      this.tooltip.style.display = 'none';
+    }
+  }
+  onMouseLeave() {
+    this.lastHoverId = null;
+    this.tooltip.style.display = 'none';
   }
 }) : [];
 
