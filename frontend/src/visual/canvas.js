@@ -114,6 +114,12 @@ export class VisualCanvas {
     window.addEventListener('resize', () => this.resize());
     this.registerEvents();
     registerHoverHighlight(this);
+    window.addEventListener('message', e => {
+      const { source, id } = e.data || {};
+      if (source === 'visual-meta' && id) {
+        this.highlightBlocks([id]);
+      }
+    });
     requestAnimationFrame(() => this.draw());
   }
 
@@ -159,6 +165,12 @@ export class VisualCanvas {
       const base = data ? theme.blockKinds[data.kind] || theme.blockFill : theme.blockFill;
       b.color = this.highlighted.has(b.id) ? theme.highlight : base;
     });
+  }
+
+  selectBlock(id) {
+    if (id) this.highlightBlocks([id]);
+    else this.highlightBlocks([]);
+    window.postMessage({ source: 'visual-canvas', id }, '*');
   }
 
   search(label) {
@@ -266,6 +278,8 @@ export class VisualCanvas {
     this.canvas.addEventListener('mousedown', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       const block = this.blocks.find(b => b.contains(pos.x, pos.y));
+
+      if (block) this.selectBlock(block.id); else this.selectBlock(null);
 
       if (block) {
         const exit = { x: block.x + block.w, y: block.y + block.h / 2 };

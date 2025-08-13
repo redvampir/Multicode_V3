@@ -1,5 +1,12 @@
 import { StateField, RangeSetBuilder } from "@codemirror/state";
-import { Decoration, EditorView } from "@codemirror/view";
+import * as viewPkg from "@codemirror/view";
+const { Decoration, EditorView } = viewPkg;
+let ViewPlugin;
+try {
+  ViewPlugin = viewPkg.ViewPlugin;
+} catch (_) {
+  ViewPlugin = null;
+}
 import { hoverTooltip, foldEffect } from "@codemirror/language";
 import settings from "../../settings.json";
 import schema from "./meta.schema.json";
@@ -61,6 +68,19 @@ function rebuildMetaPositions(text) {
     }
     pos += line.length + 1;
   }
+}
+
+function highlightMetaById(view, id) {
+  let pos = metaPositions.get(id);
+  if (pos == null) {
+    rebuildMetaPositions(view.state.doc.toString());
+    pos = metaPositions.get(id);
+  }
+  if (pos == null) return;
+  const text = view.state.doc.toString();
+  const end = text.indexOf("\n", pos);
+  const to = end === -1 ? text.length : end;
+  view.dispatch({ selection: { anchor: pos, head: to }, scrollIntoView: true });
 }
 
 export function foldMetaBlock(view) {
@@ -218,4 +238,43 @@ export const visualMetaTooltip = hoverTooltip((view, pos) => {
   }
   return null;
 });
+
+export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlugin.fromClass(class {
+  constructor(view) {
+    this.view = view;
+    this.onMessage = this.onMessage.bind(this);
+    this.onClick = this.onClick.bind(this);
+    window.addEventListener('message', this.onMessage);
+    view.dom.addEventListener('click', this.onClick);
+  }
+  destroy() {
+    window.removeEventListener('message', this.onMessage);
+    this.view.dom.removeEventListener('click', this.onClick);
+  }
+  onMessage(e) {
+    const { source, id } = e.data || {};
+    if (source === 'visual-canvas' && id) {
+      highlightMetaById(this.view, id);
+    }
+  }
+  onClick(e) {
+    const pos = this.view.posAtCoords({ x: e.clientX, y: e.clientY });
+    if (pos == null) return;
+    const text = this.view.state.doc.toString();
+    rebuildMetaPositions(text);
+    let clickedId = null;
+    for (const [id, start] of metaPositions.entries()) {
+      const end = text.indexOf("\n", start);
+      const to = end === -1 ? text.length : end;
+      if (pos >= start && pos <= to) {
+        clickedId = id;
+        break;
+      }
+    }
+    if (clickedId) {
+      window.postMessage({ source: 'visual-meta', id: clickedId }, '*');
+      highlightMetaById(this.view, clickedId);
+    }
+  }
+}) : [];
 
