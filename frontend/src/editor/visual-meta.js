@@ -10,6 +10,7 @@ try {
 import { hoverTooltip, foldEffect } from "@codemirror/language";
 import settings from "../../settings.json";
 import schema from "./meta.schema.json";
+import { parsePatch } from "diff";
 
 const tmplObj = () => ({
   id: crypto.randomUUID(),
@@ -164,6 +165,71 @@ export function updateMetaComment(view, meta) {
   } catch (_) {
     return false;
   }
+}
+
+export function previewDiff(patch) {
+  const parsed = parsePatch(patch);
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.right = '0';
+  overlay.style.bottom = '0';
+  overlay.style.background = 'rgba(0,0,0,0.4)';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.zIndex = '10000';
+
+  const box = document.createElement('div');
+  box.style.background = '#fff';
+  box.style.padding = '1em';
+  box.style.maxHeight = '80%';
+  box.style.maxWidth = '80%';
+  box.style.overflow = 'auto';
+
+  const pre = document.createElement('pre');
+  parsed.forEach(p => {
+    p.hunks.forEach(h => {
+      h.lines.forEach(line => {
+        const span = document.createElement('span');
+        if (line.startsWith('+')) {
+          span.style.background = '#dfd';
+        } else if (line.startsWith('-')) {
+          span.style.background = '#fdd';
+        }
+        span.textContent = line + '\n';
+        pre.appendChild(span);
+      });
+    });
+  });
+  box.appendChild(pre);
+
+  const btns = document.createElement('div');
+  btns.style.textAlign = 'right';
+  btns.style.marginTop = '0.5em';
+  const apply = document.createElement('button');
+  apply.textContent = 'Apply';
+  const cancel = document.createElement('button');
+  cancel.textContent = 'Cancel';
+  cancel.style.marginLeft = '0.5em';
+  btns.appendChild(apply);
+  btns.appendChild(cancel);
+  box.appendChild(btns);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  return new Promise(resolve => {
+    apply.onclick = () => {
+      document.body.removeChild(overlay);
+      resolve(true);
+    };
+    cancel.onclick = () => {
+      document.body.removeChild(overlay);
+      resolve(false);
+    };
+  });
 }
 
 export function reorderMeta(ids) {

@@ -3,6 +3,8 @@ import { getTheme, onThemeChange } from './theme.ts';
 import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
 import { Minimap } from './minimap.ts';
 import settings from '../../settings.json' assert { type: 'json' };
+import { createTwoFilesPatch } from 'diff';
+import { updateMetaComment, previewDiff } from '../editor/visual-meta.js';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
 
@@ -83,6 +85,7 @@ export class VisualCanvas {
     this.panning = false;
     this.panStart = { x: 0, y: 0 };
     this.moveCallback = null;
+    this.metaView = null;
     this.undoStack = [];
     this.redoStack = [];
     this.dragStart = { x: 0, y: 0 };
@@ -243,6 +246,10 @@ export class VisualCanvas {
 
   onBlockMove(cb) {
     this.moveCallback = cb;
+  }
+
+  setMetaView(view) {
+    this.metaView = view;
   }
 
   addBlock(block) {
@@ -464,8 +471,9 @@ export class VisualCanvas {
       }
     });
 
-    window.addEventListener('mouseup', e => {
+    window.addEventListener('mouseup', async e => {
       const wasDragged = !!this.dragged;
+      let appliedMove = false;
       if (this.selectionBox) {
         const { startX, startY, x, y } = this.selectionBox;
         const x1 = Math.min(startX, x);
@@ -520,20 +528,48 @@ export class VisualCanvas {
           }
           targets.forEach(snap);
         }
-        if (this.dragged.x !== this.dragStart.x || this.dragged.y !== this.dragStart.y) {
-          this.undoStack.push({
-            type: 'move',
-            id: this.dragged.id,
-            from: { x: this.dragStart.x, y: this.dragStart.y },
-            to: { x: this.dragged.x, y: this.dragged.y }
-          });
-          this.redoStack = [];
-        }
-        if (this.moveCallback) {
-          this.moveCallback(this.dragged);
+        const moved = this.dragged.x !== this.dragStart.x || this.dragged.y !== this.dragStart.y;
+        if (moved && this.metaView) {
+          const data = this.blockDataMap.get(this.dragged.id) || { id: this.dragged.id };
+          const oldObj = { ...data, x: this.dragStart.x, y: this.dragStart.y };
+          const newObj = { ...data, x: this.dragged.x, y: this.dragged.y };
+          const patch = createTwoFilesPatch('meta', 'meta', JSON.stringify(oldObj) + '\n', JSON.stringify(newObj) + '\n');
+          const ok = await previewDiff(patch);
+          if (ok) {
+            this.undoStack.push({
+              type: 'move',
+              id: this.dragged.id,
+              from: { x: this.dragStart.x, y: this.dragStart.y },
+              to: { x: this.dragged.x, y: this.dragged.y }
+            });
+            this.redoStack = [];
+            updateMetaComment(this.metaView, { id: this.dragged.id, x: this.dragged.x, y: this.dragged.y });
+            if (this.moveCallback) {
+              this.moveCallback(this.dragged);
+            }
+            appliedMove = true;
+          } else {
+            this.dragged.x = this.dragStart.x;
+            this.dragged.y = this.dragStart.y;
+            this.draw();
+          }
+        } else {
+          if (moved) {
+            this.undoStack.push({
+              type: 'move',
+              id: this.dragged.id,
+              from: { x: this.dragStart.x, y: this.dragStart.y },
+              to: { x: this.dragged.x, y: this.dragged.y }
+            });
+            this.redoStack = [];
+          }
+          if (this.moveCallback) {
+            this.moveCallback(this.dragged);
+          }
+          appliedMove = moved;
         }
       }
-      if (cfg.syncOrder && wasDragged) {
+      if (cfg.syncOrder && wasDragged && appliedMove) {
         const ids = this.blocks
           .slice()
           .sort((a, b) => a.y - b.y)
