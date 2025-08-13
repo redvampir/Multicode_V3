@@ -16,11 +16,19 @@ pub fn commit(message: &str) -> Result<(), git2::Error> {
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
 
-    // Obtain commit signature from repository configuration to avoid relying on
-    // global git config which may be absent in test environments.
+    // Obtain commit signature from repository configuration.  In some
+    // environments (for example in tests or CI) the user may not have global
+    // git configuration set up.  Previously we bubbled up the `config value
+    // 'user.name' was not found` error which caused the commit tests to fail
+    // on a freshly initialised repository.  Instead, attempt to read the values
+    // and fall back to placeholder defaults when they are missing.
     let cfg = repo.config()?;
-    let name = cfg.get_string("user.name")?;
-    let email = cfg.get_string("user.email")?;
+    let name = cfg
+        .get_string("user.name")
+        .unwrap_or_else(|_| "Unknown".to_string());
+    let email = cfg
+        .get_string("user.email")
+        .unwrap_or_else(|_| "unknown@example.com".to_string());
     let sig = git2::Signature::now(&name, &email)?;
     // Determine whether the repository already has a HEAD reference. In a
     // freshly initialised repository `head()` will fail which previously caused
