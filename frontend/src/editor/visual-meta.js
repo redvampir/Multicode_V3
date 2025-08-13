@@ -72,6 +72,26 @@ function rebuildMetaPositions(text) {
   }
 }
 
+function extractMetaCoords(text) {
+  const map = new Map();
+  const block = getMetaBlock(text);
+  if (!block) return map;
+  const contentStart = text.indexOf("\n", block.start) + 1;
+  const content = text.slice(contentStart, block.end - 2);
+  const lines = content.split("\n");
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const obj = JSON.parse(trimmed);
+      if (obj.id) map.set(obj.id, { x: obj.x, y: obj.y });
+    } catch (_) {
+      // ignore
+    }
+  }
+  return map;
+}
+
 function highlightMetaById(view, id) {
   let pos = metaPositions.get(id);
   if (pos == null) {
@@ -257,6 +277,8 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     this.onMouseLeave = this.onMouseLeave.bind(this);
     this.lastHoverId = null;
     this.lastMouse = { x: 0, y: 0 };
+    this.prevCoords = extractMetaCoords(view.state.doc.toString());
+    this.debounceTimer = null;
     this.tooltip = document.createElement('div');
     this.tooltip.style.position = 'fixed';
     this.tooltip.style.pointerEvents = 'none';
@@ -277,7 +299,29 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     this.view.dom.removeEventListener('mousemove', this.onMouseMove);
     this.view.dom.removeEventListener('mouseleave', this.onMouseLeave);
     document.body.removeChild(this.tooltip);
+    clearTimeout(this.debounceTimer);
     if (currentView === this.view) currentView = null;
+  }
+  scheduleSync() {
+    clearTimeout(this.debounceTimer);
+    this.debounceTimer = setTimeout(() => this.syncCoords(), 300);
+  }
+  syncCoords() {
+    const text = this.view.state.doc.toString();
+    rebuildMetaPositions(text);
+    const current = extractMetaCoords(text);
+    for (const [id, meta] of current.entries()) {
+      const prev = this.prevCoords.get(id);
+      if (!prev || prev.x !== meta.x || prev.y !== meta.y) {
+        if (typeof meta.x === 'number' || typeof meta.y === 'number') {
+          window.postMessage({ source: 'visual-meta', type: 'updatePos', id, x: meta.x, y: meta.y }, '*');
+        }
+      }
+    }
+    this.prevCoords = current;
+  }
+  update(update) {
+    if (update.docChanged) this.scheduleSync();
   }
   onMessage(e) {
     const { source, id, type, kind, color, thumbnail } = e.data || {};

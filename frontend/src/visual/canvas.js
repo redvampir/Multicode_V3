@@ -115,7 +115,7 @@ export class VisualCanvas {
     this.registerEvents();
     registerHoverHighlight(this);
     window.addEventListener('message', e => {
-      const { source, id, type } = e.data || {};
+      const { source, id, type, x, y } = e.data || {};
       if (source === 'visual-meta') {
         if (type === 'request-block-info' && id) {
           const data = this.blockDataMap.get(id);
@@ -135,6 +135,14 @@ export class VisualCanvas {
               thumbnail = null;
             }
             window.postMessage({ source: 'visual-canvas', type: 'block-info', id, kind: data.kind, color, thumbnail }, '*');
+          }
+        } else if (type === 'updatePos' && id) {
+          const data = this.blockDataMap.get(id);
+          if (data) {
+            if (typeof x === 'number') data.x = x;
+            if (typeof y === 'number') data.y = y;
+            this.updateLabels();
+            this.draw();
           }
         } else if (id) {
           this.highlightBlocks([id]);
