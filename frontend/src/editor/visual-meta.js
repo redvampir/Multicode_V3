@@ -1,8 +1,8 @@
 import { StateField, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
 import { hoverTooltip, foldEffect } from "@codemirror/language";
-import settings from "../../settings.json" assert { type: "json" };
-import schema from "./meta.schema.json" with { type: "json" };
+import settings from "../../settings.json";
+import schema from "./meta.schema.json";
 
 const tmplObj = () => ({
   id: crypto.randomUUID(),
