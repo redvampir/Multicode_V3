@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
+vi.mock('../editor/visual-meta.js', () => ({
+  updateMetaComment: vi.fn(),
+  previewDiff: vi.fn().mockResolvedValue(true)
+}));
 import { analyzeConnections, VisualCanvas } from './canvas.js';
 
 describe('analyzeConnections', () => {
