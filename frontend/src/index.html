@@ -30,7 +30,7 @@
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
     import { VisualCanvas } from "./visual/canvas.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
-    import { insertVisualMeta, updateMetaComment, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger } from "./editor/visual-meta.js";
+    import { insertVisualMeta, updateMetaComment, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
     import settings from "../settings.json" assert { type: 'json' };
     import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
@@ -103,6 +103,14 @@
       }),
       parent: document.getElementById('editor')
     });
+
+    window.openInTextEditor = id => {
+      document.getElementById('visual-canvas').style.display = 'none';
+      document.getElementById('visual-minimap').style.display = 'none';
+      document.getElementById('editor').style.height = '90vh';
+      scrollToMeta(id);
+      view.focus();
+    };
 
     async function save() {
       await invoke('save_state', { content: view.state.doc.toString() });

@@ -317,6 +317,14 @@ export class VisualCanvas {
       this.tooltip.style.display = 'none';
     });
 
+    this.canvas.addEventListener('dblclick', e => {
+      const pos = this.toWorld(e.offsetX, e.offsetY);
+      const block = this.blocks.find(b => b.contains(pos.x, pos.y));
+      if (block && typeof window.openInTextEditor === 'function') {
+        window.openInTextEditor(block.id);
+      }
+    });
+
     this.canvas.addEventListener('mousemove', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       if (this.selectionBox) {
