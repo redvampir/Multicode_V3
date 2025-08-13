@@ -1,4 +1,6 @@
 import settings from '../../settings.json' assert { type: 'json' };
+import { createBlock } from './blocks.js';
+import { getTheme } from './theme.ts';
 
 interface HotkeyMap {
   copyBlock: string;
@@ -114,11 +116,32 @@ function handleKey(e: KeyboardEvent) {
 }
 
 export function copyBlock() {
-  console.log('copy block');
+  if (!canvasRef || !canvasRef.selected || canvasRef.selected.size !== 1) return;
+  const block = Array.from(canvasRef.selected)[0];
+  const data = canvasRef.blockDataMap?.get(block.id);
+  if (!data) return;
+  clipboard = JSON.parse(JSON.stringify(data));
 }
 
 export function pasteBlock() {
-  console.log('paste block');
+  if (!canvasRef || !clipboard) return;
+  const data = JSON.parse(JSON.stringify(clipboard));
+  const theme = getTheme();
+  data.visual_id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  data.x = (data.x || 0) + MOVE_STEP;
+  data.y = (data.y || 0) + MOVE_STEP;
+  const label = (data.translations && data.translations[canvasRef.locale]) || data.kind;
+  const color = theme.blockKinds[data.kind] || theme.blockFill;
+  const block = createBlock(data.kind, data.visual_id, data.x, data.y, label, color);
+  canvasRef.blocks.push(block);
+  canvasRef.blocksData.push(data);
+  canvasRef.blockDataMap.set(data.visual_id, data);
+  canvasRef.selected = new Set([block]);
+  canvasRef.moveCallback?.(block);
+  canvasRef.draw?.();
 }
 
 export function selectConnections() {
@@ -138,6 +161,7 @@ export function showHotkeyHelp() {
 }
 
 let canvasRef: any = null;
+let clipboard: any = null;
 
 export function setCanvas(vc: any) {
   canvasRef = vc;
