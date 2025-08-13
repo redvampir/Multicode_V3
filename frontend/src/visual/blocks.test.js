@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { Block, registerBlock, createBlock } from './blocks.js';
+import { Block, registerBlock, unregisterBlock, createBlock } from './blocks.js';
 
 describe('block utilities', () => {
   it('checks point containment and center', () => {
@@ -15,5 +15,15 @@ describe('block utilities', () => {
     registerBlock('custom', Custom);
     const b = createBlock('custom', '2', 0, 0, 'c');
     expect(b).toBeInstanceOf(Custom);
+  });
+
+  it('unregisters a block type', () => {
+    class Custom extends Block {
+      constructor(id, x, y) { super(id, x, y, 10, 10, 'c'); }
+    }
+    registerBlock('temp', Custom);
+    unregisterBlock('temp');
+    const b = createBlock('temp', '3', 0, 0, 'c');
+    expect(b).toBeInstanceOf(Block);
   });
 });

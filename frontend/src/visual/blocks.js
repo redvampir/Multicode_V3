@@ -38,9 +38,23 @@ export class Block {
 // ---- Plugin infrastructure -------------------------------------------------
 
 const registry = {};
+const pluginKinds = new Map(); // url -> Set of kinds
+let currentPluginUrl = null;
 
 export function registerBlock(kind, ctor) {
   registry[kind] = ctor;
+  if (currentPluginUrl) {
+    let kinds = pluginKinds.get(currentPluginUrl);
+    if (!kinds) {
+      kinds = new Set();
+      pluginKinds.set(currentPluginUrl, kinds);
+    }
+    kinds.add(kind);
+  }
+}
+
+export function unregisterBlock(kind) {
+  delete registry[kind];
 }
 
 export function createBlock(kind, id, x, y, label, color) {
@@ -48,16 +62,37 @@ export function createBlock(kind, id, x, y, label, color) {
   return new Ctor(id, x, y, 120, 50, label, color);
 }
 
+async function importPlugin(url, forceReload = false) {
+  if (forceReload && pluginKinds.has(url)) {
+    for (const kind of pluginKinds.get(url)) {
+      unregisterBlock(kind);
+    }
+    pluginKinds.delete(url);
+  }
+  const importUrl = forceReload ? `${url}?t=${Date.now()}` : url;
+  try {
+    currentPluginUrl = url;
+    const mod = await import(/* @vite-ignore */ importUrl);
+    if (mod && typeof mod.register === 'function') {
+      mod.register({ Block, registerBlock });
+    }
+  } catch (e) {
+    console.error('Failed to load block plugin', url, e);
+  } finally {
+    currentPluginUrl = null;
+  }
+}
+
 export async function loadBlockPlugins(urls) {
   for (const url of urls) {
-    try {
-      const mod = await import(/* @vite-ignore */ url);
-      if (mod && typeof mod.register === 'function') {
-        mod.register({ Block, registerBlock });
-      }
-    } catch (e) {
-      console.error('Failed to load block plugin', url, e);
-    }
+    const reload = pluginKinds.has(url);
+    await importPlugin(url, reload);
+  }
+}
+
+export async function reloadPlugins(urls) {
+  for (const url of urls) {
+    await importPlugin(url, true);
   }
 }
 
