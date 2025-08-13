@@ -112,6 +112,25 @@ export function scrollToMeta(id) {
   }
 }
 
+function highlightRangeBetweenIds(view, fromId, toId) {
+  const text = view.state.doc.toString();
+  const positions = findInlineMetaPositions(text);
+  const fromPos = positions.get(fromId);
+  const toPos = positions.get(toId);
+  if (!fromPos || !toPos) {
+    window.postMessage({ source: 'visual-meta', type: 'edge-not-found', from: fromId, to: toId }, '*');
+    return;
+  }
+  let first = fromPos;
+  let second = toPos;
+  if (first.start > second.start) {
+    [first, second] = [second, first];
+  }
+  const start = text.indexOf("\n", first.end) + 1;
+  const end = second.start;
+  view.dispatch({ selection: { anchor: start, head: end }, scrollIntoView: true });
+}
+
 export function foldMetaBlock(view) {
   if (settings?.editor?.autoFoldMeta === false) return;
   const block = getMetaBlock(view.state.doc.toString());
@@ -278,6 +297,25 @@ const regexes = [
   /<!--\s*@VISUAL_META\s*(\{.*?\})\s*-->/gs,
 ];
 
+function findInlineMetaPositions(text) {
+  const positions = new Map();
+  for (const re of regexes) {
+    re.lastIndex = 0;
+    let m;
+    while ((m = re.exec(text)) !== null) {
+      try {
+        const obj = JSON.parse(m[1]);
+        if (obj && obj.id) {
+          positions.set(obj.id, { start: m.index, end: m.index + m[0].length });
+        }
+      } catch (_) {
+        /* ignore */
+      }
+    }
+  }
+  return positions;
+}
+
 function validateAgainstSchema(obj, sch, path = "") {
   const errors = [];
   if (sch.type === "object") {
@@ -429,7 +467,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     if (update.docChanged) this.scheduleSync();
   }
   onMessage(e) {
-    const { source, id, type, kind, color, thumbnail, ids } = e.data || {};
+    const { source, id, type, kind, color, thumbnail, ids, from, to } = e.data || {};
     if (source === 'visual-canvas') {
       if (type === 'block-info' && id === this.lastHoverId) {
         if (thumbnail) {
@@ -442,6 +480,8 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
         this.tooltip.style.display = 'block';
       } else if (type === 'reorder' && Array.isArray(ids) && settings?.visual?.syncOrder !== false) {
         reorderMeta(ids);
+      } else if (type === 'edgeSelected' && from && to) {
+        highlightRangeBetweenIds(this.view, from, to);
       } else if (id) {
         highlightMetaById(this.view, id);
       }
