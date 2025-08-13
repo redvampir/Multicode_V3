@@ -2,11 +2,9 @@ use backend::meta::{self, id_registry};
 
 #[test]
 fn detects_duplicate_ids() {
-    id_registry::clear();
     let content = "# @VISUAL_META {\"id\":\"dup\",\"x\":0.0,\"y\":0.0}\n# @VISUAL_META {\"id\":\"dup\",\"x\":1.0,\"y\":1.0}";
-    // reading registers IDs
-    meta::read_all(content);
-    let dups = id_registry::duplicates();
+    // reading registers IDs and capturing duplicates
+    let (_metas, dups) = meta::read_all_with_dups(content);
     assert_eq!(dups, vec!["dup".to_string()]);
 }
 
