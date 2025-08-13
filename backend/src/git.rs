@@ -22,10 +22,21 @@ pub fn commit(message: &str) -> Result<(), git2::Error> {
     let name = cfg.get_string("user.name")?;
     let email = cfg.get_string("user.email")?;
     let sig = git2::Signature::now(&name, &email)?;
-    let head = repo.head().ok();
-    let parent = head.and_then(|h| h.peel_to_commit().ok());
+    // Determine whether the repository already has a HEAD reference. In a
+    // freshly initialised repository `head()` will fail which previously caused
+    // `commit` to error. Instead of bubbling this error up we handle the
+    // initial commit case explicitly by committing without updating `HEAD` and
+    // then setting `HEAD` to point to the new commit.
+    let head = repo.head();
+    let parent = head.as_ref().ok().and_then(|h| h.peel_to_commit().ok());
     let parents: Vec<&Commit> = parent.iter().collect();
-    repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parents)?;
+
+    if head.is_ok() {
+        repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parents)?;
+    } else {
+        let oid = repo.commit(None, &sig, &sig, message, &tree, &parents)?;
+        repo.set_head_detached(oid)?;
+    }
     Ok(())
 }
 
