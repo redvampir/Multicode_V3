@@ -6,7 +6,8 @@
 * **Backend** – реализует трейт [`Plugin`](../../backend/src/plugins/mod.rs) и
   сообщает о дополнительных типах блоков.
 * **Frontend** – предоставляет визуальный компонент для нового блока и
-  регистрирует его через функцию `registerBlock`.
+  регистрирует его через функцию `registerBlock`, а при необходимости
+  удаляет через `unregisterBlock`.
 
 ## Backend API
 
@@ -56,6 +57,18 @@ export function register({ Block, registerBlock }) {
 
 ```javascript
 await loadBlockPlugins(['./my-block.js']);
+```
+
+При обновлении кода плагина его можно перезагрузить без перезагрузки страницы:
+
+```javascript
+await reloadPlugins(['./my-block.js']);
+```
+
+Если блок больше не нужен, его можно удалить из реестра:
+
+```javascript
+unregisterBlock('MyBlock');
 ```
 
 Поле `extras` из структуры [`VisualMeta`](../../backend/src/meta/mod.rs) позволяет
