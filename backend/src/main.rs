@@ -322,9 +322,10 @@ mod tests {
             extras: None,
             updated_at: Utc::now(),
         };
-        let updated = upsert_meta(src, meta.clone(), "rust".into());
-        assert!(updated.contains("@VISUAL_META"));
-        let metas = read_all(&updated);
+        let updated = upsert_meta(src, meta.clone(), "rust".into(), vec!["main.rs".into()]);
+        let content = updated.get("main.rs").expect("result for main.rs");
+        assert!(content.contains("@VISUAL_META"));
+        let metas = read_all(content);
         assert_eq!(metas.len(), 1);
         assert_eq!(
             metas[0].translations.get("en").map(|s| s.as_str()),

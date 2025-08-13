@@ -413,6 +413,7 @@ export const visualMetaTooltip = hoverTooltip((view, pos) => {
 export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlugin.fromClass(class {
   constructor(view) {
     this.view = view;
+    this.fileId = view.dom.dataset.fileId || 'current';
     currentView = view;
     this.onMessage = this.onMessage.bind(this);
     this.onClick = this.onClick.bind(this);
@@ -512,7 +513,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     }
   }
   onMessage(e) {
-    const { source, id, type, kind, color, thumbnail, ids, from, to } = e.data || {};
+    const { source, id, type, kind, color, thumbnail, ids, from, to, updates } = e.data || {};
     if (source === 'visual-canvas') {
       if (type === 'block-info' && id === this.lastHoverId) {
         if (thumbnail) {
@@ -527,6 +528,13 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
         reorderMeta(ids);
       } else if (type === 'edgeSelected' && from && to) {
         highlightRangeBetweenIds(this.view, from, to);
+      } else if (type === 'refresh-text' && updates) {
+        const txt = updates[this.fileId];
+        if (typeof txt === 'string') {
+          const doc = this.view.state.doc.toString();
+          this.view.dispatch({ changes: { from: 0, to: doc.length, insert: txt } });
+          rebuildMetaPositions(this.view.state.doc.toString());
+        }
       } else if (id) {
         highlightMetaById(this.view, id);
       }

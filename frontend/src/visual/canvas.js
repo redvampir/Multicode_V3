@@ -99,6 +99,8 @@ export class VisualCanvas {
     this.selectionBox = null;
     this.missingEdge = null;
     this.nextAutoPos = { x: 0, y: 0 };
+    this.fileId = 'current';
+    this.lang = 'rust';
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -122,7 +124,7 @@ export class VisualCanvas {
     this.registerEvents();
     registerHoverHighlight(this);
     window.addEventListener('message', e => {
-      const { source, id, type, x, y, from, to, kind } = e.data || {};
+      const { source, id, type, x, y, from, to, kind, meta, files } = e.data || {};
       if (source === 'visual-meta') {
         if (type === 'request-block-info' && id) {
           const data = this.blockDataMap.get(id);
@@ -173,6 +175,9 @@ export class VisualCanvas {
           this.blockDataMap.delete(id);
           this.connections = this.connections.filter(([a, b]) => a.id !== id && b.id !== id);
           this.draw();
+        } else if ((type === 'save' || type === 'apply') && meta) {
+          const fileIds = Array.isArray(files) && files.length ? files : [this.fileId];
+          this.upsertMeta(meta, fileIds);
         } else if (id) {
           this.highlightBlocks([id]);
         }
@@ -274,6 +279,22 @@ export class VisualCanvas {
 
   setMetaView(view) {
     this.metaView = view;
+  }
+
+  async upsertMeta(meta, fileIds) {
+    if (!this.metaView) return;
+    try {
+      const content = this.metaView.state.doc.toString();
+      const res = await fetch('/metadata', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, meta, lang: this.lang, files: fileIds })
+      });
+      const data = await res.json();
+      window.postMessage({ source: 'visual-canvas', type: 'refresh-text', updates: data }, '*');
+    } catch (err) {
+      console.error('failed to upsert meta', err);
+    }
   }
 
   getFreePos() {
@@ -592,6 +613,7 @@ export class VisualCanvas {
             });
             this.redoStack = [];
             updateMetaComment(this.metaView, { id: this.dragged.id, x: this.dragged.x, y: this.dragged.y });
+            this.upsertMeta({ id: this.dragged.id, x: this.dragged.x, y: this.dragged.y }, [this.fileId]);
             if (this.moveCallback) {
               this.moveCallback(this.dragged);
             }
