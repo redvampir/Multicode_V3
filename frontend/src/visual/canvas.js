@@ -206,6 +206,33 @@ export class VisualCanvas {
     this.blocks.push(block);
   }
 
+  serialize() {
+    return {
+      blocks: this.blocksData,
+      connections: this.connections.map(([a, b]) => [a.id, b.id]),
+      offset: this.offset,
+      scale: this.scale
+    };
+  }
+
+  load(layout) {
+    if (!layout) return;
+    this.blocksData = layout.blocks || [];
+    this.blockDataMap = new Map(this.blocksData.map(b => [b.visual_id, b]));
+    this.updateLabels();
+    const byId = new Map(this.blocks.map(b => [b.id, b]));
+    this.connections = (layout.connections || [])
+      .map(([a, b]) => {
+        const from = byId.get(a);
+        const to = byId.get(b);
+        return from && to ? [from, to] : null;
+      })
+      .filter(Boolean);
+    this.offset = layout.offset || { x: 0, y: 0 };
+    this.scale = layout.scale ?? 1;
+    this.analyze();
+  }
+
   connect(a, b) {
     this.connections.push([a, b]);
     this.analyze();
