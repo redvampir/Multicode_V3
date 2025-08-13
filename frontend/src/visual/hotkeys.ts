@@ -154,14 +154,41 @@ export function focusSearch() {
 }
 
 export function showHotkeyHelp() {
-  const list = Object.entries(hotkeys)
-    .map(([name, combo]) => `${combo} - ${name}`)
-    .join('\n');
-  alert(list);
+  if (!hotkeyDialog) buildHotkeyDialog();
+  hotkeyDialog!.showModal();
 }
 
 let canvasRef: any = null;
 let clipboard: any = null;
+
+let hotkeyDialog: HTMLDialogElement | null = null;
+
+function buildHotkeyDialog() {
+  hotkeyDialog = document.createElement('dialog');
+  hotkeyDialog.id = 'hotkey-help';
+
+  const title = document.createElement('h2');
+  title.textContent = 'Hotkeys';
+  hotkeyDialog.appendChild(title);
+
+  const list = document.createElement('dl');
+  for (const [name, combo] of Object.entries(hotkeys)) {
+    const dt = document.createElement('dt');
+    dt.textContent = combo;
+    const dd = document.createElement('dd');
+    dd.textContent = name;
+    list.appendChild(dt);
+    list.appendChild(dd);
+  }
+  hotkeyDialog.appendChild(list);
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = 'Close';
+  closeBtn.addEventListener('click', () => hotkeyDialog?.close());
+  hotkeyDialog.appendChild(closeBtn);
+
+  document.body.appendChild(hotkeyDialog);
+}
 
 export function setCanvas(vc: any) {
   canvasRef = vc;
