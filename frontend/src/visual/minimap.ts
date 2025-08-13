@@ -5,9 +5,36 @@ export class Minimap {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
 
-  constructor(canvas: HTMLCanvasElement) {
+  constructor(canvas: HTMLCanvasElement, vc: VisualCanvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
+
+    canvas.addEventListener('mousedown', e => {
+      const blocks = vc.blocks;
+      if (!blocks || blocks.length === 0) return;
+
+      const width = this.canvas.width;
+      const height = this.canvas.height;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const b of blocks) {
+        minX = Math.min(minX, b.x);
+        minY = Math.min(minY, b.y);
+        maxX = Math.max(maxX, b.x + b.w);
+        maxY = Math.max(maxY, b.y + b.h);
+      }
+      const worldW = maxX - minX || 1;
+      const worldH = maxY - minY || 1;
+      const scale = Math.min(width / worldW, height / worldH);
+      const originX = -minX * scale + (width - worldW * scale) / 2;
+      const originY = -minY * scale + (height - worldH * scale) / 2;
+
+      const worldX = (e.offsetX - originX) / scale;
+      const worldY = (e.offsetY - originY) / scale;
+      const viewW = vc.canvas.width / vc.scale;
+      const viewH = vc.canvas.height / vc.scale;
+      vc.offset.x = -(worldX - viewW / 2) * vc.scale;
+      vc.offset.y = -(worldY - viewH / 2) * vc.scale;
+    });
   }
 
   render(vc: VisualCanvas) {
