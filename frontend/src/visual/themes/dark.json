@@ -1,0 +1,16 @@
+{
+  "blockFill": "#333",
+  "blockStroke": "#bbb",
+  "blockText": "#fff",
+  "connection": "#fff",
+  "highlight": "#555",
+  "tooltipBg": "#eee",
+  "tooltipText": "#000",
+  "alignGuide": "#555",
+  "blockKinds": {
+    "Function": "#455a64",
+    "Variable": "#558b2f",
+    "Condition": "#827717",
+    "Loop": "#6d4c41"
+  }
+}

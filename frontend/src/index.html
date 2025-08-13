@@ -30,6 +30,9 @@
     import { loadBlockPlugins } from "./visual/blocks.js";
     import { insertVisualMeta, updateMetaComment, visualMetaHighlighter, visualMetaTooltip } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
+    import settings from "../settings.json" assert { type: 'json' };
+    import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
+    import { writeTextFile, BaseDirectory } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/fs.js";
 
     await loadBlockPlugins(window.blockPlugins || []);
 
@@ -38,6 +41,22 @@
     const vc = new VisualCanvas(canvasEl, minimapEl);
     setCanvas(vc);
     registerHotkeys();
+
+    const themeSelect = document.getElementById('theme');
+    availableThemes.forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      if (t === getThemeName()) opt.selected = true;
+      themeSelect.appendChild(opt);
+    });
+    themeSelect.addEventListener('change', async e => {
+      const name = e.target.value;
+      applyTheme(name);
+      settings.visual = settings.visual || {};
+      settings.visual.theme = name;
+      await writeTextFile('settings.json', JSON.stringify(settings, null, 2), { dir: BaseDirectory.Resource });
+    });
 
     const ws = new WebSocket('ws://localhost:3000/ws');
     ws.addEventListener('message', ev => {
@@ -182,6 +201,7 @@
     <button id="undo">Undo</button>
     <button id="redo">Redo</button>
     <button id="insert-meta">Insert Meta</button>
+    <select id="theme"></select>
     <select id="locale">
       <option value="en">English</option>
       <option value="ru">Русский</option>
