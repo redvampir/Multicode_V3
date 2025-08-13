@@ -62,7 +62,7 @@ export class VisualCanvas {
   constructor(canvas, minimapCanvas = null) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d');
-    this.minimap = minimapCanvas ? new Minimap(minimapCanvas) : null;
+    this.minimap = minimapCanvas ? new Minimap(minimapCanvas, this) : null;
     this.scale = 1;
     this.offset = { x: 0, y: 0 };
     this.blocks = [];
