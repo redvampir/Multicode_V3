@@ -7,6 +7,8 @@ interface HotkeyMap {
   focusSearch: string;
   showHelp: string;
   zoomToFit: string;
+  undo: string;
+  redo: string;
 }
 
 const cfg: { hotkeys?: Partial<HotkeyMap>; visual?: { gridSize?: number } } = settings as any;
@@ -18,7 +20,9 @@ export const hotkeys: HotkeyMap = {
   selectConnections: cfg.hotkeys?.selectConnections || 'Ctrl+Shift+A',
   focusSearch: cfg.hotkeys?.focusSearch || 'Ctrl+F',
   showHelp: cfg.hotkeys?.showHelp || 'Ctrl+?',
-  zoomToFit: cfg.hotkeys?.zoomToFit || 'Ctrl+0'
+  zoomToFit: cfg.hotkeys?.zoomToFit || 'Ctrl+0',
+  undo: cfg.hotkeys?.undo || 'Ctrl+Z',
+  redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z'
 };
 
 function buildCombo(e: KeyboardEvent) {
@@ -66,6 +70,14 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       zoomToFit();
       break;
+    case hotkeys.undo:
+      e.preventDefault();
+      canvasRef?.undo?.();
+      break;
+    case hotkeys.redo:
+      e.preventDefault();
+      canvasRef?.redo?.();
+      break;
     case 'ArrowUp':
     case 'ArrowDown':
     case 'ArrowLeft':
@@ -73,6 +85,7 @@ function handleKey(e: KeyboardEvent) {
       if (canvasRef?.selected?.size === 1) {
         e.preventDefault();
         const block = Array.from(canvasRef.selected)[0];
+        const before = { x: block.x, y: block.y };
         switch (combo) {
           case 'ArrowUp':
             block.y -= MOVE_STEP;
@@ -88,6 +101,13 @@ function handleKey(e: KeyboardEvent) {
             break;
         }
         canvasRef.moveCallback?.(block);
+        canvasRef.undoStack?.push({
+          type: 'move',
+          id: block.id,
+          from: before,
+          to: { x: block.x, y: block.y }
+        });
+        if (canvasRef.redoStack) canvasRef.redoStack = [];
       }
       break;
   }
