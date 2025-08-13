@@ -11,5 +11,8 @@
     "gridSize": 20,
     "showGrid": true
   },
+  "editor": {
+    "autoFoldMeta": true
+  },
   "plugins": {}
 }

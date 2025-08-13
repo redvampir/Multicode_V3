@@ -1,6 +1,7 @@
 import { StateField, RangeSetBuilder } from "@codemirror/state";
 import { Decoration, EditorView } from "@codemirror/view";
-import { hoverTooltip } from "@codemirror/language";
+import { hoverTooltip, foldEffect } from "@codemirror/language";
+import settings from "../../settings.json" assert { type: "json" };
 import schema from "./meta.schema.json" with { type: "json" };
 
 const tmplObj = () => ({
@@ -60,6 +61,13 @@ function rebuildMetaPositions(text) {
     }
     pos += line.length + 1;
   }
+}
+
+export function foldMetaBlock(view) {
+  if (settings?.editor?.autoFoldMeta === false) return;
+  const block = getMetaBlock(view.state.doc.toString());
+  if (!block) return;
+  view.dispatch({ effects: foldEffect.of({ from: block.start, to: block.end }) });
 }
 
 export function insertVisualMeta(view, _lang) {
