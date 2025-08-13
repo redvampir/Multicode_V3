@@ -1,5 +1,5 @@
 import { createBlock } from './blocks.js';
-import { getTheme } from './theme.ts';
+import { getTheme, onThemeChange } from './theme.ts';
 import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
 import { Minimap } from './minimap.ts';
 import settings from '../../settings.json' assert { type: 'json' };
@@ -103,6 +103,11 @@ export class VisualCanvas {
     this.tooltip.style.whiteSpace = 'pre';
     this.tooltip.style.display = 'none';
     document.body.appendChild(this.tooltip);
+
+    onThemeChange(t => {
+      this.tooltip.style.background = t.tooltipBg;
+      this.tooltip.style.color = t.tooltipText;
+    });
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
