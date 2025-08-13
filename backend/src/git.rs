@@ -1,4 +1,4 @@
-use git2::{Repository, IndexAddOption, DiffOptions, BranchType, Commit};
+use git2::{BranchType, Commit, DiffOptions, IndexAddOption, Repository};
 use tracing::error;
 
 pub fn commit(message: &str) -> Result<(), git2::Error> {
@@ -15,7 +15,13 @@ pub fn commit(message: &str) -> Result<(), git2::Error> {
     index.write()?;
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
-    let sig = repo.signature()?;
+
+    // Obtain commit signature from repository configuration to avoid relying on
+    // global git config which may be absent in test environments.
+    let cfg = repo.config()?;
+    let name = cfg.get_string("user.name")?;
+    let email = cfg.get_string("user.email")?;
+    let sig = git2::Signature::now(&name, &email)?;
     let head = repo.head().ok();
     let parent = head.and_then(|h| h.peel_to_commit().ok());
     let parents: Vec<&Commit> = parent.iter().collect();
@@ -32,8 +38,9 @@ pub fn diff() -> Result<String, git2::Error> {
     let diff = repo.diff_index_to_workdir(None, Some(&mut opts))?;
     let mut out = String::new();
 
-    diff.print(git2::DiffFormat::Patch, |_delta, _hunk, line| {
-        match std::str::from_utf8(line.content()) {
+    diff.print(
+        git2::DiffFormat::Patch,
+        |_delta, _hunk, line| match std::str::from_utf8(line.content()) {
             Ok(s) => {
                 if out.len() + s.len() <= MAX_DIFF_LEN {
                     out.push_str(s);
@@ -48,8 +55,8 @@ pub fn diff() -> Result<String, git2::Error> {
                 error!("diff decode error: {e}");
                 true
             }
-        }
-    })?;
+        },
+    )?;
 
     Ok(out)
 }
