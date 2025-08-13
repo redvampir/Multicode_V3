@@ -166,6 +166,45 @@ export function updateMetaComment(view, meta) {
   }
 }
 
+export function reorderMeta(ids) {
+  if (!currentView || !Array.isArray(ids)) return;
+  const view = currentView;
+  const text = view.state.doc.toString();
+  const block = getMetaBlock(text);
+  if (!block) return;
+  const contentStart = text.indexOf("\n", block.start) + 1;
+  const contentEnd = block.end - 2;
+  const content = text.slice(contentStart, contentEnd);
+  const lines = content.split("\n");
+  const items = lines
+    .map(line => {
+      const trimmed = line.trim();
+      let id = null;
+      try {
+        const obj = JSON.parse(trimmed);
+        if (obj.id) id = obj.id;
+      } catch (_) {
+        /* ignore */
+      }
+      return { line, id, used: false };
+    })
+    .filter(i => i.line.trim());
+  const newLines = [];
+  ids.forEach(id => {
+    const it = items.find(i => i.id === id && !i.used);
+    if (it) {
+      newLines.push(it.line);
+      it.used = true;
+    }
+  });
+  items.forEach(it => {
+    if (!it.used) newLines.push(it.line);
+  });
+  const newContent = newLines.join("\n") + (newLines.length ? "\n" : "");
+  view.dispatch({ changes: { from: contentStart, to: contentEnd, insert: newContent } });
+  rebuildMetaPositions(view.state.doc.toString());
+}
+
 const regexes = [
   /#\s*@VISUAL_META\s*(\{.*\})/g,
   /\/\/\s*@VISUAL_META\s*(\{.*\})/g,
@@ -324,7 +363,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     if (update.docChanged) this.scheduleSync();
   }
   onMessage(e) {
-    const { source, id, type, kind, color, thumbnail } = e.data || {};
+    const { source, id, type, kind, color, thumbnail, ids } = e.data || {};
     if (source === 'visual-canvas') {
       if (type === 'block-info' && id === this.lastHoverId) {
         if (thumbnail) {
@@ -335,6 +374,8 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
         this.tooltip.style.left = this.lastMouse.x + 10 + 'px';
         this.tooltip.style.top = this.lastMouse.y + 10 + 'px';
         this.tooltip.style.display = 'block';
+      } else if (type === 'reorder' && Array.isArray(ids) && settings?.visual?.syncOrder !== false) {
+        reorderMeta(ids);
       } else if (id) {
         highlightMetaById(this.view, id);
       }
