@@ -17,7 +17,9 @@
   </style>
   <script type="module">
     import { EditorState } from "@codemirror/state";
-    import { EditorView } from "@codemirror/view";
+    import { EditorView, keymap } from "@codemirror/view";
+    import { foldGutter } from "@codemirror/language";
+    import { foldKeymap } from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/dist/index.js";
     import { basicSetup } from "https://cdn.jsdelivr.net/npm/@codemirror/basic-setup@0.20.0/dist/index.js";
     import { javascript } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-javascript@0.19.7/dist/index.js";
     import { python } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-python@0.19.7/dist/index.js";
@@ -28,7 +30,7 @@
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
     import { VisualCanvas } from "./visual/canvas.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
-    import { insertVisualMeta, updateMetaComment, visualMetaHighlighter, visualMetaTooltip } from "./editor/visual-meta.js";
+    import { insertVisualMeta, updateMetaComment, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
     import settings from "../settings.json" assert { type: 'json' };
     import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
@@ -93,6 +95,7 @@
         doc: '',
         extensions: [
           basicSetup, javascript(), python(), rust(), html(), css(), visualMetaHighlighter, visualMetaTooltip,
+          foldGutter(), keymap.of(foldKeymap),
           EditorView.updateListener.of(update => {
             if (update.docChanged) parseAndRender();
           })
@@ -109,6 +112,7 @@
       const content = await invoke('load_state');
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: content } });
       parseAndRender();
+      foldMetaBlock(view);
     }
 
     async function exportWithoutMeta() {
@@ -165,7 +169,10 @@
     document.getElementById('layout-import').addEventListener('click', importLayout);
     document.getElementById('undo').addEventListener('click', () => vc.undo());
     document.getElementById('redo').addEventListener('click', () => vc.redo());
-    document.getElementById('insert-meta').addEventListener('click', () => insertVisualMeta(view, currentLang));
+    document.getElementById('insert-meta').addEventListener('click', () => {
+      insertVisualMeta(view, currentLang);
+      foldMetaBlock(view);
+    });
     document.getElementById('locale').addEventListener('change', e => {
       currentLocale = e.target.value;
       vc.setLocale(currentLocale);
