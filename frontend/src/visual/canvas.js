@@ -450,6 +450,7 @@ export class VisualCanvas {
     });
 
     window.addEventListener('mouseup', e => {
+      const wasDragged = !!this.dragged;
       if (this.selectionBox) {
         const { startX, startY, x, y } = this.selectionBox;
         const x1 = Math.min(startX, x);
@@ -516,6 +517,13 @@ export class VisualCanvas {
         if (this.moveCallback) {
           this.moveCallback(this.dragged);
         }
+      }
+      if (cfg.syncOrder && wasDragged) {
+        const ids = this.blocks
+          .slice()
+          .sort((a, b) => a.y - b.y)
+          .map(b => b.id);
+        window.postMessage({ source: 'visual-canvas', type: 'reorder', ids }, '*');
       }
       this.dragged = null;
       this.panning = false;

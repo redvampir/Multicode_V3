@@ -9,7 +9,8 @@
   "visual": {
     "theme": "default",
     "gridSize": 20,
-    "showGrid": true
+    "showGrid": true,
+    "syncOrder": true
   },
   "editor": {
     "autoFoldMeta": true
