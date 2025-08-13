@@ -90,6 +90,7 @@ export class VisualCanvas {
     this.groups = new Map();
     this.nextGroupId = 1;
     this.alignGuides = [];
+    this.selectionBox = null;
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -247,6 +248,8 @@ export class VisualCanvas {
         if (block) {
           if (this.selected.has(block)) this.selected.delete(block);
           else this.selected.add(block);
+        } else {
+          this.selectionBox = { startX: pos.x, startY: pos.y, x: pos.x, y: pos.y };
         }
         this.dragged = null;
         this.panning = false;
@@ -268,7 +271,10 @@ export class VisualCanvas {
 
     this.canvas.addEventListener('mousemove', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
-      if (this.draggingConnection) {
+      if (this.selectionBox) {
+        this.selectionBox.x = pos.x;
+        this.selectionBox.y = pos.y;
+      } else if (this.draggingConnection) {
         this.draggingConnection.x = pos.x;
         this.draggingConnection.y = pos.y;
       } else if (this.dragged) {
@@ -361,6 +367,19 @@ export class VisualCanvas {
     });
 
     window.addEventListener('mouseup', e => {
+      if (this.selectionBox) {
+        const { startX, startY, x, y } = this.selectionBox;
+        const x1 = Math.min(startX, x);
+        const y1 = Math.min(startY, y);
+        const x2 = Math.max(startX, x);
+        const y2 = Math.max(startY, y);
+        const sel = new Set();
+        for (const b of this.blocks) {
+          if (b.x >= x1 && b.x + b.w <= x2 && b.y >= y1 && b.y + b.h <= y2) sel.add(b);
+        }
+        this.selected = sel;
+        this.selectionBox = null;
+      }
       if (this.draggingConnection) {
         const rect = this.canvas.getBoundingClientRect();
         const offX = e.clientX - rect.left;
@@ -588,6 +607,25 @@ export class VisualCanvas {
         this.ctx.strokeRect(b.x, b.y, b.w, b.h);
       }
     });
+
+    // Selection box
+    if (this.selectionBox) {
+      const { startX, startY, x, y } = this.selectionBox;
+      const x1 = Math.min(startX, x);
+      const y1 = Math.min(startY, y);
+      const w = Math.abs(x - startX);
+      const h = Math.abs(y - startY);
+      this.ctx.fillStyle = 'rgba(0, 123, 255, 0.2)';
+      this.ctx.strokeStyle = 'rgba(0, 123, 255, 0.8)';
+      this.ctx.lineWidth = 1 / this.scale;
+      this.ctx.fillRect(x1, y1, w, h);
+      this.ctx.strokeRect(x1, y1, w, h);
+      const sel = new Set();
+      for (const b of this.blocks) {
+        if (b.x >= x1 && b.x + b.w <= x1 + w && b.y >= y1 && b.y + b.h <= y1 + h) sel.add(b);
+      }
+      this.selected = sel;
+    }
 
     // Alignment guides
     if (this.alignGuides.length) {

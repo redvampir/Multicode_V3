@@ -35,3 +35,22 @@ describe('zoomToFit', () => {
     expect(bottomRight.y).toBeLessThanOrEqual(canvasEl.height);
   });
 });
+
+describe('selection box', () => {
+  it('selects blocks inside the rectangle', () => {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    const vc = new VisualCanvas(canvasEl);
+    vc.blocks = [
+      { id: 'a', x: 10, y: 10, w: 20, h: 20, draw(){} },
+      { id: 'b', x: 100, y: 100, w: 20, h: 20, draw(){} }
+    ];
+    vc.selectionBox = { startX: 0, startY: 0, x: 50, y: 50 };
+    vc.draw();
+    expect(vc.selected.size).toBe(1);
+    expect(Array.from(vc.selected)[0].id).toBe('a');
+  });
+});
