@@ -2,6 +2,7 @@ import settings from '../../settings.json' assert { type: 'json' };
 import { createBlock } from './blocks.js';
 import { getTheme } from './theme.ts';
 import { createHotkeyDialog } from './hotkey-dialog.ts';
+import type { VisualCanvas } from './canvas.js';
 
 export interface HotkeyMap {
   copyBlock: string;
@@ -159,12 +160,12 @@ export function showHotkeyHelp() {
   hotkeyDialog.showModal();
 }
 
-let canvasRef: any = null;
+let canvasRef: VisualCanvas | null = null;
 let clipboard: any = null;
 
 let hotkeyDialog: HTMLDialogElement | null = null;
 
-export function setCanvas(vc: any) {
+export function setCanvas(vc: VisualCanvas) {
   canvasRef = vc;
 }
 

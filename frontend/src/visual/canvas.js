@@ -6,6 +6,8 @@ import settings from '../../settings.json' assert { type: 'json' };
 
 const cfg = settings.visual || {};
 const GRID_SIZE = cfg.gridSize || 20;
+const MIN_SCALE = 0.5;
+const MAX_SCALE = 4;
 
 // Utility used in tests and debug mode to analyze graph connections.
 // Accepts an array of block ids and array of edges [fromId, toId].
@@ -455,6 +457,7 @@ export class VisualCanvas {
       const worldPos = this.toWorld(mouseX, mouseY);
       const scaleFactor = e.deltaY < 0 ? 1.1 : 0.9;
       this.scale *= scaleFactor;
+      this.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, this.scale));
       const newScreenX = worldPos.x * this.scale + this.offset.x;
       const newScreenY = worldPos.y * this.scale + this.offset.y;
       this.offset.x += mouseX - newScreenX;
@@ -480,11 +483,11 @@ export class VisualCanvas {
     const height = maxY - minY;
     if (width === 0 || height === 0) return;
     const scale = Math.min(this.canvas.width / width, this.canvas.height / height) * 0.9;
-    this.scale = scale;
+    this.scale = Math.max(MIN_SCALE, Math.min(MAX_SCALE, scale));
     const cx = (minX + maxX) / 2;
     const cy = (minY + maxY) / 2;
-    this.offset.x = this.canvas.width / 2 - cx * scale;
-    this.offset.y = this.canvas.height / 2 - cy * scale;
+    this.offset.x = this.canvas.width / 2 - cx * this.scale;
+    this.offset.y = this.canvas.height / 2 - cy * this.scale;
   }
 
   toWorld(x, y) {
