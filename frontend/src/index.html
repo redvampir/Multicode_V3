@@ -14,6 +14,8 @@
     #git-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
     #git-log { white-space: pre-wrap; background: #f5f5f5; max-height: 20vh; overflow: auto; padding: 0.5rem; }
     .cm-invalid-meta { text-decoration: wavy underline red; }
+    #search-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
+    #search-results { width: 100%; }
   </style>
   <script type="module">
     import { EditorState } from "@codemirror/state";
@@ -35,6 +37,7 @@
     import settings from "../settings.json" assert { type: 'json' };
     import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
     import { writeTextFile, BaseDirectory } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/fs.js";
+    import { searchAll, highlightResults, gotoResult } from "./shared/search.js";
 
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
 
@@ -100,6 +103,7 @@
       try {
         const blocks = await invoke('parse_blocks', { content, lang: currentLang });
         vc.setBlocks(blocks);
+        updateSearch();
       } catch (e) {
         console.error(e);
       }
@@ -222,6 +226,27 @@
       vc.setLocale(currentLocale);
     });
 
+    const searchInput = document.getElementById('search-input');
+    const searchResultsEl = document.getElementById('search-results');
+    let searchResults = [];
+    function updateSearch() {
+      searchResults = searchAll(searchInput.value, view, vc.blocksData, currentLocale);
+      searchResultsEl.innerHTML = '';
+      searchResults.forEach((r, i) => {
+        const opt = document.createElement('option');
+        opt.value = String(i);
+        opt.textContent = r.type === 'block' ? `Block: ${r.label}` : `Line ${r.line}: ${r.label}`;
+        searchResultsEl.appendChild(opt);
+      });
+      highlightResults(searchResults, view, vc);
+    }
+    searchInput.addEventListener('input', updateSearch);
+    searchResultsEl.addEventListener('change', () => {
+      const idx = parseInt(searchResultsEl.value, 10);
+      const res = searchResults[idx];
+      if (res) gotoResult(res, view, vc);
+    });
+
     async function gitCommit() {
       const message = document.getElementById('git-message').value;
       await invoke('git_commit_cmd', { message });
@@ -294,6 +319,10 @@
       <option value="ru">Русский</option>
       <option value="es">Español</option>
     </select>
+  </div>
+  <div id="search-panel">
+    <input id="search-input" placeholder="Search..." />
+    <select id="search-results" size="5"></select>
   </div>
   <div id="git-panel">
     <input id="git-message" placeholder="Commit message" />
