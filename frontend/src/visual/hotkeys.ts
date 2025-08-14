@@ -6,6 +6,8 @@ import type { VisualCanvas } from './canvas.js';
 import { gotoRelated } from '../editor/navigation.js';
 import { gotoLine } from '../editor/goto-line.js';
 import { formatCurrentFile } from '../../scripts/format.js';
+import { EditorSelection } from '@codemirror/state';
+import * as commands from '@codemirror/commands';
 
 export interface HotkeyMap {
   copyBlock: string;
@@ -50,10 +52,12 @@ function buildCombo(e: KeyboardEvent) {
 
 export function registerHotkeys(target: Document = document) {
   target.addEventListener('keydown', handleKey);
+  target.addEventListener('mousedown', handleClick);
 }
 
 export function unregisterHotkeys(target: Document = document) {
   target.removeEventListener('keydown', handleKey);
+  target.removeEventListener('mousedown', handleClick);
 }
 
 function handleKey(e: KeyboardEvent) {
@@ -140,6 +144,18 @@ function handleKey(e: KeyboardEvent) {
       }
       break;
   }
+}
+
+function handleClick(e: MouseEvent) {
+  if (!e.altKey) return;
+  const view = (globalThis as any).view;
+  if (!view) return;
+  const pos = view.posAtCoords({ x: e.clientX, y: e.clientY });
+  if (pos == null) return;
+  const ranges = [...view.state.selection.ranges, EditorSelection.cursor(pos)];
+  view.dispatch({ selection: EditorSelection.create(ranges, ranges.length - 1) });
+  const addSel = (commands as any).addSelection;
+  if (typeof addSel === 'function') addSel(view);
 }
 
 export function copyBlock() {
