@@ -28,14 +28,10 @@
     import { foldGutter } from "@codemirror/language";
     import { foldKeymap } from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/dist/index.js";
     import { basicSetup } from "https://cdn.jsdelivr.net/npm/@codemirror/basic-setup@0.20.0/dist/index.js";
-    import { javascript } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-javascript@0.19.7/dist/index.js";
-    import { python } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-python@0.19.7/dist/index.js";
-    import { rust } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-rust@0.20.2/dist/index.js";
-    import { html } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-html@0.19.7/dist/index.js";
-    import { css } from "https://cdn.jsdelivr.net/npm/@codemirror/lang-css@0.19.7/dist/index.js";
     import { invoke } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/tauri.js";
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
     import { VisualCanvas, VIEW_STATE_KEY } from "./visual/canvas.js";
+    import { languageFromFilename, loadLanguage, mimeFromFilename } from "./shared/mime-map.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
     import { insertVisualMeta, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta, addBlockToolbar, refreshBlockCount } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
@@ -46,6 +42,7 @@
     import { emit } from "./shared/event-bus.js";
 
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
+    let view;
 
     await loadBlockPlugins(window.blockPlugins || []);
 
@@ -94,7 +91,7 @@
       }
     });
 
-      const currentLang = 'rust';
+    let currentLang = 'rust';
     let currentLocale = 'en';
     vc.setLocale(currentLocale);
 
@@ -110,12 +107,22 @@
       }
     }
 
-      const view = new EditorView({
+    async function initEditor(lang, doc = '') {
+      currentLang = lang;
+      vc.lang = lang;
+      if (view) view.destroy();
+      const langSupport = await loadLanguage(lang);
+      view = new EditorView({
         state: EditorState.create({
-          doc: '',
+          doc,
           extensions: [
-            basicSetup, javascript(), python(), rust(), html(), css(), visualMetaHighlighter, visualMetaTooltip, visualMetaMessenger,
-            foldGutter(), keymap.of(foldKeymap),
+            basicSetup,
+            langSupport || [],
+            visualMetaHighlighter,
+            visualMetaTooltip,
+            visualMetaMessenger,
+            foldGutter(),
+            keymap.of(foldKeymap),
             EditorView.updateListener.of(update => {
               if (update.docChanged) parseAndRender();
             })
@@ -123,12 +130,14 @@
         }),
         parent: document.getElementById('editor')
       });
-
       vc.setMetaView(view);
       addBlockToolbar(view, vc, currentLang);
       vc.onBlockMove(async () => {
         await invoke('save_state', { content: view.state.doc.toString() });
       });
+    }
+
+    await initEditor(currentLang);
 
       window.openInTextEditor = id => {
       document.getElementById('visual-canvas').style.display = 'none';
@@ -169,6 +178,17 @@
       parseAndRender();
       foldMetaBlock(view);
     }
+
+    async function openFile(name, content) {
+      const lang = languageFromFilename(name);
+      const mime = mimeFromFilename(name);
+      await initEditor(lang, content || '');
+      document.getElementById('editor').dataset.mime = mime;
+      parseAndRender();
+      foldMetaBlock(view);
+    }
+
+    window.openFile = openFile;
 
     async function fetchWatch() {
       try {
