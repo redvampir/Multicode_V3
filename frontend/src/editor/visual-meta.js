@@ -8,6 +8,7 @@ try {
   ViewPlugin = null;
 }
 import { hoverTooltip, foldEffect } from "@codemirror/language";
+import { setDiagnostics } from "@codemirror/lint";
 import settings from "../../settings.json";
 import schema from "./meta.schema.json";
 import { parsePatch } from "diff";
@@ -37,6 +38,20 @@ export const metaPositions = new Map();
 export const lintMessages = new Map();
 
 let currentView = null;
+
+export function editorDiagnostics(view, errors) {
+  if (!view) return;
+  const diagnostics = [];
+  const doc = view.state.doc;
+  const entries = errors instanceof Map ? errors.entries() : Object.entries(errors || {});
+  for (const [id, msg] of entries) {
+    const pos = metaPositions.get(id);
+    if (pos == null) continue;
+    const line = doc.lineAt(pos);
+    diagnostics.push({ from: line.from, to: line.to, severity: "error", message: msg });
+  }
+  setDiagnostics(view, diagnostics);
+}
 
 function getMetaBlock(text) {
   const start = text.indexOf("/* @VISUAL_META");
@@ -864,6 +879,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
   }
   postLint() {
     const merged = new Map([...lintMessages, ...this.consistencyErrors]);
+    editorDiagnostics(this.view, merged);
     emit('lintReported', { errors: Object.fromEntries(merged) });
   }
   onClick(e) {
