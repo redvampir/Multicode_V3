@@ -47,6 +47,7 @@
     import { attachMinimap } from "./editor/minimap.ts";
     import { addSnapshot, showHistory } from "./editor/history.js";
     import { spellcheck } from "./editor/spellcheck.js";
+    import { activeBlock } from "./editor/active-block.js";
 
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
     let view;
@@ -133,6 +134,7 @@
             visualMetaHighlighter,
             visualMetaTooltip,
             visualMetaMessenger,
+            activeBlock,
             foldGutter(),
             autocomplete({ override: [customSource] }),
             EditorView.scrollMargins.of(() => ({ top: 20, bottom: 20 })),
