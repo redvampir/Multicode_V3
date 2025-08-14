@@ -4,7 +4,8 @@
     "pasteBlock": "Ctrl+V",
     "selectConnections": "Ctrl+Shift+A",
     "focusSearch": "Ctrl+F",
-    "showHelp": "Ctrl+?"
+    "showHelp": "Ctrl+?",
+    "formatCurrentFile": "Shift+Alt+F"
   },
   "visual": {
     "theme": "default",
@@ -18,6 +19,11 @@
     "autoFoldMeta": true,
     "autoSync": false,
     "autoSyncInterval": 5
+  },
+  "format": {
+    "tabWidth": 2,
+    "singleQuote": true,
+    "semi": true
   },
   "plugins": {}
 }

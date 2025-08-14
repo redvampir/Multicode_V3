@@ -4,6 +4,7 @@ import { getTheme } from './theme.ts';
 import { createHotkeyDialog } from './hotkey-dialog.ts';
 import type { VisualCanvas } from './canvas.js';
 import { gotoRelated } from '../editor/navigation.js';
+import { formatCurrentFile } from '../../scripts/format.js';
 
 export interface HotkeyMap {
   copyBlock: string;
@@ -15,6 +16,7 @@ export interface HotkeyMap {
   undo: string;
   redo: string;
   gotoRelated: string;
+  formatCurrentFile: string;
 }
 
 const cfg: { hotkeys?: Partial<HotkeyMap>; visual?: { gridSize?: number } } = settings as any;
@@ -29,7 +31,8 @@ export const hotkeys: HotkeyMap = {
   zoomToFit: cfg.hotkeys?.zoomToFit || 'Ctrl+0',
   undo: cfg.hotkeys?.undo || 'Ctrl+Z',
   redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z',
-  gotoRelated: cfg.hotkeys?.gotoRelated || 'Ctrl+Alt+O'
+  gotoRelated: cfg.hotkeys?.gotoRelated || 'Ctrl+Alt+O',
+  formatCurrentFile: cfg.hotkeys?.formatCurrentFile || 'Shift+Alt+F'
 };
 
 function buildCombo(e: KeyboardEvent) {
@@ -88,6 +91,10 @@ function handleKey(e: KeyboardEvent) {
     case hotkeys.gotoRelated:
       e.preventDefault();
       gotoRelated((globalThis as any).view);
+      break;
+    case hotkeys.formatCurrentFile:
+      e.preventDefault();
+      formatCurrentFile();
       break;
     case 'F2':
       e.preventDefault();
