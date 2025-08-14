@@ -36,7 +36,14 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
 }
 
 #[cfg_attr(not(test), tauri::command)]
-pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> String {
+pub fn upsert_meta(
+    content: String,
+    mut meta: VisualMeta,
+    lang: String,
+    files: Vec<String>,
+) -> HashMap<String, String> {
+    use std::fs;
+
     meta.updated_at = Utc::now();
     let mut metas = read_all(&content);
     if let Some(existing) = metas.iter().find(|m| m.id == meta.id) {
@@ -72,9 +79,27 @@ pub fn upsert_meta(content: String, mut meta: VisualMeta, lang: String) -> Strin
     };
     let regenerated = regenerate_code(&cleaned, lang, &metas).unwrap_or(cleaned);
 
-    metas
+    let current = metas
+        .clone()
         .into_iter()
-        .fold(regenerated, |acc, m| upsert(&acc, &m))
+        .fold(regenerated, |acc, m| upsert(&acc, &m));
+
+    let mut result = HashMap::new();
+    if let Some(id) = files.first() {
+        result.insert(id.clone(), current.clone());
+    }
+
+    for fid in files.iter().skip(1) {
+        if let Ok(src) = fs::read_to_string(fid) {
+            let metas = read_all(&src);
+            let cleaned = remove_all(&src);
+            let regen = regenerate_code(&cleaned, lang, &metas).unwrap_or(cleaned);
+            let updated = metas.into_iter().fold(regen, |acc, m| upsert(&acc, &m));
+            result.insert(fid.clone(), updated);
+        }
+    }
+
+    result
 }
 
 fn regenerate_code(content: &str, lang: Lang, metas: &[VisualMeta]) -> Option<String> {

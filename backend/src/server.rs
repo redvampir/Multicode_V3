@@ -22,6 +22,7 @@ use std::{
     },
     time::Duration,
 };
+use std::collections::HashMap;
 use tokio::{signal, sync::broadcast, time};
 use tower::limit::ConcurrencyLimitLayer;
 use tower_http::limit::RequestBodyLimitLayer;
@@ -172,6 +173,8 @@ pub struct MetadataRequest {
     pub content: String,
     pub meta: VisualMeta,
     pub lang: String,
+    #[serde(default)]
+    pub files: Vec<String>,
 }
 
 /// Insert or update metadata in the database.
@@ -179,7 +182,7 @@ pub async fn metadata_upsert_endpoint(
     State(state): State<AppState>,
     headers: HeaderMap,
     Json(req): Json<MetadataRequest>,
-) -> Result<Json<String>, (StatusCode, Json<ErrorResponse>)> {
+) -> Result<Json<HashMap<String, String>>, (StatusCode, Json<ErrorResponse>)> {
     if !auth(&headers) {
         let status = StatusCode::UNAUTHORIZED;
         return Err((
@@ -210,7 +213,7 @@ pub async fn metadata_upsert_endpoint(
             }),
         ));
     }
-    Ok(Json(upsert_meta(req.content, req.meta, req.lang)))
+    Ok(Json(upsert_meta(req.content, req.meta, req.lang, req.files)))
 }
 
 #[derive(Deserialize)]
