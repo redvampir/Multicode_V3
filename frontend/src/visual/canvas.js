@@ -5,6 +5,7 @@ import { Minimap } from './minimap.ts';
 import settings from '../../settings.json' assert { type: 'json' };
 import { createTwoFilesPatch } from 'diff';
 import { updateMetaComment, previewDiff, renameMetaId, getMetaById } from '../editor/visual-meta.js';
+import { emit, on } from '../shared/event-bus.js';
 import { openBlockEditor } from './block-editor.ts';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
@@ -127,73 +128,72 @@ export class VisualCanvas {
     window.addEventListener('resize', () => this.resize());
     this.registerEvents();
     registerHoverHighlight(this);
-    window.addEventListener('message', e => {
-      const { source, id, type, x, y, from, to, kind, meta, files, errors, success } = e.data || {};
-      if (source === 'visual-meta') {
-        if (type === 'request-block-info' && id) {
-          const data = this.blockDataMap.get(id);
-          if (data) {
-            const theme = getTheme();
-            const color = theme.blockKinds[data.kind] || theme.blockFill;
-            let thumbnail = null;
-            try {
-              const block = createBlock(data.kind, id, 0, 0, data.kind, color);
-              const off = document.createElement('canvas');
-              off.width = block.w;
-              off.height = block.h;
-              const ctx = off.getContext('2d');
-              block.draw(ctx);
-              thumbnail = off.toDataURL();
-            } catch (_) {
-              thumbnail = null;
-            }
-            window.postMessage({ source: 'visual-canvas', type: 'block-info', id, kind: data.kind, color, thumbnail }, '*');
-          }
-        } else if (type === 'updatePos' && id) {
-          const data = this.blockDataMap.get(id);
-          if (data) {
-            if (typeof x === 'number') data.x = x;
-            if (typeof y === 'number') data.y = y;
-            this.updateLabels();
-            this.draw();
-          }
-        } else if (type === 'edge-not-found' && from && to) {
-          this.missingEdge = from + '->' + to;
-          setTimeout(() => {
-            if (this.missingEdge === from + '->' + to) this.missingEdge = null;
-          }, 2000);
-        } else if (type === 'create-block' && id && kind) {
-          const pos = this.getFreePos();
-          const theme = getTheme();
-          const color = theme.blockKinds[kind] || theme.blockFill;
-          const block = createBlock(kind, id, pos.x, pos.y, kind, color);
-          this.blocks.push(block);
-          const data = { visual_id: id, kind, x: pos.x, y: pos.y, tags: [], links: [], history: [], updated_at: new Date().toISOString() };
-          this.blocksData.push(data);
-          this.blockDataMap.set(id, data);
-          if (this.metaView) updateMetaComment(this.metaView, { id, x: pos.x, y: pos.y });
-          this.draw();
-        } else if (type === 'remove-block' && id) {
-          this.blocks = this.blocks.filter(b => b.id !== id);
-          this.blocksData = this.blocksData.filter(b => b.visual_id !== id);
-          this.blockDataMap.delete(id);
-          this.connections = this.connections.filter(([a, b]) => a.id !== id && b.id !== id);
-          this.testResults.delete(id);
-          this.draw();
-        } else if ((type === 'save' || type === 'apply') && meta) {
-          const fileIds = Array.isArray(files) && files.length ? files : [this.fileId];
-          this.upsertMeta(meta, fileIds);
-        } else if (type === 'lint' && errors) {
-          this.lintErrors = new Map(Object.entries(errors));
-          this.updateErrorBlocks();
-          this.draw();
-        } else if (type === 'test-result' && id) {
-          this.testResults.set(id, !!success);
-          this.draw();
-        } else if (id) {
-          this.highlightBlocks([id]);
+    on('blockInfoRequest', ({ id }) => {
+      const data = this.blockDataMap.get(id);
+      if (data) {
+        const theme = getTheme();
+        const color = theme.blockKinds[data.kind] || theme.blockFill;
+        let thumbnail = null;
+        try {
+          const block = createBlock(data.kind, id, 0, 0, data.kind, color);
+          const off = document.createElement('canvas');
+          off.width = block.w;
+          off.height = block.h;
+          const ctx = off.getContext('2d');
+          block.draw(ctx);
+          thumbnail = off.toDataURL();
+        } catch (_) {
+          thumbnail = null;
         }
+        emit('blockInfo', { id, kind: data.kind, color, thumbnail });
       }
+    });
+    on('metaUpdated', ({ id, x, y }) => {
+      const data = this.blockDataMap.get(id);
+      if (data) {
+        if (typeof x === 'number') data.x = x;
+        if (typeof y === 'number') data.y = y;
+        this.updateLabels();
+        this.draw();
+      }
+    });
+    on('edgeNotFound', ({ from, to }) => {
+      this.missingEdge = from + '->' + to;
+      setTimeout(() => {
+        if (this.missingEdge === from + '->' + to) this.missingEdge = null;
+      }, 2000);
+    });
+    on('blockCreated', ({ id, kind }) => {
+      const pos = this.getFreePos();
+      const theme = getTheme();
+      const color = theme.blockKinds[kind] || theme.blockFill;
+      const block = createBlock(kind, id, pos.x, pos.y, kind, color);
+      this.blocks.push(block);
+      const data = { visual_id: id, kind, x: pos.x, y: pos.y, tags: [], links: [], history: [], updated_at: new Date().toISOString() };
+      this.blocksData.push(data);
+      this.blockDataMap.set(id, data);
+      if (this.metaView) updateMetaComment(this.metaView, { id, x: pos.x, y: pos.y });
+      this.draw();
+    });
+    on('blockRemoved', ({ id }) => {
+      this.blocks = this.blocks.filter(b => b.id !== id);
+      this.blocksData = this.blocksData.filter(b => b.visual_id !== id);
+      this.blockDataMap.delete(id);
+      this.connections = this.connections.filter(([a, b]) => a.id !== id && b.id !== id);
+      this.testResults.delete(id);
+      this.draw();
+    });
+    on('lintReported', ({ errors }) => {
+      this.lintErrors = new Map(Object.entries(errors));
+      this.updateErrorBlocks();
+      this.draw();
+    });
+    on('testResult', ({ id, success }) => {
+      this.testResults.set(id, !!success);
+      this.draw();
+    });
+    on('blockSelected', ({ id }) => {
+      this.highlightBlocks(id ? [id] : []);
     });
     requestAnimationFrame(() => this.draw());
   }
@@ -245,7 +245,7 @@ export class VisualCanvas {
   selectBlock(id) {
     if (id) this.highlightBlocks([id]);
     else this.highlightBlocks([]);
-    window.postMessage({ source: 'visual-canvas', id }, '*');
+    emit('blockSelected', { id });
   }
 
   search(label) {
@@ -374,7 +374,7 @@ export class VisualCanvas {
         body: JSON.stringify({ content, meta, lang: this.lang, files: fileIds })
       });
       const data = await res.json();
-      window.postMessage({ source: 'visual-canvas', type: 'refresh-text', updates: data }, '*');
+      emit('refreshText', { updates: data });
     } catch (err) {
       console.error('failed to upsert meta', err);
     }
@@ -586,7 +586,7 @@ export class VisualCanvas {
 
       if (edge) {
         this.selectBlock(null);
-        window.postMessage({ source: 'visual-canvas', type: 'edgeSelected', from: edge[0].id, to: edge[1].id }, '*');
+        emit('edgeSelected', { from: edge[0].id, to: edge[1].id });
         this.dragged = null;
         this.panning = false;
         this.tooltip.style.display = 'none';
@@ -855,7 +855,7 @@ export class VisualCanvas {
           .slice()
           .sort((a, b) => a.y - b.y)
           .map(b => b.id);
-        window.postMessage({ source: 'visual-canvas', type: 'reorder', ids }, '*');
+        emit('blocksReordered', { ids });
       }
       this.dragged = null;
       this.panning = false;

@@ -11,6 +11,7 @@ import { hoverTooltip, foldEffect } from "@codemirror/language";
 import settings from "../../settings.json";
 import schema from "./meta.schema.json";
 import { parsePatch } from "diff";
+import { emit, on } from "../shared/event-bus.js";
 
 let invoke = async () => {};
 if (typeof window !== "undefined" && window.__TAURI__?.invoke) {
@@ -138,7 +139,7 @@ function highlightRangeBetweenIds(view, fromId, toId) {
   const fromPos = positions.get(fromId);
   const toPos = positions.get(toId);
   if (!fromPos || !toPos) {
-    window.postMessage({ source: 'visual-meta', type: 'edge-not-found', from: fromId, to: toId }, '*');
+    emit('edgeNotFound', { from: fromId, to: toId });
     return;
   }
   let first = fromPos;
@@ -230,7 +231,7 @@ export async function syncNow(view, vc, lang) {
         newLines.push(JSON.stringify(obj));
         metaIds.add(obj.id);
       } else {
-        window.postMessage({ source: 'visual-meta', type: 'remove-block', id: obj.id }, '*');
+        emit('blockRemoved', { id: obj.id });
       }
     } catch (_) {
       // ignore
@@ -280,11 +281,11 @@ async function runTestsForBlock(id, commands) {
   try {
     await invoke("run_tests", { commands });
     if (typeof window !== "undefined") {
-      window.postMessage({ source: 'visual-meta', type: 'test-result', id, success: true }, '*');
+      emit('testResult', { id, success: true });
     }
   } catch (e) {
     if (typeof window !== "undefined") {
-      window.postMessage({ source: 'visual-meta', type: 'test-result', id, success: false }, '*');
+      emit('testResult', { id, success: false });
     }
   }
 }
@@ -669,7 +670,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     this.view = view;
     this.fileId = view.dom.dataset.fileId || 'current';
     currentView = view;
-    this.onMessage = this.onMessage.bind(this);
+    this.onLinterMessage = this.onLinterMessage.bind(this);
     this.onClick = this.onClick.bind(this);
     this.onMouseMove = this.onMouseMove.bind(this);
     this.onMouseLeave = this.onMouseLeave.bind(this);
@@ -693,7 +694,36 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     this.tooltip.style.borderRadius = '4px';
     this.tooltip.style.display = 'none';
     document.body.appendChild(this.tooltip);
-    window.addEventListener('message', this.onMessage);
+    this.unsub = [];
+    this.unsub.push(
+      on('blockInfo', ({ id, kind, color, thumbnail }) => {
+        if (id === this.lastHoverId) {
+          if (thumbnail) this.tooltip.innerHTML = `<img src="${thumbnail}" />`;
+          else this.tooltip.textContent = `${kind || ''} ${color || ''}`.trim();
+          this.tooltip.style.left = this.lastMouse.x + 10 + 'px';
+          this.tooltip.style.top = this.lastMouse.y + 10 + 'px';
+          this.tooltip.style.display = 'block';
+        }
+      }),
+      on('blocksReordered', ({ ids }) => {
+        if (Array.isArray(ids) && settings?.visual?.syncOrder !== false) reorderMeta(ids);
+      }),
+      on('edgeSelected', ({ from, to }) => {
+        highlightRangeBetweenIds(this.view, from, to);
+      }),
+      on('refreshText', ({ updates }) => {
+        const txt = updates[this.fileId];
+        if (typeof txt === 'string') {
+          const doc = this.view.state.doc.toString();
+          this.view.dispatch({ changes: { from: 0, to: doc.length, insert: txt } });
+          rebuildMetaPositions(this.view.state.doc.toString());
+        }
+      }),
+      on('blockSelected', ({ id }) => {
+        highlightMetaById(this.view, id);
+      })
+    );
+    window.addEventListener('message', this.onLinterMessage);
     view.dom.addEventListener('click', this.onClick);
     view.dom.addEventListener('mousemove', this.onMouseMove);
     view.dom.addEventListener('mouseleave', this.onMouseLeave);
@@ -704,7 +734,8 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     this.checkConsistency();
   }
   destroy() {
-    window.removeEventListener('message', this.onMessage);
+    window.removeEventListener('message', this.onLinterMessage);
+    this.unsub.forEach(u => u());
     this.view.dom.removeEventListener('click', this.onClick);
     this.view.dom.removeEventListener('mousemove', this.onMouseMove);
     this.view.dom.removeEventListener('mouseleave', this.onMouseLeave);
@@ -725,7 +756,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
       const prev = this.prevCoords.get(id);
       if (!prev || prev.x !== meta.x || prev.y !== meta.y) {
         if (typeof meta.x === 'number' || typeof meta.y === 'number') {
-          window.postMessage({ source: 'visual-meta', type: 'updatePos', id, x: meta.x, y: meta.y }, '*');
+          emit('metaUpdated', { id, x: meta.x, y: meta.y });
         }
       }
     }
@@ -749,7 +780,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
       const jsonLine = `${JSON.stringify(metaObj)}\n`;
       this.view.dispatch({ changes: { from: insertPos, to: insertPos, insert: jsonLine } });
       this.knownIds.add(id);
-      window.postMessage({ source: 'visual-meta', type: 'create-block', id, kind: match.kind }, '*');
+      emit('blockCreated', { id, kind: match.kind });
     }
   }
   detectRemoved() {
@@ -760,7 +791,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     while ((m = idRegex.exec(text)) !== null) current.add(m[1]);
     for (const id of Array.from(this.knownIds)) {
       if (!current.has(id)) {
-        window.postMessage({ source: 'visual-meta', type: 'remove-block', id }, '*');
+        emit('blockRemoved', { id });
       }
     }
     this.knownIds = current;
@@ -772,8 +803,8 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
       this.scheduleSync();
     }
   }
-  onMessage(e) {
-    const { source, id, type, kind, color, thumbnail, ids, from, to, updates, diagnostics } = e.data || {};
+  onLinterMessage(e) {
+    const { source, diagnostics } = e.data || {};
     if (source === 'linter' && Array.isArray(diagnostics)) {
       lintMessages.clear();
       const text = this.view.state.doc.toString();
@@ -787,30 +818,6 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
         }
       }
       this.postLint();
-    } else if (source === 'visual-canvas') {
-      if (type === 'block-info' && id === this.lastHoverId) {
-        if (thumbnail) {
-          this.tooltip.innerHTML = `<img src="${thumbnail}" />`;
-        } else {
-          this.tooltip.textContent = `${kind || ''} ${color || ''}`.trim();
-        }
-        this.tooltip.style.left = this.lastMouse.x + 10 + 'px';
-        this.tooltip.style.top = this.lastMouse.y + 10 + 'px';
-        this.tooltip.style.display = 'block';
-      } else if (type === 'reorder' && Array.isArray(ids) && settings?.visual?.syncOrder !== false) {
-        reorderMeta(ids);
-      } else if (type === 'edgeSelected' && from && to) {
-        highlightRangeBetweenIds(this.view, from, to);
-      } else if (type === 'refresh-text' && updates) {
-        const txt = updates[this.fileId];
-        if (typeof txt === 'string') {
-          const doc = this.view.state.doc.toString();
-          this.view.dispatch({ changes: { from: 0, to: doc.length, insert: txt } });
-          rebuildMetaPositions(this.view.state.doc.toString());
-        }
-      } else if (id) {
-        highlightMetaById(this.view, id);
-      }
     }
   }
   checkConsistency() {
@@ -852,7 +859,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
   }
   postLint() {
     const merged = new Map([...lintMessages, ...this.consistencyErrors]);
-    window.postMessage({ source: 'visual-meta', type: 'lint', errors: Object.fromEntries(merged) }, '*');
+    emit('lintReported', { errors: Object.fromEntries(merged) });
   }
   onClick(e) {
     const pos = this.view.posAtCoords({ x: e.clientX, y: e.clientY });
@@ -869,7 +876,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
       }
     }
     if (clickedId) {
-      window.postMessage({ source: 'visual-meta', id: clickedId }, '*');
+      emit('blockSelected', { id: clickedId });
       highlightMetaById(this.view, clickedId);
     }
   }
@@ -895,7 +902,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     if (hoverId) {
       if (hoverId !== this.lastHoverId) {
         this.lastHoverId = hoverId;
-        window.postMessage({ source: 'visual-meta', type: 'request-block-info', id: hoverId }, '*');
+        emit('blockInfoRequest', { id: hoverId });
       }
       if (this.tooltip.style.display !== 'none') {
         this.tooltip.style.left = this.lastMouse.x + 10 + 'px';
