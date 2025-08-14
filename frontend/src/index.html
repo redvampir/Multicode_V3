@@ -19,6 +19,7 @@
     .cm-invalid-meta { text-decoration: wavy underline red; }
     .cm-editor { font-size: var(--editor-font-size); line-height: var(--editor-line-height); }
     #search-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
+    #todo-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
     #search-results { width: 100%; }
     #split-container { height: 100vh; }
     #textPane, #visualPane { flex: 1; }
@@ -51,6 +52,7 @@
     import { addSnapshot, showHistory } from "./editor/history.js";
     import { spellcheck } from "./editor/spellcheck.js";
     import { activeBlock } from "./editor/active-block.js";
+    import { todoHighlight, updateTodoPanel } from "./editor/todo-highlight.js";
 
     const editorCfg = settings.editor || {};
     document.documentElement.style.setProperty('--editor-font-size', `${editorCfg.fontSize || 14}px`);
@@ -173,6 +175,7 @@
             visualMetaTooltip,
             visualMetaMessenger,
             activeBlock,
+            todoHighlight,
             foldGutter(),
             autocomplete({ override: [customSource] }),
             EditorView.scrollMargins.of(() => ({ top: 20, bottom: 20 })),
@@ -193,6 +196,7 @@
       vc.onBlockMove(async () => {
         await invoke('save_state', { content: view.state.doc.toString() });
       });
+      updateTodoPanel(view);
     }
 
     await initEditor(currentLang);
@@ -491,6 +495,9 @@
         <button id="git-commit">Commit</button>
         <button id="git-diff">Diff</button>
         <pre id="git-log"></pre>
+      </div>
+      <div id="todo-panel">
+        <select id="todo-list" size="5"></select>
       </div>
     </div>
   </div>
