@@ -16,6 +16,11 @@
     .cm-invalid-meta { text-decoration: wavy underline red; }
     #search-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
     #search-results { width: 100%; }
+    #split-container { height: 100vh; }
+    #textPane, #visualPane { flex: 1; }
+    body.split #split-container { display: flex; }
+    body:not(.split) #textPane { display: none; }
+    body.split #textPane { display: block; }
   </style>
   <script type="module">
     import { EditorState } from "@codemirror/state";
@@ -38,6 +43,7 @@
     import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
     import { writeTextFile, BaseDirectory } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/fs.js";
     import { searchAll, highlightResults, gotoResult } from "./shared/search.js";
+    import { emit } from "./shared/event-bus.js";
 
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
 
@@ -325,38 +331,68 @@
     startAutoSync();
 
     parseAndRender();
+
+    // Split view toggle and hotkey
+    document.addEventListener('DOMContentLoaded', () => {
+      const splitBtn = document.getElementById('split-toggle');
+      let splitActive = false;
+
+      function setSplit(active) {
+        splitActive = active;
+        document.body.classList.toggle('split', active);
+        emit('splitModeChange', { active });
+      }
+
+      splitBtn.addEventListener('click', () => setSplit(!splitActive));
+      window.addEventListener('keydown', e => {
+        if (e.ctrlKey && e.key === '\\') {
+          e.preventDefault();
+          setSplit(!splitActive);
+        }
+      });
+
+      setSplit(false);
+    });
   </script>
 </head>
 <body>
-  <canvas id="visual-canvas"></canvas>
-  <canvas id="visual-minimap" width="200" height="150"></canvas>
-  <div id="editor" data-file-id="current"></div>
-  <div id="controls">
-    <button id="save">Save</button>
-    <button id="load">Load</button>
-    <button id="export-clean">Экспорт без метаданных</button>
-    <span id="export-progress" style="display:none">Exporting…</span>
-    <button id="layout-export">Export</button>
-    <button id="layout-import">Import</button>
-    <button id="undo">Undo</button>
-    <button id="redo">Redo</button>
-    <button id="insert-meta">Insert Meta</button>
-    <select id="theme"></select>
-    <select id="locale">
-      <option value="en">English</option>
-      <option value="ru">Русский</option>
-      <option value="es">Español</option>
-    </select>
+  <div id="split-container">
+    <div id="visualPane">
+      <canvas id="visual-canvas"></canvas>
+      <canvas id="visual-minimap" width="200" height="150"></canvas>
+    </div>
+    <div id="textPane">
+      <div id="editor" data-file-id="current"></div>
+      <div id="controls">
+        <button id="save">Save</button>
+        <button id="load">Load</button>
+        <button id="export-clean">Экспорт без метаданных</button>
+        <span id="export-progress" style="display:none">Exporting…</span>
+        <button id="layout-export">Export</button>
+        <button id="layout-import">Import</button>
+        <button id="undo">Undo</button>
+        <button id="redo">Redo</button>
+        <button id="insert-meta">Insert Meta</button>
+        <select id="theme"></select>
+        <select id="locale">
+          <option value="en">English</option>
+          <option value="ru">Русский</option>
+          <option value="es">Español</option>
+        </select>
+      </div>
+      <div id="search-panel">
+        <input id="search-input" placeholder="Search..." />
+        <select id="search-results" size="5"></select>
+      </div>
+      <div id="git-panel">
+        <input id="git-message" placeholder="Commit message" />
+        <button id="git-commit">Commit</button>
+        <button id="git-diff">Diff</button>
+        <pre id="git-log"></pre>
+      </div>
+    </div>
   </div>
-  <div id="search-panel">
-    <input id="search-input" placeholder="Search..." />
-    <select id="search-results" size="5"></select>
-  </div>
-  <div id="git-panel">
-    <input id="git-message" placeholder="Commit message" />
-    <button id="git-commit">Commit</button>
-    <button id="git-diff">Diff</button>
-    <pre id="git-log"></pre>
-  </div>
+  <button id="split-toggle" style="position:fixed;top:10px;right:10px;">Split View</button>
+
 </body>
 </html>
