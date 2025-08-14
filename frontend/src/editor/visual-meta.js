@@ -26,6 +26,7 @@ const tmplObj = () => ({
   links: [],
   tests: [],
   updated_at: new Date().toISOString(),
+  history: [],
 });
 
 // Map id -> start position of JSON object inside the meta block
@@ -252,6 +253,10 @@ export function updateMetaComment(view, meta) {
     if (typeof obj.version !== "number") {
       obj.version = 1;
     }
+    const old = JSON.parse(JSON.stringify(obj));
+    delete old.history;
+    if (!Array.isArray(obj.history)) obj.history = [];
+    obj.history.push({ timestamp: obj.updated_at || new Date().toISOString(), snapshot: old });
     if (typeof meta.x === "number") obj.x = meta.x;
     if (typeof meta.y === "number") obj.y = meta.y;
     if (Array.isArray(meta.tags)) {
@@ -273,6 +278,23 @@ export function updateMetaComment(view, meta) {
     return true;
   } catch (_) {
     return false;
+  }
+}
+
+export function getMetaById(view, id) {
+  let pos = metaPositions.get(id);
+  if (pos == null) {
+    rebuildMetaPositions(view.state.doc.toString());
+    pos = metaPositions.get(id);
+  }
+  if (pos == null) return null;
+  const text = view.state.doc.toString();
+  const end = text.indexOf("\n", pos);
+  const json = text.slice(pos, end === -1 ? undefined : end);
+  try {
+    return JSON.parse(json);
+  } catch (_) {
+    return null;
   }
 }
 

@@ -99,6 +99,20 @@
       "default": "1970-01-01T00:00:00Z",
       "type": "string",
       "format": "date-time"
+    },
+    "history": {
+      "description": "Previous states of this metadata.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "timestamp": { "type": "string", "format": "date-time" },
+          "snapshot": { "type": "object" }
+        },
+        "required": ["timestamp", "snapshot"],
+        "additionalProperties": false
+      }
     }
   },
   "additionalProperties": false,
