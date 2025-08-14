@@ -6,6 +6,10 @@ import schema from '../editor/meta.schema.json' with { type: 'json' };
 
 const ajv = new Ajv({ allErrors: true });
 addFormats(ajv);
+ajv.addFormat('uint32', {
+  type: 'number',
+  validate: (n: number) => Number.isInteger(n) && n >= 0 && n <= 0xffffffff
+});
 const validateMeta = ajv.compile(schema);
 
 interface Panel {
