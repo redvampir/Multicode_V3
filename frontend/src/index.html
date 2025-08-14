@@ -9,7 +9,9 @@
     body { margin: 0; font-family: sans-serif; }
     #visual-canvas { width: 100%; height: 50vh; border: 1px solid #ccc; display: block; }
     #visual-minimap { position: fixed; bottom: 10px; right: 10px; width: 200px; height: 150px; border: 1px solid #ccc; background: #fff; opacity: 0.8; }
-    #editor { height: 40vh; border: 1px solid #ccc; }
+    #editor-wrapper { display: flex; height: 40vh; }
+    #editor { flex: 1; border: 1px solid #ccc; }
+    #text-minimap { width: 60px; height: 100%; border: 1px solid #ccc; border-left: none; }
     #controls { padding: 0.5rem; }
     #git-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
     #git-log { white-space: pre-wrap; background: #f5f5f5; max-height: 20vh; overflow: auto; padding: 0.5rem; }
@@ -40,15 +42,18 @@
     import { writeTextFile, BaseDirectory } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/fs.js";
     import { searchAll, highlightResults, gotoResult } from "./shared/search.js";
     import { emit } from "./shared/event-bus.js";
+    import { attachMinimap } from "./editor/minimap.ts";
 
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
     let view;
+    let removeMinimap;
 
     await loadBlockPlugins(window.blockPlugins || []);
 
     const canvasEl = document.getElementById('visual-canvas');
     const minimapEl = document.getElementById('visual-minimap');
     const vc = new VisualCanvas(canvasEl, minimapEl);
+    const textMinimapEl = document.getElementById('text-minimap');
 
     const storedView = localStorage.getItem(VIEW_STATE_KEY);
     if (storedView) {
@@ -111,6 +116,7 @@
       currentLang = lang;
       vc.lang = lang;
       if (view) view.destroy();
+      if (removeMinimap) removeMinimap();
       const langSupport = await loadLanguage(lang);
       view = new EditorView({
         state: EditorState.create({
@@ -122,6 +128,7 @@
             visualMetaTooltip,
             visualMetaMessenger,
             foldGutter(),
+            EditorView.scrollMargins.of(() => ({ top: 20, bottom: 20 })),
             keymap.of(foldKeymap),
             EditorView.updateListener.of(update => {
               if (update.docChanged) parseAndRender();
@@ -130,6 +137,7 @@
         }),
         parent: document.getElementById('editor')
       });
+      removeMinimap = attachMinimap(view, textMinimapEl);
       vc.setMetaView(view);
       addBlockToolbar(view, vc, currentLang);
       vc.onBlockMove(async () => {
@@ -142,7 +150,7 @@
       window.openInTextEditor = id => {
       document.getElementById('visual-canvas').style.display = 'none';
       document.getElementById('visual-minimap').style.display = 'none';
-      document.getElementById('editor').style.height = '90vh';
+      document.getElementById('editor-wrapper').style.height = '90vh';
       if (id) {
         scrollToMeta(id);
       } else {
@@ -164,7 +172,7 @@
       localStorage.setItem(TEXT_CURSOR_KEY, JSON.stringify({ pos: sel.anchor }));
       document.getElementById('visual-canvas').style.display = 'block';
       document.getElementById('visual-minimap').style.display = 'block';
-      document.getElementById('editor').style.height = '40vh';
+      document.getElementById('editor-wrapper').style.height = '40vh';
       vc.draw();
     };
 
@@ -382,7 +390,10 @@
       <canvas id="visual-minimap" width="200" height="150"></canvas>
     </div>
     <div id="textPane">
-      <div id="editor" data-file-id="current"></div>
+      <div id="editor-wrapper">
+        <div id="editor" data-file-id="current"></div>
+        <div id="text-minimap"></div>
+      </div>
       <div id="controls">
         <button id="save">Save</button>
         <button id="load">Load</button>
