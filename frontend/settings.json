@@ -16,6 +16,8 @@
     "autoSyncInterval": 5
   },
   "editor": {
+    "fontSize": 14,
+    "lineHeight": 20,
     "autoFoldMeta": true,
     "autoSync": false,
     "autoSyncInterval": 5,

@@ -17,6 +17,7 @@
     #git-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
     #git-log { white-space: pre-wrap; background: #f5f5f5; max-height: 20vh; overflow: auto; padding: 0.5rem; }
     .cm-invalid-meta { text-decoration: wavy underline red; }
+    .cm-editor { font-size: var(--editor-font-size); line-height: var(--editor-line-height); }
     #search-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
     #search-results { width: 100%; }
     #split-container { height: 100vh; }
@@ -50,6 +51,17 @@
     import { addSnapshot, showHistory } from "./editor/history.js";
     import { spellcheck } from "./editor/spellcheck.js";
     import { activeBlock } from "./editor/active-block.js";
+
+    const editorCfg = settings.editor || {};
+    document.documentElement.style.setProperty('--editor-font-size', `${editorCfg.fontSize || 14}px`);
+    document.documentElement.style.setProperty('--editor-line-height', `${editorCfg.lineHeight || 20}px`);
+
+    const editorSizing = EditorView.theme({
+      "&": {
+        fontSize: "var(--editor-font-size)",
+        lineHeight: "var(--editor-line-height)"
+      }
+    });
 
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
     let view;
@@ -95,6 +107,25 @@
       await writeTextFile('settings.json', JSON.stringify(settings, null, 2), { dir: BaseDirectory.Resource });
     });
 
+    const fontSizeInput = document.getElementById('font-size');
+    const lineHeightInput = document.getElementById('line-height');
+    fontSizeInput.value = editorCfg.fontSize || 14;
+    lineHeightInput.value = editorCfg.lineHeight || 20;
+    fontSizeInput.addEventListener('input', async e => {
+      const val = e.target.value;
+      document.documentElement.style.setProperty('--editor-font-size', `${val}px`);
+      settings.editor = settings.editor || {};
+      settings.editor.fontSize = parseInt(val, 10);
+      await writeTextFile('settings.json', JSON.stringify(settings, null, 2), { dir: BaseDirectory.Resource });
+    });
+    lineHeightInput.addEventListener('input', async e => {
+      const val = e.target.value;
+      document.documentElement.style.setProperty('--editor-line-height', `${val}px`);
+      settings.editor = settings.editor || {};
+      settings.editor.lineHeight = parseInt(val, 10);
+      await writeTextFile('settings.json', JSON.stringify(settings, null, 2), { dir: BaseDirectory.Resource });
+    });
+
     const ws = new WebSocket('ws://localhost:3000/ws');
     ws.addEventListener('message', ev => {
       try {
@@ -134,6 +165,7 @@
           doc,
           extensions: [
             basicSetup,
+            editorSizing,
             langSupport || [],
             ...spellExt,
             visualMetaHighlighter,
@@ -431,6 +463,8 @@
           <option value="ru">Русский</option>
           <option value="es">Español</option>
         </select>
+        <label>Font Size: <input id="font-size" type="range" min="10" max="24" /></label>
+        <label>Line Height: <input id="line-height" type="range" min="14" max="40" /></label>
       </div>
       <div id="search-panel">
         <input id="search-input" placeholder="Search..." />
