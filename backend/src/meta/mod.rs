@@ -300,6 +300,7 @@ mod tests {
             y: 20.0,
             tags: vec!["alpha".into(), "beta".into()],
             links: vec![],
+            tests: vec![],
             extends: None,
             origin: None,
             translations: HashMap::new(),
@@ -357,6 +358,7 @@ mod tests {
             y: 0.0,
             tags: vec!["base".into()],
             links: vec!["l1".into()],
+            tests: vec![],
             extends: None,
             origin: Some("orig".into()),
             translations: {
@@ -379,6 +381,7 @@ mod tests {
             y: 1.0,
             tags: vec!["child".into()],
             links: vec!["l2".into()],
+            tests: vec![],
             extends: Some("p".into()),
             origin: None,
             translations: {
@@ -421,6 +424,7 @@ mod tests {
             y: 0.0,
             tags: vec!["a".into(), "a".into()],
             links: vec!["l".into(), "l".into()],
+            tests: vec![],
             extends: Some("".into()),
             origin: None,
             translations: HashMap::new(),

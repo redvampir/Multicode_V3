@@ -82,6 +82,7 @@ export class VisualCanvas {
     this.lintErrors = new Map();
     this.errorBlocks = new Map();
     this.errorEdges = new Map();
+    this.testResults = new Map();
     this.dragged = null;
     this.dragOffset = { x: 0, y: 0 };
     this.draggingConnection = null;
@@ -127,7 +128,7 @@ export class VisualCanvas {
     this.registerEvents();
     registerHoverHighlight(this);
     window.addEventListener('message', e => {
-      const { source, id, type, x, y, from, to, kind, meta, files, errors } = e.data || {};
+      const { source, id, type, x, y, from, to, kind, meta, files, errors, success } = e.data || {};
       if (source === 'visual-meta') {
         if (type === 'request-block-info' && id) {
           const data = this.blockDataMap.get(id);
@@ -177,6 +178,7 @@ export class VisualCanvas {
           this.blocksData = this.blocksData.filter(b => b.visual_id !== id);
           this.blockDataMap.delete(id);
           this.connections = this.connections.filter(([a, b]) => a.id !== id && b.id !== id);
+          this.testResults.delete(id);
           this.draw();
         } else if ((type === 'save' || type === 'apply') && meta) {
           const fileIds = Array.isArray(files) && files.length ? files : [this.fileId];
@@ -184,6 +186,9 @@ export class VisualCanvas {
         } else if (type === 'lint' && errors) {
           this.lintErrors = new Map(Object.entries(errors));
           this.updateErrorBlocks();
+          this.draw();
+        } else if (type === 'test-result' && id) {
+          this.testResults.set(id, !!success);
           this.draw();
         } else if (id) {
           this.highlightBlocks([id]);
@@ -332,6 +337,11 @@ export class VisualCanvas {
       const v = this.errorBlocks.get(id);
       this.errorBlocks.delete(id);
       this.errorBlocks.set(newId, v);
+    }
+    if (this.testResults.has(id)) {
+      const v = this.testResults.get(id);
+      this.testResults.delete(id);
+      this.testResults.set(newId, v);
     }
     const newEdges = new Map();
     for (const [edge, msg] of this.errorEdges.entries()) {
@@ -927,7 +937,17 @@ export class VisualCanvas {
     // Draw blocks
     this.blocks.forEach(b => {
       b.draw(this.ctx);
-      if (this.errorBlocks.has(b.id)) {
+      if (this.testResults.has(b.id)) {
+        const ok = this.testResults.get(b.id);
+        this.ctx.strokeStyle = ok ? 'green' : 'red';
+        this.ctx.lineWidth = 2;
+        this.ctx.strokeRect(b.x, b.y, b.w, b.h);
+        if (!ok) {
+          this.ctx.fillStyle = 'red';
+          this.ctx.font = `${12 / this.scale}px sans-serif`;
+          this.ctx.fillText('!', b.x + 4 / this.scale, b.y + 14 / this.scale);
+        }
+      } else if (this.errorBlocks.has(b.id)) {
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(b.x, b.y, b.w, b.h);

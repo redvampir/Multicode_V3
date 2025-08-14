@@ -27,6 +27,7 @@ fn upsert_preserves_version() {
         y: 0.0,
         tags: vec![],
         links: vec![],
+        tests: vec![],
         extends: None,
         origin: None,
         translations: HashMap::new(),
