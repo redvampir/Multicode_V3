@@ -18,7 +18,8 @@
   "editor": {
     "autoFoldMeta": true,
     "autoSync": false,
-    "autoSyncInterval": 5
+    "autoSyncInterval": 5,
+    "spellcheck": false
   },
   "format": {
     "tabWidth": 2,
