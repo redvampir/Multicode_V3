@@ -334,6 +334,17 @@ pub async fn meta_rollback_endpoint(
     }
 }
 
+pub async fn watch_endpoint(State(state): State<AppState>) -> Json<Vec<BlockInfo>> {
+    use tokio::time::timeout;
+    let mut rx = state.tx.subscribe();
+    let msg = match timeout(Duration::from_millis(100), rx.recv()).await {
+        Ok(Ok(msg)) => msg,
+        _ => return Json(Vec::new()),
+    };
+    let blocks = serde_json::from_str(&msg).unwrap_or_default();
+    Json(blocks)
+}
+
 async fn plugins_get(headers: HeaderMap) -> Result<Json<Vec<PluginInfo>>, StatusCode> {
     if !auth(&headers) {
         return Err(StatusCode::UNAUTHORIZED);
@@ -612,6 +623,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
     };
     let app = Router::new()
         .route("/ws", get(ws_handler))
+        .route("/watch", get(watch_endpoint))
         .route("/parse", post(parse_endpoint))
         .route("/export", post(export_endpoint))
         .route(

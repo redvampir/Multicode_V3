@@ -10,10 +10,14 @@
     "theme": "default",
     "gridSize": 20,
     "showGrid": true,
-    "syncOrder": true
+    "syncOrder": true,
+    "autoSync": false,
+    "autoSyncInterval": 5
   },
   "editor": {
-    "autoFoldMeta": true
+    "autoFoldMeta": true,
+    "autoSync": false,
+    "autoSyncInterval": 5
   },
   "plugins": {}
 }
