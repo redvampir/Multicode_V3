@@ -32,7 +32,7 @@
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
     import { VisualCanvas, VIEW_STATE_KEY } from "./visual/canvas.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
-    import { insertVisualMeta, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta } from "./editor/visual-meta.js";
+    import { insertVisualMeta, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta, addBlockToolbar, refreshBlockCount } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
     import settings from "../settings.json" assert { type: 'json' };
     import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
@@ -97,6 +97,7 @@
       try {
         const blocks = await invoke('parse_blocks', { content, lang: currentLang });
         vc.setBlocks(blocks);
+        refreshBlockCount(view);
         updateSearch();
       } catch (e) {
         console.error(e);
@@ -118,6 +119,7 @@
       });
 
       vc.setMetaView(view);
+      addBlockToolbar(view, vc, currentLang);
       vc.onBlockMove(async () => {
         await invoke('save_state', { content: view.state.doc.toString() });
       });

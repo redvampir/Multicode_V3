@@ -12,6 +12,11 @@ import settings from "../../settings.json";
 import schema from "./meta.schema.json";
 import { parsePatch } from "diff";
 
+let invoke = async () => {};
+if (typeof window !== "undefined" && window.__TAURI__?.invoke) {
+  invoke = window.__TAURI__.invoke;
+}
+
 const tmplObj = () => ({
   id: crypto.randomUUID(),
   version: 1,
@@ -138,10 +143,10 @@ export function foldMetaBlock(view) {
   view.dispatch({ effects: foldEffect.of({ from: block.start, to: block.end }) });
 }
 
-export function insertVisualMeta(view, _lang) {
+export function insertVisualMeta(view, _lang, pos) {
   const meta = tmplObj();
   const marker = `// @VISUAL_META ${meta.id}\n`;
-  const { from } = view.state.selection.main;
+  const from = typeof pos === "number" ? pos : view.state.selection.main.from;
   view.dispatch({ changes: { from, to: from, insert: marker } });
 
   const block = ensureMetaBlock(view);
@@ -150,6 +155,57 @@ export function insertVisualMeta(view, _lang) {
   view.dispatch({ changes: { from: insertPos, to: insertPos, insert: jsonLine } });
 
   rebuildMetaPositions(view.state.doc.toString());
+  return meta;
+}
+
+export function refreshBlockCount(view) {
+  const count = extractMetaCoords(view.state.doc.toString()).size;
+  const el = document.getElementById("block-count");
+  if (el) el.textContent = String(count);
+}
+
+export async function generateVisualBlocks(view, vc, lang) {
+  const content = view.state.doc.toString();
+  let blocks = [];
+  try {
+    blocks = await invoke("parse_blocks", { content, lang });
+  } catch (e) {
+    console.error(e);
+    return;
+  }
+
+  const existing = extractMetaCoords(content);
+  const toInsert = blocks.filter(
+    b => !b.visual_id || !existing.has(b.visual_id)
+  );
+  toInsert.sort((a, b) => b.range[0] - a.range[0]);
+  for (const b of toInsert) {
+    const meta = insertVisualMeta(view, lang, b.range[0]);
+    b.visual_id = meta.id;
+  }
+
+  if (vc && typeof vc.setBlocks === "function") {
+    vc.setBlocks(blocks);
+  }
+  refreshBlockCount(view);
+}
+
+export function addBlockToolbar(view, vc, lang) {
+  const parent = view.dom.parentNode;
+  if (!parent) return;
+  const toolbar = document.createElement("div");
+  toolbar.className = "editor-toolbar";
+  const btn = document.createElement("button");
+  btn.textContent = "Generate Blocks";
+  const countSpan = document.createElement("span");
+  countSpan.id = "block-count";
+  countSpan.style.marginLeft = "0.5em";
+  toolbar.appendChild(btn);
+  toolbar.appendChild(countSpan);
+  parent.insertBefore(toolbar, view.dom);
+
+  btn.addEventListener("click", () => generateVisualBlocks(view, vc, lang));
+  refreshBlockCount(view);
 }
 
 export function updateMetaComment(view, meta) {
