@@ -77,6 +77,8 @@ export class VisualCanvas {
     this.locale = 'en';
     this.connections = [];
     this.debugMode = false;
+    this.analysisErrors = new Map();
+    this.lintErrors = new Map();
     this.errorBlocks = new Map();
     this.errorEdges = new Map();
     this.dragged = null;
@@ -124,7 +126,7 @@ export class VisualCanvas {
     this.registerEvents();
     registerHoverHighlight(this);
     window.addEventListener('message', e => {
-      const { source, id, type, x, y, from, to, kind, meta, files } = e.data || {};
+      const { source, id, type, x, y, from, to, kind, meta, files, errors } = e.data || {};
       if (source === 'visual-meta') {
         if (type === 'request-block-info' && id) {
           const data = this.blockDataMap.get(id);
@@ -178,6 +180,10 @@ export class VisualCanvas {
         } else if ((type === 'save' || type === 'apply') && meta) {
           const fileIds = Array.isArray(files) && files.length ? files : [this.fileId];
           this.upsertMeta(meta, fileIds);
+        } else if (type === 'lint' && errors) {
+          this.lintErrors = new Map(Object.entries(errors));
+          this.updateErrorBlocks();
+          this.draw();
         } else if (id) {
           this.highlightBlocks([id]);
         }
@@ -368,15 +374,20 @@ export class VisualCanvas {
     const ids = this.blocks.map(b => b.id);
     const edges = this.connections.map(([a, b]) => [a.id, b.id]);
     const { missing, cycles } = analyzeConnections(ids, edges);
-    this.errorBlocks = new Map();
+    this.analysisErrors = new Map();
     this.errorEdges = new Map();
-    missing.forEach(id => this.errorBlocks.set(id, 'Missing connection'));
+    missing.forEach(id => this.analysisErrors.set(id, 'Missing connection'));
     cycles.forEach(edge => {
       this.errorEdges.set(edge, 'Cyclic connection');
       const [from, to] = edge.split('->');
-      this.errorBlocks.set(from, 'Cyclic connection');
-      this.errorBlocks.set(to, 'Cyclic connection');
+      this.analysisErrors.set(from, 'Cyclic connection');
+      this.analysisErrors.set(to, 'Cyclic connection');
     });
+    this.updateErrorBlocks();
+  }
+
+  updateErrorBlocks() {
+    this.errorBlocks = new Map([...this.analysisErrors, ...this.lintErrors]);
   }
 
   registerEvents() {
@@ -442,6 +453,34 @@ export class VisualCanvas {
       if (block && typeof window.openInTextEditor === 'function') {
         this.saveViewState();
         window.openInTextEditor(block.id);
+      }
+    });
+
+    this.canvas.addEventListener('click', e => {
+      const pos = this.toWorld(e.offsetX, e.offsetY);
+      let tooltipText = null;
+      const block = this.blocks.find(b => b.contains(pos.x, pos.y));
+      if (block) {
+        tooltipText = this.errorBlocks.get(block.id) || null;
+      } else {
+        for (const [edge, msg] of this.errorEdges.entries()) {
+          const [fromId, toId] = edge.split('->');
+          const a = this.blocks.find(b => b.id === fromId);
+          const b = this.blocks.find(b => b.id === toId);
+          if (a && b && this.pointToSegmentDist(pos, a.center(), b.center()) < 5) {
+            tooltipText = msg;
+            break;
+          }
+        }
+      }
+      if (tooltipText) {
+        const rect = this.canvas.getBoundingClientRect();
+        this.tooltip.textContent = tooltipText;
+        this.tooltip.style.left = rect.left + e.offsetX + 10 + 'px';
+        this.tooltip.style.top = rect.top + e.offsetY + 10 + 'px';
+        this.tooltip.style.display = 'block';
+      } else {
+        this.tooltip.style.display = 'none';
       }
     });
 
@@ -512,18 +551,6 @@ export class VisualCanvas {
               if (note.description) lines.push(note.description);
               if (note.hints) lines.push(...note.hints);
               tooltipText = lines.join('\n');
-            }
-            const err = this.errorBlocks.get(hovered.id);
-            if (err) tooltipText = err;
-          } else {
-            for (const [edge, msg] of this.errorEdges.entries()) {
-              const [fromId, toId] = edge.split('->');
-              const a = this.blocks.find(b => b.id === fromId);
-              const b = this.blocks.find(b => b.id === toId);
-              if (a && b && this.pointToSegmentDist(pos, a.center(), b.center()) < 5) {
-                tooltipText = msg;
-                break;
-              }
             }
           }
 
@@ -837,6 +864,9 @@ export class VisualCanvas {
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(b.x, b.y, b.w, b.h);
+        this.ctx.fillStyle = 'red';
+        this.ctx.font = `${12 / this.scale}px sans-serif`;
+        this.ctx.fillText('!', b.x + 4 / this.scale, b.y + 14 / this.scale);
       }
     });
 
