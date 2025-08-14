@@ -30,6 +30,9 @@ const tmplObj = () => ({
 // Map id -> start position of JSON object inside the meta block
 export const metaPositions = new Map();
 
+// Map of block id -> lint message
+export const lintMessages = new Map();
+
 let currentView = null;
 
 function getMetaBlock(text) {
@@ -115,6 +118,16 @@ export function scrollToMeta(id) {
   if (currentView) {
     highlightMetaById(currentView, id);
   }
+}
+
+function findIdForPos(text, pos) {
+  const marker = "// @VISUAL_META";
+  const start = text.lastIndexOf(marker, pos);
+  if (start === -1) return null;
+  const end = text.indexOf("\n", start);
+  const line = text.slice(start, end === -1 ? text.length : end);
+  const m = line.match(/\/\/\s*@VISUAL_META\s+([A-Za-z0-9_-]+)/);
+  return m ? m[1] : null;
 }
 
 function highlightRangeBetweenIds(view, fromId, toId) {
@@ -569,8 +582,21 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     }
   }
   onMessage(e) {
-    const { source, id, type, kind, color, thumbnail, ids, from, to, updates } = e.data || {};
-    if (source === 'visual-canvas') {
+    const { source, id, type, kind, color, thumbnail, ids, from, to, updates, diagnostics } = e.data || {};
+    if (source === 'linter' && Array.isArray(diagnostics)) {
+      lintMessages.clear();
+      const text = this.view.state.doc.toString();
+      for (const d of diagnostics) {
+        const p = typeof d.from === 'number' ? d.from : (typeof d.to === 'number' ? d.to : 0);
+        const bid = findIdForPos(text, p);
+        if (bid) {
+          const msg = d.message || d.msg || '';
+          if (lintMessages.has(bid)) lintMessages.set(bid, lintMessages.get(bid) + '\n' + msg);
+          else lintMessages.set(bid, msg);
+        }
+      }
+      window.postMessage({ source: 'visual-meta', type: 'lint', errors: Object.fromEntries(lintMessages) }, '*');
+    } else if (source === 'visual-canvas') {
       if (type === 'block-info' && id === this.lastHoverId) {
         if (thumbnail) {
           this.tooltip.innerHTML = `<img src="${thumbnail}" />`;
