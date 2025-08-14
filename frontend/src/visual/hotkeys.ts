@@ -3,6 +3,7 @@ import { createBlock } from './blocks.js';
 import { getTheme } from './theme.ts';
 import { createHotkeyDialog } from './hotkey-dialog.ts';
 import type { VisualCanvas } from './canvas.js';
+import { gotoRelated } from '../editor/navigation.js';
 
 export interface HotkeyMap {
   copyBlock: string;
@@ -13,6 +14,7 @@ export interface HotkeyMap {
   zoomToFit: string;
   undo: string;
   redo: string;
+  gotoRelated: string;
 }
 
 const cfg: { hotkeys?: Partial<HotkeyMap>; visual?: { gridSize?: number } } = settings as any;
@@ -26,7 +28,8 @@ export const hotkeys: HotkeyMap = {
   showHelp: cfg.hotkeys?.showHelp || 'Ctrl+?',
   zoomToFit: cfg.hotkeys?.zoomToFit || 'Ctrl+0',
   undo: cfg.hotkeys?.undo || 'Ctrl+Z',
-  redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z'
+  redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z',
+  gotoRelated: cfg.hotkeys?.gotoRelated || 'Ctrl+Alt+O'
 };
 
 function buildCombo(e: KeyboardEvent) {
@@ -81,6 +84,10 @@ function handleKey(e: KeyboardEvent) {
     case hotkeys.redo:
       e.preventDefault();
       canvasRef?.redo?.();
+      break;
+    case hotkeys.gotoRelated:
+      e.preventDefault();
+      gotoRelated((globalThis as any).view);
       break;
     case 'F2':
       e.preventDefault();
