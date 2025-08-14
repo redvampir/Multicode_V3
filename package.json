@@ -10,7 +10,8 @@
     "dev": "node scripts/dev.js",
     "build": "node scripts/build.js",
     "test": "node scripts/test.js",
-    "clean": "node scripts/clean.js"
+    "clean": "node scripts/clean.js",
+    "check:scripts": "node scripts/check-scripts.js"
   },
   "dependencies": {
     "fs-extra": "^11.3.1",
