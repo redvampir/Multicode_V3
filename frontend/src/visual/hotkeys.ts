@@ -4,6 +4,7 @@ import { getTheme } from './theme.ts';
 import { createHotkeyDialog } from './hotkey-dialog.ts';
 import type { VisualCanvas } from './canvas.js';
 import { gotoRelated } from '../editor/navigation.js';
+import { gotoLine } from '../editor/goto-line.js';
 import { formatCurrentFile } from '../../scripts/format.js';
 
 export interface HotkeyMap {
@@ -16,6 +17,7 @@ export interface HotkeyMap {
   undo: string;
   redo: string;
   gotoRelated: string;
+  gotoLine: string;
   formatCurrentFile: string;
 }
 
@@ -32,6 +34,7 @@ export const hotkeys: HotkeyMap = {
   undo: cfg.hotkeys?.undo || 'Ctrl+Z',
   redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z',
   gotoRelated: cfg.hotkeys?.gotoRelated || 'Ctrl+Alt+O',
+  gotoLine: cfg.hotkeys?.gotoLine || 'Ctrl+G',
   formatCurrentFile: cfg.hotkeys?.formatCurrentFile || 'Shift+Alt+F'
 };
 
@@ -91,6 +94,10 @@ function handleKey(e: KeyboardEvent) {
     case hotkeys.gotoRelated:
       e.preventDefault();
       gotoRelated((globalThis as any).view);
+      break;
+    case hotkeys.gotoLine:
+      e.preventDefault();
+      gotoLine((globalThis as any).view);
       break;
     case hotkeys.formatCurrentFile:
       e.preventDefault();
