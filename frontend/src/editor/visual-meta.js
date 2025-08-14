@@ -84,6 +84,11 @@ function rebuildMetaPositions(text) {
   }
 }
 
+export function listMetaIds(text) {
+  rebuildMetaPositions(text);
+  return Array.from(metaPositions.keys());
+}
+
 function extractMetaCoords(text) {
   const map = new Map();
   const block = getMetaBlock(text);

@@ -30,13 +30,15 @@
     import { foldGutter } from "@codemirror/language";
     import { foldKeymap } from "https://cdn.jsdelivr.net/npm/@codemirror/commands@6.8.1/dist/index.js";
     import { basicSetup } from "https://cdn.jsdelivr.net/npm/@codemirror/basic-setup@0.20.0/dist/index.js";
+    import { autocompletion as autocomplete } from "https://cdn.jsdelivr.net/npm/@codemirror/autocomplete@6.18.6/dist/index.js";
     import { invoke } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/tauri.js";
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
     import { VisualCanvas, VIEW_STATE_KEY } from "./visual/canvas.js";
     import { languageFromFilename, loadLanguage, mimeFromFilename } from "./shared/mime-map.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
-    import { insertVisualMeta, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta, addBlockToolbar, refreshBlockCount } from "./editor/visual-meta.js";
+    import { insertVisualMeta, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta, addBlockToolbar, refreshBlockCount, listMetaIds } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
+    import { customSource, setBlockIds } from "./editor/autocomplete.js";
     import settings from "../settings.json" assert { type: 'json' };
     import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
     import { writeTextFile, BaseDirectory } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/fs.js";
@@ -128,6 +130,7 @@
             visualMetaTooltip,
             visualMetaMessenger,
             foldGutter(),
+            autocomplete({ override: [customSource] }),
             EditorView.scrollMargins.of(() => ({ top: 20, bottom: 20 })),
             keymap.of(foldKeymap),
             EditorView.updateListener.of(update => {
@@ -137,6 +140,7 @@
         }),
         parent: document.getElementById('editor')
       });
+      setBlockIds(listMetaIds(view.state.doc.toString()));
       removeMinimap = attachMinimap(view, textMinimapEl);
       vc.setMetaView(view);
       addBlockToolbar(view, vc, currentLang);
@@ -194,6 +198,7 @@
       document.getElementById('editor').dataset.mime = mime;
       parseAndRender();
       foldMetaBlock(view);
+      setBlockIds(listMetaIds(view.state.doc.toString()));
     }
 
     window.openFile = openFile;
