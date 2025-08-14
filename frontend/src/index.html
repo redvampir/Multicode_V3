@@ -340,9 +340,19 @@
 
     const searchInput = document.getElementById('search-input');
     const searchResultsEl = document.getElementById('search-results');
+    const searchRegex = document.getElementById('search-regex');
+    const searchWhole = document.getElementById('search-whole');
     let searchResults = [];
     function updateSearch() {
-      searchResults = searchAll(searchInput.value, view, vc.blocksData, currentLocale);
+      try {
+        searchResults = searchAll(searchInput.value, view, vc.blocksData, currentLocale, {
+          regex: searchRegex.checked,
+          wholeWord: searchWhole.checked
+        });
+      } catch (e) {
+        console.error(e);
+        searchResults = [];
+      }
       searchResultsEl.innerHTML = '';
       searchResults.forEach((r, i) => {
         const opt = document.createElement('option');
@@ -353,6 +363,8 @@
       highlightResults(searchResults, view, vc);
     }
     searchInput.addEventListener('input', updateSearch);
+    searchRegex.addEventListener('change', updateSearch);
+    searchWhole.addEventListener('change', updateSearch);
     searchResultsEl.addEventListener('change', () => {
       const idx = parseInt(searchResultsEl.value, 10);
       const res = searchResults[idx];
@@ -468,6 +480,8 @@
       </div>
       <div id="search-panel">
         <input id="search-input" placeholder="Search..." />
+        <label><input type="checkbox" id="search-regex"> Regex</label>
+        <label><input type="checkbox" id="search-whole"> Whole word</label>
         <select id="search-results" size="5"></select>
       </div>
       <div id="git-panel">
