@@ -25,6 +25,7 @@ pub use backend::BlockInfo;
 use clap::{Parser, Subcommand};
 #[cfg(not(test))]
 use tauri::State;
+use tokio::process::Command;
 
 #[cfg(not(test))]
 #[derive(Default)]
@@ -160,6 +161,22 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
     git::log().map_err(|e| e.to_string())
 }
 
+#[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
+async fn run_tests(commands: Vec<String>) -> Result<(), String> {
+    let status = Command::new("node")
+        .arg("scripts/run-tests.js")
+        .args(commands)
+        .status()
+        .await
+        .map_err(|e| e.to_string())?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(format!("tests failed with code {}", status.code().unwrap_or(-1)))
+    }
+}
+
 #[cfg(not(test))]
 fn handle_cli_command(command: Commands) -> Result<(), String> {
     match command {
@@ -272,6 +289,7 @@ fn main() {
             git_diff_cmd,
             git_branches_cmd,
             git_log_cmd,
+            run_tests,
             debug_run,
             debug_step,
             debug_break
@@ -311,6 +329,7 @@ mod tests {
             y: 2.0,
             tags: vec![],
             links: vec![],
+            tests: vec![],
             extends: None,
             origin: None,
             translations: {

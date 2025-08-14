@@ -41,6 +41,9 @@ pub struct VisualMeta {
     /// Optional links to other blocks.
     #[serde(default)]
     pub links: Vec<String>,
+    /// Optional test commands to run for this block.
+    #[serde(default)]
+    pub tests: Vec<String>,
     /// Optional identifier of a base metadata this entry extends.
     #[serde(default)]
     pub extends: Option<String>,

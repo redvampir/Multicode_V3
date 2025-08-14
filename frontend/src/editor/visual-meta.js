@@ -24,6 +24,7 @@ const tmplObj = () => ({
   y: 0,
   tags: [],
   links: [],
+  tests: [],
   updated_at: new Date().toISOString(),
 });
 
@@ -221,6 +222,20 @@ export function addBlockToolbar(view, vc, lang) {
   refreshBlockCount(view);
 }
 
+async function runTestsForBlock(id, commands) {
+  if (!Array.isArray(commands) || !commands.length) return;
+  try {
+    await invoke("run_tests", { commands });
+    if (typeof window !== "undefined") {
+      window.postMessage({ source: 'visual-meta', type: 'test-result', id, success: true }, '*');
+    }
+  } catch (e) {
+    if (typeof window !== "undefined") {
+      window.postMessage({ source: 'visual-meta', type: 'test-result', id, success: false }, '*');
+    }
+  }
+}
+
 export function updateMetaComment(view, meta) {
   let pos = metaPositions.get(meta.id);
   if (pos == null) {
@@ -245,10 +260,16 @@ export function updateMetaComment(view, meta) {
     if (Array.isArray(meta.links)) {
       obj.links = meta.links;
     }
+    if (Array.isArray(meta.tests)) {
+      obj.tests = meta.tests;
+    }
     obj.updated_at = new Date().toISOString();
     const newJson = JSON.stringify(obj);
     view.dispatch({ changes: { from: pos, to: pos + json.length, insert: newJson } });
     rebuildMetaPositions(view.state.doc.toString());
+    if (Array.isArray(obj.tests) && obj.tests.length) {
+      runTestsForBlock(obj.id, obj.tests);
+    }
     return true;
   } catch (_) {
     return false;
