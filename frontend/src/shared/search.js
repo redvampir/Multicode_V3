@@ -1,4 +1,5 @@
 import { scrollToMeta } from '../editor/visual-meta.js';
+import { searchText } from '../editor/search.js';
 
 /**
  * Search across plain text content and blocks data.
@@ -6,30 +7,34 @@ import { scrollToMeta } from '../editor/visual-meta.js';
  * @param {import('@codemirror/view').EditorView} view
  * @param {Array} blocksData
  * @param {string} locale
+ * @param {object} [opts]
+ * @param {boolean} [opts.regex]
+ * @param {boolean} [opts.wholeWord]
  * @returns {Array}
  */
-export function searchAll(query, view, blocksData, locale = 'en') {
+export function searchAll(query, view, blocksData, locale = 'en', opts = {}) {
   const results = [];
   if (!query) return results;
-  const lower = query.toLowerCase();
-  const fullText = view.state.doc.toString();
-  const lowerText = fullText.toLowerCase();
-  let idx = lowerText.indexOf(lower);
-  while (idx !== -1) {
-    const lineInfo = view.state.doc.lineAt(idx);
-    results.push({
-      type: 'text',
-      from: idx,
-      to: idx + query.length,
-      line: lineInfo.number,
-      label: lineInfo.text.trim()
-    });
-    idx = lowerText.indexOf(lower, idx + query.length);
-  }
+
+  results.push(...searchText(query, view, opts));
+
   if (Array.isArray(blocksData)) {
+    const { regex } = opts;
+    let matcher;
+    if (regex) {
+      try {
+        matcher = new RegExp(query, 'i');
+      } catch (e) {
+        console.error('Invalid search pattern', e);
+        return results;
+      }
+    } else {
+      const lower = query.toLowerCase();
+      matcher = { test: str => str.toLowerCase().includes(lower) };
+    }
     blocksData.forEach(b => {
       const label = (b.translations && b.translations[locale]) || b.kind || '';
-      if (label.toLowerCase().includes(lower)) {
+      if (matcher.test(label)) {
         results.push({ type: 'block', id: b.visual_id, label });
       }
     });
