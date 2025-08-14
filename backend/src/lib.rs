@@ -30,7 +30,7 @@ static DOCUMENT_TREES: Lazy<Mutex<HashMap<String, Tree>>> =
 static BLOCK_CACHE: Lazy<Mutex<HashMap<String, (String, Vec<BlockInfo>)>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-#[derive(Clone, Serialize, Debug)]
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BlockInfo {
     pub visual_id: String,
     #[serde(default)]
