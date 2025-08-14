@@ -45,6 +45,7 @@
     import { searchAll, highlightResults, gotoResult } from "./shared/search.js";
     import { emit } from "./shared/event-bus.js";
     import { attachMinimap } from "./editor/minimap.ts";
+    import { addSnapshot, showHistory } from "./editor/history.js";
 
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
     let view;
@@ -182,6 +183,7 @@
 
     async function save() {
       await invoke('save_state', { content: view.state.doc.toString() });
+      addSnapshot(view);
     }
 
     async function load() {
@@ -283,6 +285,7 @@
     document.getElementById('layout-import').addEventListener('click', importLayout);
     document.getElementById('undo').addEventListener('click', () => vc.undo());
     document.getElementById('redo').addEventListener('click', () => vc.redo());
+    document.getElementById('history').addEventListener('click', () => showHistory(view));
     document.getElementById('insert-meta').addEventListener('click', () => {
       insertVisualMeta(view, currentLang);
       foldMetaBlock(view);
@@ -408,6 +411,7 @@
         <button id="layout-import">Import</button>
         <button id="undo">Undo</button>
         <button id="redo">Redo</button>
+        <button id="history">History</button>
         <button id="insert-meta">Insert Meta</button>
         <select id="theme"></select>
         <select id="locale">
