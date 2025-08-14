@@ -46,6 +46,7 @@
     import { emit } from "./shared/event-bus.js";
     import { attachMinimap } from "./editor/minimap.ts";
     import { addSnapshot, showHistory } from "./editor/history.js";
+    import { spellcheck } from "./editor/spellcheck.js";
 
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
     let view;
@@ -121,12 +122,14 @@
       if (view) view.destroy();
       if (removeMinimap) removeMinimap();
       const langSupport = await loadLanguage(lang);
+      const spellExt = settings.editor?.spellcheck ? await spellcheck() : [];
       view = new EditorView({
         state: EditorState.create({
           doc,
           extensions: [
             basicSetup,
             langSupport || [],
+            ...spellExt,
             visualMetaHighlighter,
             visualMetaTooltip,
             visualMetaMessenger,
