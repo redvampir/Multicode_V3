@@ -12,6 +12,7 @@
     #editor-wrapper { display: flex; height: 40vh; }
     #editor { flex: 1; border: 1px solid #ccc; }
     #text-minimap { width: 60px; height: 100%; border: 1px solid #ccc; border-left: none; }
+    #outline { width: 200px; height: 100%; border: 1px solid #ccc; border-left: none; overflow: auto; }
     #controls { padding: 0.5rem; }
     #git-panel { padding: 0.5rem; border-top: 1px solid #ccc; }
     #git-log { white-space: pre-wrap; background: #f5f5f5; max-height: 20vh; overflow: auto; padding: 0.5rem; }
@@ -45,6 +46,7 @@
     import { searchAll, highlightResults, gotoResult } from "./shared/search.js";
     import { emit } from "./shared/event-bus.js";
     import { attachMinimap } from "./editor/minimap.ts";
+    import { attachOutline } from "./editor/outline.ts";
     import { addSnapshot, showHistory } from "./editor/history.js";
     import { spellcheck } from "./editor/spellcheck.js";
     import { activeBlock } from "./editor/active-block.js";
@@ -52,6 +54,7 @@
     const TEXT_CURSOR_KEY = 'text-cursor-pos';
     let view;
     let removeMinimap;
+    let removeOutline;
 
     await loadBlockPlugins(window.blockPlugins || []);
 
@@ -59,6 +62,7 @@
     const minimapEl = document.getElementById('visual-minimap');
     const vc = new VisualCanvas(canvasEl, minimapEl);
     const textMinimapEl = document.getElementById('text-minimap');
+    const outlineEl = document.getElementById('outline');
 
     const storedView = localStorage.getItem(VIEW_STATE_KEY);
     if (storedView) {
@@ -122,6 +126,7 @@
       vc.lang = lang;
       if (view) view.destroy();
       if (removeMinimap) removeMinimap();
+      if (removeOutline) removeOutline();
       const langSupport = await loadLanguage(lang);
       const spellExt = settings.editor?.spellcheck ? await spellcheck() : [];
       view = new EditorView({
@@ -148,6 +153,7 @@
       });
       setBlockIds(listMetaIds(view.state.doc.toString()));
       removeMinimap = attachMinimap(view, textMinimapEl);
+      removeOutline = attachOutline(view, outlineEl);
       vc.setMetaView(view);
       addBlockToolbar(view, vc, currentLang);
       vc.onBlockMove(async () => {
@@ -404,8 +410,9 @@
     </div>
     <div id="textPane">
       <div id="editor-wrapper">
-        <div id="editor" data-file-id="current"></div>
-        <div id="text-minimap"></div>
+      <div id="editor" data-file-id="current"></div>
+      <div id="text-minimap"></div>
+      <div id="outline"></div>
       </div>
       <div id="controls">
         <button id="save">Save</button>
