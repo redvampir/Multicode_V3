@@ -164,6 +164,32 @@
       foldMetaBlock(view);
     }
 
+    async function fetchWatch() {
+      try {
+        const res = await fetch('/watch');
+        const blocks = await res.json();
+        if (Array.isArray(blocks) && blocks.length) {
+          vc.setBlocks(blocks);
+          refreshBlockCount(view);
+        }
+      } catch (e) {
+        console.error('auto-sync failed', e);
+      }
+    }
+
+    function startAutoSync() {
+      const editorCfg = settings?.editor || {};
+      if (editorCfg.autoSync) {
+        const ms = Math.max(5, editorCfg.autoSyncInterval || 5) * 60000;
+        setInterval(fetchWatch, ms);
+      }
+      const visualCfg = settings?.visual || {};
+      if (visualCfg.autoSync) {
+        const ms = Math.max(5, visualCfg.autoSyncInterval || 5) * 60000;
+        setInterval(fetchWatch, ms);
+      }
+    }
+
     async function exportWithoutMeta() {
       exportProgress.style.display = 'inline';
       try {
@@ -296,6 +322,7 @@
     document.getElementById('git-diff').addEventListener('click', showDiff);
 
     refreshLog();
+    startAutoSync();
 
     parseAndRender();
   </script>
