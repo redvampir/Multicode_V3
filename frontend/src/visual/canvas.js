@@ -4,7 +4,7 @@ import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
 import { Minimap } from './minimap.ts';
 import settings from '../../settings.json' assert { type: 'json' };
 import { createTwoFilesPatch } from 'diff';
-import { updateMetaComment, previewDiff, renameMetaId } from '../editor/visual-meta.js';
+import { updateMetaComment, previewDiff, renameMetaId, getMetaById } from '../editor/visual-meta.js';
 import { openBlockEditor } from './block-editor.ts';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
@@ -168,7 +168,7 @@ export class VisualCanvas {
           const color = theme.blockKinds[kind] || theme.blockFill;
           const block = createBlock(kind, id, pos.x, pos.y, kind, color);
           this.blocks.push(block);
-          const data = { visual_id: id, kind, x: pos.x, y: pos.y, tags: [], links: [], updated_at: new Date().toISOString() };
+          const data = { visual_id: id, kind, x: pos.x, y: pos.y, tags: [], links: [], history: [], updated_at: new Date().toISOString() };
           this.blocksData.push(data);
           this.blockDataMap.set(id, data);
           if (this.metaView) updateMetaComment(this.metaView, { id, x: pos.x, y: pos.y });
@@ -467,7 +467,114 @@ export class VisualCanvas {
     this.errorBlocks = new Map([...this.analysisErrors, ...this.lintErrors]);
   }
 
+  showHistoryMenu(x, y, id) {
+    const menu = document.createElement('div');
+    menu.style.position = 'absolute';
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    menu.style.background = '#fff';
+    menu.style.border = '1px solid #ccc';
+    menu.style.padding = '4px 0';
+    menu.style.zIndex = '10000';
+    const item = document.createElement('div');
+    item.textContent = 'History…';
+    item.style.padding = '4px 12px';
+    item.style.cursor = 'pointer';
+    item.onclick = () => {
+      document.body.removeChild(menu);
+      this.openHistoryModal(id);
+    };
+    menu.appendChild(item);
+    document.body.appendChild(menu);
+    const remove = () => {
+      if (menu.parentNode) document.body.removeChild(menu);
+      document.removeEventListener('click', remove);
+    };
+    setTimeout(() => document.addEventListener('click', remove), 0);
+  }
+
+  openHistoryModal(id) {
+    if (!this.metaView) return;
+    const meta = getMetaById(this.metaView, id);
+    const history = (meta && Array.isArray(meta.history)) ? meta.history : [];
+    const overlay = document.createElement('div');
+    overlay.style.position = 'fixed';
+    overlay.style.top = '0';
+    overlay.style.left = '0';
+    overlay.style.right = '0';
+    overlay.style.bottom = '0';
+    overlay.style.background = 'rgba(0,0,0,0.4)';
+    overlay.style.display = 'flex';
+    overlay.style.alignItems = 'center';
+    overlay.style.justifyContent = 'center';
+    overlay.style.zIndex = '10000';
+
+    const box = document.createElement('div');
+    box.style.background = '#fff';
+    box.style.padding = '1em';
+    box.style.maxHeight = '80%';
+    box.style.maxWidth = '80%';
+    box.style.overflow = 'auto';
+
+    const list = document.createElement('div');
+    if (history.length === 0) {
+      const empty = document.createElement('div');
+      empty.textContent = 'No history';
+      list.appendChild(empty);
+    } else {
+      history.slice().reverse().forEach(h => {
+        const row = document.createElement('div');
+        row.style.marginBottom = '0.5em';
+        const label = document.createElement('span');
+        label.textContent = new Date(h.timestamp).toLocaleString();
+        const btn = document.createElement('button');
+        btn.textContent = 'Revert';
+        btn.style.marginLeft = '0.5em';
+        btn.onclick = () => {
+          document.body.removeChild(overlay);
+          this.applyHistory(id, h.snapshot);
+        };
+        row.appendChild(label);
+        row.appendChild(btn);
+        list.appendChild(row);
+      });
+    }
+    box.appendChild(list);
+    const close = document.createElement('button');
+    close.textContent = 'Close';
+    close.style.marginTop = '0.5em';
+    close.onclick = () => document.body.removeChild(overlay);
+    box.appendChild(close);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+  }
+
+  applyHistory(id, snapshot) {
+    const block = this.blocks.find(b => b.id === id);
+    if (block) {
+      block.x = snapshot.x;
+      block.y = snapshot.y;
+    }
+    const data = this.blockDataMap.get(id);
+    if (data) {
+      Object.assign(data, snapshot);
+    }
+    if (this.metaView) {
+      updateMetaComment(this.metaView, snapshot);
+      this.upsertMeta(snapshot, [this.fileId]);
+    }
+    this.draw();
+  }
+
   registerEvents() {
+    this.canvas.addEventListener('contextmenu', e => {
+      const pos = this.toWorld(e.offsetX, e.offsetY);
+      const block = this.blocks.find(b => b.contains(pos.x, pos.y));
+      if (block) {
+        e.preventDefault();
+        this.showHistoryMenu(e.clientX, e.clientY, block.id);
+      }
+    });
     this.canvas.addEventListener('mousedown', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       const block = this.blocks.find(b => b.contains(pos.x, pos.y));

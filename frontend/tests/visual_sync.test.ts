@@ -15,7 +15,7 @@ vi.mock('@codemirror/language', () => ({
   hoverTooltip: () => ({})
 }));
 
-import { updateMetaComment } from '../src/editor/visual-meta.js';
+import { updateMetaComment, getMetaById } from '../src/editor/visual-meta.js';
 
 describe('visual-meta synchronization', () => {
   it('reflects block coordinate changes in comments', () => {
@@ -35,5 +35,9 @@ describe('visual-meta synchronization', () => {
     expect(text).toContain('"x":5');
     expect(text).toContain('"y":7');
     expect(text).toContain('// @VISUAL_META 1');
+    const meta = getMetaById(view, '1');
+    expect(Array.isArray(meta.history)).toBe(true);
+    expect(meta.history.length).toBe(1);
+    expect(meta.history[0].snapshot.x).toBe(0);
   });
 });
