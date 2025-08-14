@@ -1058,9 +1058,9 @@ export class VisualCanvas {
         this.ctx.strokeStyle = 'red';
         this.ctx.lineWidth = 2;
         this.ctx.strokeRect(b.x, b.y, b.w, b.h);
-        this.ctx.fillStyle = 'red';
+        this.ctx.fillStyle = 'orange';
         this.ctx.font = `${12 / this.scale}px sans-serif`;
-        this.ctx.fillText('!', b.x + 4 / this.scale, b.y + 14 / this.scale);
+        this.ctx.fillText('⚠', b.x + 4 / this.scale, b.y + 14 / this.scale);
       }
     });
 

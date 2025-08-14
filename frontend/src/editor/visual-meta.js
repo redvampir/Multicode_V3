@@ -205,6 +205,54 @@ export async function generateVisualBlocks(view, vc, lang) {
   refreshBlockCount(view);
 }
 
+export async function syncNow(view, vc, lang) {
+  const text = view.state.doc.toString();
+  const idRegex = /\/\/\s*@VISUAL_META\s+([A-Za-z0-9_-]+)/g;
+  const markers = new Set();
+  let m;
+  while ((m = idRegex.exec(text)) !== null) markers.add(m[1]);
+  const block = ensureMetaBlock(view);
+  const contentStart = text.indexOf("\n", block.start) + 1;
+  const content = text.slice(contentStart, block.end - 2);
+  const lines = content.split("\n");
+  const newLines = [];
+  const metaIds = new Set();
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed) continue;
+    try {
+      const obj = JSON.parse(trimmed);
+      if (!obj.id) continue;
+      if (markers.has(obj.id)) {
+        if (Array.isArray(obj.links)) {
+          obj.links = obj.links.filter(l => markers.has(l));
+        }
+        newLines.push(JSON.stringify(obj));
+        metaIds.add(obj.id);
+      } else {
+        window.postMessage({ source: 'visual-meta', type: 'remove-block', id: obj.id }, '*');
+      }
+    } catch (_) {
+      // ignore
+    }
+  }
+  markers.forEach(id => {
+    if (!metaIds.has(id)) {
+      const obj = tmplObj();
+      obj.id = id;
+      newLines.push(JSON.stringify(obj));
+    }
+  });
+  const newContent = newLines.join("\n") + "\n";
+  const endPos = block.end - 2;
+  view.dispatch({ changes: { from: contentStart, to: endPos, insert: newContent } });
+  rebuildMetaPositions(view.state.doc.toString());
+  refreshBlockCount(view);
+  if (vc && typeof vc.setBlocks === 'function') {
+    await generateVisualBlocks(view, vc, lang);
+  }
+}
+
 export function addBlockToolbar(view, vc, lang) {
   const parent = view.dom.parentNode;
   if (!parent) return;
@@ -212,14 +260,18 @@ export function addBlockToolbar(view, vc, lang) {
   toolbar.className = "editor-toolbar";
   const btn = document.createElement("button");
   btn.textContent = "Generate Blocks";
+  const sync = document.createElement("button");
+  sync.textContent = "Sync now";
   const countSpan = document.createElement("span");
   countSpan.id = "block-count";
   countSpan.style.marginLeft = "0.5em";
   toolbar.appendChild(btn);
+  toolbar.appendChild(sync);
   toolbar.appendChild(countSpan);
   parent.insertBefore(toolbar, view.dom);
 
   btn.addEventListener("click", () => generateVisualBlocks(view, vc, lang));
+  sync.addEventListener("click", () => syncNow(view, vc, lang));
   refreshBlockCount(view);
 }
 
@@ -645,6 +697,11 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     view.dom.addEventListener('click', this.onClick);
     view.dom.addEventListener('mousemove', this.onMouseMove);
     view.dom.addEventListener('mouseleave', this.onMouseLeave);
+    this.consistencyErrors = new Map();
+    this.postLint = this.postLint.bind(this);
+    this.checkConsistency = this.checkConsistency.bind(this);
+    this.checkInterval = setInterval(this.checkConsistency, 5000);
+    this.checkConsistency();
   }
   destroy() {
     window.removeEventListener('message', this.onMessage);
@@ -653,6 +710,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
     this.view.dom.removeEventListener('mouseleave', this.onMouseLeave);
     document.body.removeChild(this.tooltip);
     clearTimeout(this.debounceTimer);
+    clearInterval(this.checkInterval);
     if (currentView === this.view) currentView = null;
   }
   scheduleSync() {
@@ -728,7 +786,7 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
           else lintMessages.set(bid, msg);
         }
       }
-      window.postMessage({ source: 'visual-meta', type: 'lint', errors: Object.fromEntries(lintMessages) }, '*');
+      this.postLint();
     } else if (source === 'visual-canvas') {
       if (type === 'block-info' && id === this.lastHoverId) {
         if (thumbnail) {
@@ -754,6 +812,47 @@ export const visualMetaMessenger = ViewPlugin && ViewPlugin.fromClass ? ViewPlug
         highlightMetaById(this.view, id);
       }
     }
+  }
+  checkConsistency() {
+    const text = this.view.state.doc.toString();
+    const idRegex = /\/\/\s*@VISUAL_META\s+([A-Za-z0-9_-]+)/g;
+    const markers = new Set();
+    let m;
+    while ((m = idRegex.exec(text)) !== null) markers.add(m[1]);
+    const block = getMetaBlock(text);
+    const errors = new Map();
+    const metaIds = new Set();
+    if (block) {
+      const contentStart = text.indexOf('\n', block.start) + 1;
+      const content = text.slice(contentStart, block.end - 2);
+      const lines = content.split('\n');
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed) continue;
+        try {
+          const obj = JSON.parse(trimmed);
+          if (!obj.id) continue;
+          metaIds.add(obj.id);
+          if (typeof obj.x !== 'number' || typeof obj.y !== 'number') {
+            errors.set(obj.id, 'Invalid position');
+          }
+        } catch (_) {
+          // ignore
+        }
+      }
+    }
+    markers.forEach(id => {
+      if (!metaIds.has(id)) errors.set(id, 'Missing meta entry');
+    });
+    metaIds.forEach(id => {
+      if (!markers.has(id)) errors.set(id, 'Orphan meta entry');
+    });
+    this.consistencyErrors = errors;
+    this.postLint();
+  }
+  postLint() {
+    const merged = new Map([...lintMessages, ...this.consistencyErrors]);
+    window.postMessage({ source: 'visual-meta', type: 'lint', errors: Object.fromEntries(merged) }, '*');
   }
   onClick(e) {
     const pos = this.view.posAtCoords({ x: e.clientX, y: e.clientY });
