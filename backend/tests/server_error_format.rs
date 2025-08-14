@@ -80,6 +80,7 @@ async fn metadata_endpoint_unauthorized() {
             updated_at: Utc::now(),
         },
         lang: "rust".into(),
+        files: vec![],
     };
     let (status, Json(err)) = metadata_upsert_endpoint(State(test_state()), headers, Json(req))
         .await

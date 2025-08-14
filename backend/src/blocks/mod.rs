@@ -74,7 +74,21 @@ pub fn upsert_meta(
         Some(l) => l,
         None => {
             tracing::error!("unsupported language: {}", lang);
-            return metas.into_iter().fold(cleaned, |acc, m| upsert(&acc, &m));
+            let updated =
+                metas.clone().into_iter().fold(cleaned.clone(), |acc, m| upsert(&acc, &m));
+            let mut result = HashMap::new();
+            if let Some(id) = files.first() {
+                result.insert(id.clone(), updated);
+            }
+            for fid in files.iter().skip(1) {
+                if let Ok(src) = fs::read_to_string(fid) {
+                    let metas = read_all(&src);
+                    let cleaned = remove_all(&src);
+                    let updated = metas.into_iter().fold(cleaned, |acc, m| upsert(&acc, &m));
+                    result.insert(fid.clone(), updated);
+                }
+            }
+            return result;
         }
     };
     let regenerated = regenerate_code(&cleaned, lang, &metas).unwrap_or(cleaned);
