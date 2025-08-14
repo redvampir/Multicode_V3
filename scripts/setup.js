@@ -16,47 +16,91 @@ async function ask(question) {
   });
 }
 
+async function getWorkspaceDirs(rootDir, patterns) {
+  const dirs = [];
+  for (const pattern of patterns) {
+    if (pattern.endsWith('/*')) {
+      const base = pattern.slice(0, -2);
+      const baseDir = path.join(rootDir, base);
+      if (!(await fs.pathExists(baseDir))) continue;
+      const entries = await fs.readdir(baseDir);
+      for (const entry of entries) {
+        const wsDir = path.join(baseDir, entry);
+        if (
+          (await fs.pathExists(path.join(wsDir, 'package.json')))
+          && (await fs.stat(wsDir)).isDirectory()
+        ) {
+          dirs.push(wsDir);
+        }
+      }
+    } else {
+      const wsDir = path.join(rootDir, pattern);
+      if (await fs.pathExists(path.join(wsDir, 'package.json'))) {
+        dirs.push(wsDir);
+      }
+    }
+  }
+  return dirs;
+}
+
 async function main() {
   const log = createLogger('setup');
   log(`NODE_ENV=${process.env.NODE_ENV}`);
   const spinner = createSpinner('Checking dependencies');
   spinner.start();
   try {
-    const pkgPath = path.join(__dirname, '..', 'package.json');
-    const pkg = await fs.readJson(pkgPath);
-    const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-    const missing = Object.keys(deps).filter((dep) => {
-      try {
-        require.resolve(dep);
-        return false;
-      } catch {
-        return true;
+    const rootDir = path.join(__dirname, '..');
+    const pkgPath = path.join(rootDir, 'package.json');
+    const rootPkg = await fs.readJson(pkgPath);
+    const workspaces = await getWorkspaceDirs(rootDir, rootPkg.workspaces || []);
+    workspaces.unshift(rootDir);
+
+    const missing = {};
+    for (const wsDir of workspaces) {
+      const pkg = await fs.readJson(path.join(wsDir, 'package.json'));
+      const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+      const missingDeps = Object.keys(deps).filter((dep) => {
+        try {
+          require.resolve(dep, { paths: [wsDir] });
+          return false;
+        } catch {
+          return true;
+        }
+      });
+      if (missingDeps.length > 0) {
+        const rel = path.relative(rootDir, wsDir) || '.';
+        missing[rel] = missingDeps;
       }
-    });
+    }
     spinner.succeed('Dependency check finished');
 
-    if (missing.length > 0) {
-      log(`Missing dependencies: ${missing.join(', ')}`);
+    if (Object.keys(missing).length > 0) {
+      for (const [ws, deps] of Object.entries(missing)) {
+        log(`Missing dependencies in ${ws}: ${deps.join(', ')}`);
+      }
       let install = true;
       if (!process.env.CI) {
-        const answer = await ask(`Install missing dependencies (${missing.join(', ')})? [Y/n] `);
+        const answer = await ask('Install missing dependencies? [Y/n] ');
         install = answer === '' || answer === 'y' || answer === 'yes';
       }
       if (install) {
-        const installSpinner = createSpinner('Installing dependencies');
-        installSpinner.start();
-        try {
-          await runCommand('npm', ['install', ...missing], log);
-          installSpinner.succeed('Dependencies installed');
-        } catch (err) {
-          installSpinner.fail('npm install failed, trying npm ci');
+        for (const [ws, deps] of Object.entries(missing)) {
+          const wsDir = path.join(rootDir, ws);
+          const installSpinner = createSpinner(`Installing dependencies for ${ws}`);
+          installSpinner.start();
           try {
-            await runCommand('npm', ['ci'], log);
-            installSpinner.succeed('npm ci succeeded');
-          } catch (err2) {
-            installSpinner.fail('Installation failed');
-            log(err2.message);
-            process.exit(1);
+            await runCommand('npm', ['install', ...deps], log, { cwd: wsDir });
+            installSpinner.succeed(`Dependencies installed for ${ws}`);
+          } catch (err) {
+            installSpinner.fail(`npm install failed for ${ws}, trying npm ci`);
+            try {
+              await runCommand('npm', ['ci'], log, { cwd: wsDir });
+              installSpinner.succeed(`npm ci succeeded for ${ws}`);
+            } catch (err2) {
+              installSpinner.fail(`Installation failed for ${ws}`);
+              log(err2.message);
+              process.exit(1);
+            }
           }
         }
       } else {
