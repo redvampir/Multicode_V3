@@ -4,7 +4,7 @@ import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
 import { Minimap } from './minimap.ts';
 import settings from '../../settings.json' assert { type: 'json' };
 import { createTwoFilesPatch } from 'diff';
-import { updateMetaComment, previewDiff } from '../editor/visual-meta.js';
+import { updateMetaComment, previewDiff, renameMetaId } from '../editor/visual-meta.js';
 import { openBlockEditor } from './block-editor.ts';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
@@ -278,6 +278,72 @@ export class VisualCanvas {
         }
       }
     }
+  }
+
+  async renameSelectedBlock() {
+    if (this.selected.size !== 1) return;
+    const block = Array.from(this.selected)[0];
+    await this.renameBlock(block.id);
+  }
+
+  async renameBlock(id) {
+    const block = this.blocks.find(b => b.id === id);
+    if (!block) return;
+    const newId = prompt('New block name', id);
+    if (!newId || newId === id) return;
+    if (this.metaView) {
+      const ok = await renameMetaId(this.metaView, id, newId);
+      if (!ok) return;
+    }
+    const data = this.blockDataMap.get(id);
+    if (data) {
+      data.visual_id = newId;
+      this.blockDataMap.delete(id);
+      this.blockDataMap.set(newId, data);
+    }
+    const bd = this.blocksData.find(b => b.visual_id === id);
+    if (bd) bd.visual_id = newId;
+    block.id = newId;
+    this.connections.forEach(([a, b]) => {
+      if (a.id === id) a.id = newId;
+      if (b.id === id) b.id = newId;
+    });
+    if (this.highlighted.has(id)) {
+      this.highlighted.delete(id);
+      this.highlighted.add(newId);
+    }
+    for (const set of this.groups.values()) {
+      if (set.has(id)) {
+        set.delete(id);
+        set.add(newId);
+      }
+    }
+    if (this.analysisErrors.has(id)) {
+      const v = this.analysisErrors.get(id);
+      this.analysisErrors.delete(id);
+      this.analysisErrors.set(newId, v);
+    }
+    if (this.lintErrors.has(id)) {
+      const v = this.lintErrors.get(id);
+      this.lintErrors.delete(id);
+      this.lintErrors.set(newId, v);
+    }
+    if (this.errorBlocks.has(id)) {
+      const v = this.errorBlocks.get(id);
+      this.errorBlocks.delete(id);
+      this.errorBlocks.set(newId, v);
+    }
+    const newEdges = new Map();
+    for (const [edge, msg] of this.errorEdges.entries()) {
+      const [from, to] = edge.split('->');
+      const nf = from === id ? newId : from;
+      const nt = to === id ? newId : to;
+      newEdges.set(nf + '->' + nt, msg);
+    }
+    this.errorEdges = newEdges;
+    this.updateErrorBlocks();
+    this.updateLabels();
+    this.draw();
   }
 
   onBlockMove(cb) {

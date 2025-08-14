@@ -2,9 +2,11 @@
 import { describe, it, expect, vi } from 'vitest';
 vi.mock('../editor/visual-meta.js', () => ({
   updateMetaComment: vi.fn(),
-  previewDiff: vi.fn().mockResolvedValue(true)
+  previewDiff: vi.fn().mockResolvedValue(true),
+  renameMetaId: vi.fn().mockResolvedValue(true)
 }));
 import { analyzeConnections, VisualCanvas } from './canvas.js';
+import { renameMetaId } from '../editor/visual-meta.js';
 
 describe('analyzeConnections', () => {
   it('detects missing blocks and cycles', () => {
@@ -96,6 +98,32 @@ describe('undo and redo', () => {
     expect(vc.connections.length).toBe(1);
     expect(vc.connections[0][0]).toBe(a);
     expect(vc.connections[0][1]).toBe(b);
+  });
+});
+
+describe('renameBlock', () => {
+  function createCanvas() {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    return canvasEl;
+  }
+
+  it('renames block id and data', async () => {
+    const vc = new VisualCanvas(createCanvas());
+    vc.blocks = [{ id: 'old' }];
+    const data = { visual_id: 'old', kind: 'Fn', x: 0, y: 0 };
+    vc.blocksData = [data];
+    vc.blockDataMap.set('old', data);
+    vc.metaView = {};
+    globalThis.prompt = vi.fn().mockReturnValue('new');
+    await vc.renameBlock('old');
+    expect(vc.blocks[0].id).toBe('new');
+    expect(vc.blockDataMap.has('new')).toBe(true);
+    expect(vc.blocksData[0].visual_id).toBe('new');
+    expect(renameMetaId).toHaveBeenCalledWith(vc.metaView, 'old', 'new');
   });
 });
 

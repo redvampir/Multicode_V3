@@ -320,6 +320,96 @@ export function previewDiff(patch) {
   });
 }
 
+async function confirmRename(matches, oldId, newId) {
+  const overlay = document.createElement('div');
+  overlay.style.position = 'fixed';
+  overlay.style.top = '0';
+  overlay.style.left = '0';
+  overlay.style.right = '0';
+  overlay.style.bottom = '0';
+  overlay.style.background = 'rgba(0,0,0,0.4)';
+  overlay.style.display = 'flex';
+  overlay.style.alignItems = 'center';
+  overlay.style.justifyContent = 'center';
+  overlay.style.zIndex = '10000';
+
+  const box = document.createElement('div');
+  box.style.background = '#fff';
+  box.style.padding = '1em';
+  box.style.maxHeight = '80%';
+  box.style.maxWidth = '80%';
+  box.style.overflow = 'auto';
+
+  const title = document.createElement('div');
+  title.textContent = `Rename "${oldId}" to "${newId}" in:`;
+  box.appendChild(title);
+
+  const list = document.createElement('pre');
+  matches.forEach(m => {
+    list.appendChild(document.createTextNode(`line ${m.line}: ${m.text.trim()}\n`));
+  });
+  box.appendChild(list);
+
+  const btns = document.createElement('div');
+  btns.style.textAlign = 'right';
+  btns.style.marginTop = '0.5em';
+  const apply = document.createElement('button');
+  apply.textContent = 'Rename';
+  const cancel = document.createElement('button');
+  cancel.textContent = 'Cancel';
+  cancel.style.marginLeft = '0.5em';
+  btns.appendChild(apply);
+  btns.appendChild(cancel);
+  box.appendChild(btns);
+
+  overlay.appendChild(box);
+  document.body.appendChild(overlay);
+
+  return new Promise(resolve => {
+    apply.onclick = () => {
+      document.body.removeChild(overlay);
+      resolve(true);
+    };
+    cancel.onclick = () => {
+      document.body.removeChild(overlay);
+      resolve(false);
+    };
+  });
+}
+
+function replaceInView(view, from, to, text) {
+  if (view && typeof view.replace === 'function') {
+    view.replace(from, to, text);
+  } else {
+    view.dispatch({ changes: { from, to, insert: text } });
+  }
+}
+
+export async function renameMetaId(view, oldId, newId) {
+  if (!view || !oldId || !newId) return false;
+  const text = view.state.doc.toString();
+  const esc = oldId.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  const re = new RegExp(esc, 'g');
+  const matches = [];
+  let m;
+  while ((m = re.exec(text)) !== null) {
+    const from = m.index;
+    const to = from + oldId.length;
+    const lineInfo = view.state.doc.lineAt(from);
+    matches.push({ from, to, line: lineInfo.number, text: lineInfo.text });
+  }
+  if (!matches.length) return false;
+  const ok = await confirmRename(matches, oldId, newId);
+  if (!ok) return false;
+  // apply replacements from last to first to keep positions
+  for (let i = matches.length - 1; i >= 0; i--) {
+    const m = matches[i];
+    replaceInView(view, m.from, m.to, newId);
+  }
+  rebuildMetaPositions(view.state.doc.toString());
+  return true;
+}
+
 export function reorderMeta(ids) {
   if (!currentView || !Array.isArray(ids)) return;
   const view = currentView;

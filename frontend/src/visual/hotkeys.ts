@@ -82,6 +82,10 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       canvasRef?.redo?.();
       break;
+    case 'F2':
+      e.preventDefault();
+      canvasRef?.renameSelectedBlock?.();
+      break;
     case 'ArrowUp':
     case 'ArrowDown':
     case 'ArrowLeft':
