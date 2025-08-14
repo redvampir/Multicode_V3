@@ -5,6 +5,7 @@ import { Minimap } from './minimap.ts';
 import settings from '../../settings.json' assert { type: 'json' };
 import { createTwoFilesPatch } from 'diff';
 import { updateMetaComment, previewDiff } from '../editor/visual-meta.js';
+import { openBlockEditor } from './block-editor.ts';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
 
@@ -450,9 +451,9 @@ export class VisualCanvas {
     this.canvas.addEventListener('dblclick', e => {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       const block = this.blocks.find(b => b.contains(pos.x, pos.y));
-      if (block && typeof window.openInTextEditor === 'function') {
+      if (block) {
         this.saveViewState();
-        window.openInTextEditor(block.id);
+        openBlockEditor(this, block);
       }
     });
 
