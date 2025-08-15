@@ -117,6 +117,28 @@ export class GroupBlock extends Block {
   }
 }
 
+export class RerouteBlock extends Block {
+  static defaultSize = { width: 20, height: 20 };
+  static ports = [
+    { id: 'in', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(id, x, y, RerouteBlock.defaultSize.width, RerouteBlock.defaultSize.height, '', getTheme().blockFill);
+    this.ports = RerouteBlock.ports;
+  }
+  draw(ctx) {
+    const theme = getTheme();
+    ctx.fillStyle = this.color;
+    ctx.strokeStyle = theme.blockStroke;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(this.x + this.w / 2, this.y + this.h / 2, this.w / 2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+  }
+}
+
 export class NumberLiteralBlock extends Block {
   static defaultSize = { width: 120, height: 50 };
   static ports = [{ id: 'out', kind: 'data', dir: 'out' }];
@@ -963,4 +985,5 @@ registerBlock('Map/New', MapNewBlock);
 registerBlock('Map/Get', MapGetBlock);
 registerBlock('Map/Set', MapSetBlock);
 registerBlock('Struct', StructBlock);
+registerBlock('Reroute', RerouteBlock);
 registerBlock('Group', GroupBlock);
