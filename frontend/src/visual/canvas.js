@@ -135,7 +135,7 @@ export class VisualCanvas {
         const color = theme.blockKinds[data.kind] || theme.blockFill;
         let thumbnail = null;
         try {
-          const block = createBlock(data.kind, id, 0, 0, data.kind, color);
+          const block = createBlock(data.kind, id, 0, 0, data.kind, color, data.data);
           const off = document.createElement('canvas');
           off.width = block.w;
           off.height = block.h;
@@ -228,7 +228,7 @@ export class VisualCanvas {
       const label = (b.translations && b.translations[this.locale]) || b.kind;
       const base = theme.blockKinds[b.kind] || theme.blockFill;
       const color = this.highlighted.has(b.visual_id) ? theme.highlight : base;
-      return createBlock(b.kind, b.visual_id, b.x, b.y, label, color);
+      return createBlock(b.kind, b.visual_id, b.x, b.y, label, color, b.data);
     });
   }
 

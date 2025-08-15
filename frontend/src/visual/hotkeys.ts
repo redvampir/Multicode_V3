@@ -193,7 +193,7 @@ export function pasteBlock() {
   data.y = (data.y || 0) + MOVE_STEP;
   const label = (data.translations && data.translations[canvasRef.locale]) || data.kind;
   const color = theme.blockKinds[data.kind] || theme.blockFill;
-  const block = createBlock(data.kind, data.visual_id, data.x, data.y, label, color);
+  const block = createBlock(data.kind, data.visual_id, data.x, data.y, label, color, data.data);
   canvasRef.blocks.push(block);
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(data.visual_id, data);

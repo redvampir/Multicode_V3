@@ -5,7 +5,7 @@ vi.mock('../editor/visual-meta.js', () => ({
 }));
 import { openBlockEditor } from './block-editor.ts';
 import { updateMetaComment } from '../editor/visual-meta.js';
-import { IfBlock } from './blocks.js';
+import { IfBlock, SwitchBlock, createBlock } from './blocks.js';
 import { getTheme } from './theme.ts';
 
 describe('block editor', () => {
@@ -68,6 +68,44 @@ describe('block editor', () => {
     expect(dispatch).toHaveBeenCalled();
     const call = dispatch.mock.calls[0][0];
     expect(call.changes.insert).toContain('"fields":["y"]');
+  });
+
+  it('allows editing switch cases and updates ports', () => {
+    const json = '{"id":"a","data":{"cases":["1"]}}';
+    const dispatch = vi.fn();
+    const metaView = {
+      state: { doc: { sliceString: () => json } },
+      dispatch
+    } as any;
+    const block = createBlock('Switch', 'a', 0, 0, 'Switch', undefined, { cases: ['1'] });
+    const vc: any = {
+      canvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) } as any,
+      metaView,
+      blockDataMap: new Map([
+        ['a', { range: [0, json.length], kind: 'Switch', data: { cases: ['1'] } }]
+      ]),
+      upsertMeta: vi.fn(),
+      fileId: 'f1',
+      scale: 1,
+      offset: { x: 0, y: 0 },
+      draw: vi.fn()
+    };
+
+    openBlockEditor(vc, block);
+    const caseInput = document.querySelector('input')! as HTMLInputElement;
+    caseInput.value = '2';
+    const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Save')!;
+    btn.dispatchEvent(new Event('click'));
+
+    expect(dispatch).toHaveBeenCalled();
+    const call = dispatch.mock.calls[0][0];
+    expect(call.changes.insert).toContain('"cases":["2"]');
+    expect(block.ports).toEqual([
+      { id: 'value', kind: 'data', dir: 'in' },
+      { id: 'exec', kind: 'exec', dir: 'in' },
+      { id: 'case[2]', kind: 'exec', dir: 'out' },
+      { id: 'default', kind: 'exec', dir: 'out' }
+    ]);
   });
 
   it('visualizes if block branches', () => {

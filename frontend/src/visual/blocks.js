@@ -57,9 +57,9 @@ export function unregisterBlock(kind) {
   delete registry[kind];
 }
 
-export function createBlock(kind, id, x, y, label, color) {
+export function createBlock(kind, id, x, y, label, color, data) {
   const Ctor = registry[kind] || Block;
-  return new Ctor(id, x, y, 120, 50, label, color);
+  return new Ctor(id, x, y, 120, 50, label, color, data);
 }
 
 async function importPlugin(url, forceReload = false) {
@@ -306,6 +306,32 @@ export class IfBlock extends Block {
   }
 }
 
+export class SwitchBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  constructor(id, x, y, _w, _h, label, color, data) {
+    super(
+      id,
+      x,
+      y,
+      SwitchBlock.defaultSize.width,
+      SwitchBlock.defaultSize.height,
+      label || 'Switch',
+      color ?? getTheme().blockKinds.Switch
+    );
+    this.cases = Array.isArray(data?.cases) ? data.cases : [];
+    this.updatePorts();
+  }
+
+  updatePorts() {
+    this.ports = [
+      { id: 'value', kind: 'data', dir: 'in' },
+      { id: 'exec', kind: 'exec', dir: 'in' },
+      ...this.cases.map(c => ({ id: `case[${c}]`, kind: 'exec', dir: 'out' })),
+      { id: 'default', kind: 'exec', dir: 'out' }
+    ];
+  }
+}
+
 export class LoopBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Loop', getTheme().blockKinds.Loop);
@@ -482,6 +508,7 @@ registerBlock('Variable/Get', VariableGetBlock);
 registerBlock('Variable/Set', VariableSetBlock);
 registerBlock('Condition', ConditionBlock);
 registerBlock('If', IfBlock);
+registerBlock('Switch', SwitchBlock);
 registerBlock('Loop', LoopBlock);
 registerBlock('Array/New', ArrayNewBlock);
 registerBlock('Array/Get', ArrayGetBlock);

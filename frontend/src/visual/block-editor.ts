@@ -38,6 +38,7 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
   overlay.appendChild(textarea);
 
   const fieldInputs: HTMLInputElement[] = [];
+  const caseInputs: HTMLInputElement[] = [];
   if (data.kind === 'Struct') {
     let metaObj: any = {};
     try {
@@ -60,6 +61,28 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
     addBtn.addEventListener('click', () => addField());
     fieldsContainer.appendChild(addBtn);
     overlay.appendChild(fieldsContainer);
+  } else if (data.kind === 'Switch') {
+    let metaObj: any = {};
+    try {
+      metaObj = JSON.parse(textarea.value);
+    } catch (_) {}
+    const existing = Array.isArray(metaObj?.data?.cases) ? metaObj.data.cases : [];
+    const casesContainer = document.createElement('div');
+    casesContainer.style.marginTop = '4px';
+    function addCase(value = '') {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = value;
+      caseInputs.push(inp);
+      casesContainer.appendChild(inp);
+      casesContainer.appendChild(document.createElement('br'));
+    }
+    existing.forEach(c => addCase(c));
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Add case';
+    addBtn.addEventListener('click', () => addCase());
+    casesContainer.appendChild(addBtn);
+    overlay.appendChild(casesContainer);
   }
 
   const btnBar = document.createElement('div');
@@ -82,14 +105,26 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
   cancelBtn.addEventListener('click', close);
   saveBtn.addEventListener('click', () => {
     let newText = textarea.value;
-    if (fieldInputs.length) {
+    if (fieldInputs.length || caseInputs.length) {
       let obj: any = {};
       try {
         obj = JSON.parse(newText);
       } catch (_) {}
-      const fields = fieldInputs.map(i => i.value.trim()).filter(Boolean);
-      obj.data = obj.data || {};
-      obj.data.fields = fields;
+      if (fieldInputs.length) {
+        const fields = fieldInputs.map(i => i.value.trim()).filter(Boolean);
+        obj.data = obj.data || {};
+        obj.data.fields = fields;
+      }
+      if (caseInputs.length) {
+        const cases = caseInputs.map(i => i.value.trim()).filter(Boolean);
+        obj.data = obj.data || {};
+        obj.data.cases = cases;
+        (block as any).cases = cases;
+        if (typeof (block as any).updatePorts === 'function') {
+          (block as any).updatePorts();
+          (vc as any).draw?.();
+        }
+      }
       newText = JSON.stringify(obj);
       data.data = obj.data;
     }

@@ -262,6 +262,30 @@
       },
       "additionalProperties": false
     },
+    "SwitchNode": {
+      "type": "object",
+      "required": ["kind", "ports", "data"],
+      "properties": {
+        "kind": { "const": "Switch" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 3
+        },
+        "data": {
+          "type": "object",
+          "required": ["cases"],
+          "properties": {
+            "cases": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "VizNode": {
       "oneOf": [
         { "$ref": "#/definitions/ArrayNewNode" },
@@ -270,7 +294,8 @@
         { "$ref": "#/definitions/MapNewNode" },
         { "$ref": "#/definitions/MapGetNode" },
         { "$ref": "#/definitions/MapSetNode" },
-        { "$ref": "#/definitions/StructNode" }
+        { "$ref": "#/definitions/StructNode" },
+        { "$ref": "#/definitions/SwitchNode" }
       ]
     }
   }
