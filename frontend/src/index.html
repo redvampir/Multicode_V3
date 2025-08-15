@@ -11,6 +11,7 @@
     #visual-minimap { position: fixed; bottom: 10px; right: 10px; width: 200px; height: 150px; border: 1px solid #ccc; background: #fff; opacity: 0.8; }
     #editor-wrapper { display: flex; height: 40vh; }
     #editor { flex: 1; border: 1px solid #ccc; }
+    #preview { flex: 1; border: 1px solid #ccc; border-left: none; overflow: auto; display: none; padding: 0.5rem; }
     #text-minimap { width: 60px; height: 100%; border: 1px solid #ccc; border-left: none; }
     #outline { width: 200px; height: 100%; border: 1px solid #ccc; border-left: none; overflow: auto; }
     #controls { padding: 0.5rem; }
@@ -55,6 +56,7 @@
     import { todoHighlight, updateTodoPanel } from "./editor/todo-highlight.js";
     import { setLanguage, getLanguage, availableLanguages, getLanguageName } from "./shared/i18n.ts";
     import { startTutorial } from "./tutorial/index.ts";
+    import { enablePreview, disablePreview, updatePreview } from "./editor/preview.js";
 
     const editorCfg = settings.editor || {};
     setLanguage(settings.language || 'en');
@@ -177,6 +179,7 @@
     async function initEditor(lang, doc = '') {
       currentLang = lang;
       vc.lang = lang;
+      disablePreview();
       if (view) view.destroy();
       if (removeMinimap) removeMinimap();
       if (removeOutline) removeOutline();
@@ -201,7 +204,10 @@
             EditorView.scrollMargins.of(() => ({ top: 20, bottom: 20 })),
             keymap.of(foldKeymap),
             EditorView.updateListener.of(update => {
-              if (update.docChanged) parseAndRender();
+              if (update.docChanged) {
+                parseAndRender();
+                updatePreview(update.view);
+              }
             })
           ]
         }),
@@ -271,6 +277,12 @@
       const mime = mimeFromFilename(name);
       await initEditor(lang, content || '');
       document.getElementById('editor').dataset.mime = mime;
+      if (mime === 'text/markdown' || mime === 'text/html') {
+        enablePreview(view, mime);
+        updatePreview(view);
+      } else {
+        disablePreview();
+      }
       parseAndRender();
       foldMetaBlock(view);
       setBlockIds(listMetaIds(view.state.doc.toString()));
@@ -481,6 +493,7 @@
     <div id="textPane">
       <div id="editor-wrapper">
       <div id="editor" data-file-id="current"></div>
+      <div id="preview"></div>
       <div id="text-minimap"></div>
       <div id="outline"></div>
       </div>
