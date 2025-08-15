@@ -13,6 +13,7 @@
     "Condition": "#fff9c4",
     "Loop": "#fce4ec",
     "Array": "#bbdefb",
-    "Map": "#c8e6c9"
+    "Map": "#c8e6c9",
+    "If": "#ffcc80"
   }
 }

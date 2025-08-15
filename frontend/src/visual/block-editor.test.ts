@@ -5,6 +5,8 @@ vi.mock('../editor/visual-meta.js', () => ({
 }));
 import { openBlockEditor } from './block-editor.ts';
 import { updateMetaComment } from '../editor/visual-meta.js';
+import { IfBlock } from './blocks.js';
+import { getTheme } from './theme.ts';
 
 describe('block editor', () => {
   it('saves changes and updates meta', () => {
@@ -66,6 +68,18 @@ describe('block editor', () => {
     expect(dispatch).toHaveBeenCalled();
     const call = dispatch.mock.calls[0][0];
     expect(call.changes.insert).toContain('"fields":["y"]');
+  });
+
+  it('visualizes if block branches', () => {
+    const theme = getTheme();
+    const b = new IfBlock('if1', 0, 0);
+    expect(b.ports).toEqual([
+      { id: 'cond', kind: 'data', dir: 'in' },
+      { id: 'exec', kind: 'exec', dir: 'in' },
+      { id: 'then', kind: 'exec', dir: 'out' },
+      { id: 'else', kind: 'exec', dir: 'out' }
+    ]);
+    expect(b.color).toBe(theme.blockKinds.If);
   });
 });
 
