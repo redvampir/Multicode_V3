@@ -42,6 +42,10 @@
     import { loadBlockPlugins } from "./visual/blocks.js";
     import { insertVisualMeta, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta, addBlockToolbar, refreshBlockCount, listMetaIds } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
+    import { registerCommandPalette } from "./editor/command-palette.ts";
+    import { gotoLine } from "./editor/goto-line.js";
+    import { gotoRelated } from "./editor/navigation.js";
+    import { formatCurrentFile } from "../../scripts/format.js";
     import { customSource, setBlockIds } from "./editor/autocomplete.js";
     import settings from "../settings.json" assert { type: 'json' };
     import { availableThemes, applyTheme, getThemeName } from "./visual/theme.ts";
@@ -97,6 +101,11 @@
 
     setCanvas(vc);
     registerHotkeys();
+    registerCommandPalette([
+      { id: 'gotoLine', title: 'Go to Line', run: () => gotoLine(view) },
+      { id: 'gotoRelated', title: 'Go to Related File', run: () => gotoRelated(view) },
+      { id: 'formatCurrentFile', title: 'Format Current File', run: () => formatCurrentFile() }
+    ]);
 
     const themeSelect = document.getElementById('theme');
     availableThemes.forEach(t => {
