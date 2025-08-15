@@ -263,3 +263,44 @@ describe('alignment and grid snapping', () => {
   });
 });
 
+describe('copySelected', () => {
+  function createCanvas() {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    return canvasEl;
+  }
+
+  it('copies blocks with connections and offsets duplicates', () => {
+    const vc = new VisualCanvas(createCanvas());
+    const a = { id: 'a', x: 0, y: 0, w: 10, h: 10, draw(){}, contains(){ return false; }, center(){ return { x: this.x + this.w / 2, y: this.y + this.h / 2 }; } };
+    const b = { id: 'b', x: 40, y: 0, w: 10, h: 10, draw(){}, contains(){ return false; }, center(){ return { x: this.x + this.w / 2, y: this.y + this.h / 2 }; } };
+    vc.blocks = [a, b];
+    const dataA = { visual_id: 'a', kind: 'A', x: 0, y: 0, links: ['b'], tags: [], history: [], updated_at: '' };
+    const dataB = { visual_id: 'b', kind: 'B', x: 40, y: 0, links: [], tags: [], history: [], updated_at: '' };
+    vc.blocksData = [dataA, dataB];
+    vc.blockDataMap.set('a', dataA);
+    vc.blockDataMap.set('b', dataB);
+    vc.connections = [[a, b]];
+    vc.selected = new Set([a, b]);
+
+    vc.copySelected();
+
+    const newBlocks = vc.blocks.filter(bl => bl.id !== 'a' && bl.id !== 'b');
+    expect(newBlocks.length).toBe(2);
+    const copyA = newBlocks.find(bl => vc.blockDataMap.get(bl.id).kind === 'A');
+    const copyB = newBlocks.find(bl => vc.blockDataMap.get(bl.id).kind === 'B');
+    expect(copyA.x).toBe(a.x + GRID_SIZE);
+    expect(copyA.y).toBe(a.y + GRID_SIZE);
+    expect(copyB.x).toBe(b.x + GRID_SIZE);
+    expect(copyB.y).toBe(b.y + GRID_SIZE);
+
+    const hasConn = vc.connections.some(([from, to]) => from === copyA && to === copyB);
+    expect(hasConn).toBe(true);
+    const dataCopyA = vc.blockDataMap.get(copyA.id);
+    expect(dataCopyA.links).toEqual([copyB.id]);
+  });
+});
+

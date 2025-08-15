@@ -287,6 +287,57 @@ export class VisualCanvas {
     }
   }
 
+  copySelected() {
+    if (this.selected.size === 0) return;
+    const theme = getTheme();
+    const selected = Array.from(this.selected);
+    const selectedIds = new Set(selected.map(b => b.id));
+    const idMap = new Map();
+    const dataMap = new Map();
+    const newBlocks = [];
+
+    for (const block of selected) {
+      const data = this.blockDataMap.get(block.id);
+      if (!data) continue;
+      const clone = JSON.parse(JSON.stringify(data));
+      clone.visual_id =
+        (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+          ? globalThis.crypto.randomUUID()
+          : Math.random().toString(36).slice(2);
+      clone.x = (clone.x || 0) + GRID_SIZE;
+      clone.y = (clone.y || 0) + GRID_SIZE;
+      clone.links = [];
+      const label = (clone.translations && clone.translations[this.locale]) || clone.kind;
+      const color = theme.blockKinds[clone.kind] || theme.blockFill;
+      const newBlock = createBlock(clone.kind, clone.visual_id, clone.x, clone.y, label, color, clone.data);
+      this.blocks.push(newBlock);
+      this.blocksData.push(clone);
+      this.blockDataMap.set(clone.visual_id, clone);
+      idMap.set(block.id, newBlock);
+      dataMap.set(block.id, clone);
+      newBlocks.push(newBlock);
+    }
+
+    for (const block of selected) {
+      const origData = this.blockDataMap.get(block.id);
+      const newBlock = idMap.get(block.id);
+      const newData = dataMap.get(block.id);
+      if (!origData || !newBlock || !newData) continue;
+      const links = Array.isArray(origData.links) ? origData.links : [];
+      for (const targetId of links) {
+        if (!selectedIds.has(targetId)) continue;
+        const targetBlock = idMap.get(targetId);
+        if (!targetBlock) continue;
+        this.connections.push([newBlock, targetBlock]);
+        newData.links.push(targetBlock.id);
+      }
+    }
+
+    this.selected = new Set(newBlocks);
+    this.analyze();
+    this.draw();
+  }
+
   deleteSelected() {
     if (this.selected.size === 0) return;
     for (const block of Array.from(this.selected)) {

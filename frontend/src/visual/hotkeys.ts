@@ -151,8 +151,11 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       insertLogBlock();
       break;
+    case 'Ctrl+D':
+      e.preventDefault();
+      canvasRef?.copySelected?.();
+      break;
     case 'Delete':
-    case 'Backspace':
       e.preventDefault();
       canvasRef?.deleteSelected?.();
       break;
