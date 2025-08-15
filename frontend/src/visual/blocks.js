@@ -166,6 +166,57 @@ export class NullLiteralBlock extends Block {
   }
 }
 
+class OperatorBlockBase extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'lhs', kind: 'data', dir: 'in' },
+    { id: 'rhs', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y, label) {
+    super(
+      id,
+      x,
+      y,
+      OperatorBlockBase.defaultSize.width,
+      OperatorBlockBase.defaultSize.height,
+      label,
+      getTheme().blockKinds.Operator || getTheme().blockFill
+    );
+    this.ports = OperatorBlockBase.ports;
+  }
+}
+
+export class AddBlock extends OperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '+');
+  }
+}
+
+export class SubtractBlock extends OperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '-');
+  }
+}
+
+export class MultiplyBlock extends OperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '*');
+  }
+}
+
+export class DivideBlock extends OperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '/');
+  }
+}
+
+export class ModuloBlock extends OperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '%');
+  }
+}
+
 export class FunctionBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Function', getTheme().blockKinds.Function);
@@ -704,6 +755,11 @@ registerBlock('Literal/Number', NumberLiteralBlock);
 registerBlock('Literal/String', StringLiteralBlock);
 registerBlock('Literal/Boolean', BooleanLiteralBlock);
 registerBlock('Literal/Null', NullLiteralBlock);
+registerBlock('Operator/Add', AddBlock);
+registerBlock('Operator/Subtract', SubtractBlock);
+registerBlock('Operator/Multiply', MultiplyBlock);
+registerBlock('Operator/Divide', DivideBlock);
+registerBlock('Operator/Modulo', ModuloBlock);
 registerBlock('Function', FunctionBlock);
 registerBlock('Function/Define', FunctionDefineBlock);
 registerBlock('Function/Call', FunctionCallBlock);
