@@ -32,6 +32,9 @@ darkTheme.blockKinds.Async = darkTheme.blockKinds.Async || '#00897b';
 // ensure color for logic operator blocks exists
 defaultTheme.blockKinds.OpLogic = defaultTheme.blockKinds.OpLogic || '#d1c4e9';
 darkTheme.blockKinds.OpLogic = darkTheme.blockKinds.OpLogic || '#7e57c2';
+// ensure color for comparison operator blocks exists
+defaultTheme.blockKinds.OpComparison = defaultTheme.blockKinds.OpComparison || '#cfd8dc';
+darkTheme.blockKinds.OpComparison = darkTheme.blockKinds.OpComparison || '#607d8b';
 
 const themeMap: Record<string, VisualTheme> = {
   default: defaultTheme,

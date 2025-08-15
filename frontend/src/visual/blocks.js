@@ -270,6 +270,63 @@ export class OpNotBlock extends Block {
   }
 }
 
+class ComparisonOperatorBlockBase extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'lhs', kind: 'data', dir: 'in' },
+    { id: 'rhs', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y, label) {
+    super(
+      id,
+      x,
+      y,
+      ComparisonOperatorBlockBase.defaultSize.width,
+      ComparisonOperatorBlockBase.defaultSize.height,
+      label,
+      getTheme().blockKinds.OpComparison || getTheme().blockFill
+    );
+    this.ports = ComparisonOperatorBlockBase.ports;
+  }
+}
+
+export class OpEqualBlock extends ComparisonOperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '==');
+  }
+}
+
+export class OpNotEqualBlock extends ComparisonOperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '!=');
+  }
+}
+
+export class OpGreaterBlock extends ComparisonOperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '>');
+  }
+}
+
+export class OpGreaterEqualBlock extends ComparisonOperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '>=');
+  }
+}
+
+export class OpLessBlock extends ComparisonOperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '<');
+  }
+}
+
+export class OpLessEqualBlock extends ComparisonOperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '<=');
+  }
+}
+
 export class FunctionBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Function', getTheme().blockKinds.Function);
@@ -813,6 +870,12 @@ registerBlock('Operator/Subtract', SubtractBlock);
 registerBlock('Operator/Multiply', MultiplyBlock);
 registerBlock('Operator/Divide', DivideBlock);
 registerBlock('Operator/Modulo', ModuloBlock);
+registerBlock('OpComparison/Equal', OpEqualBlock);
+registerBlock('OpComparison/NotEqual', OpNotEqualBlock);
+registerBlock('OpComparison/Greater', OpGreaterBlock);
+registerBlock('OpComparison/GreaterEqual', OpGreaterEqualBlock);
+registerBlock('OpComparison/Less', OpLessBlock);
+registerBlock('OpComparison/LessEqual', OpLessEqualBlock);
 registerBlock('OpLogic/And', OpAndBlock);
 registerBlock('OpLogic/Or', OpOrBlock);
 registerBlock('OpLogic/Not', OpNotBlock);

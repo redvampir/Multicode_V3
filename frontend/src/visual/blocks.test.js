@@ -35,7 +35,13 @@ import {
   ModuloBlock,
   OpAndBlock,
   OpOrBlock,
-  OpNotBlock
+  OpNotBlock,
+  OpEqualBlock,
+  OpNotEqualBlock,
+  OpGreaterBlock,
+  OpGreaterEqualBlock,
+  OpLessBlock,
+  OpLessEqualBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
 
@@ -144,6 +150,25 @@ describe('block utilities', () => {
       expect(b.ports).toEqual(Ctor.ports);
       expect(b.label).toBe(label);
       expect(b.color).toBe(theme.blockKinds.OpLogic || theme.blockFill);
+    }
+  });
+
+  it('provides comparison operator blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['OpComparison/Equal', OpEqualBlock, '=='],
+      ['OpComparison/NotEqual', OpNotEqualBlock, '!='],
+      ['OpComparison/Greater', OpGreaterBlock, '>'],
+      ['OpComparison/GreaterEqual', OpGreaterEqualBlock, '>='],
+      ['OpComparison/Less', OpLessBlock, '<'],
+      ['OpComparison/LessEqual', OpLessEqualBlock, '<=']
+    ];
+    for (const [kind, Ctor, label] of cases) {
+      const b = createBlock(kind, 'cmp', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(Ctor.ports);
+      expect(b.label).toBe(label);
+      expect(b.color).toBe(theme.blockKinds.OpComparison || theme.blockFill);
     }
   });
 
