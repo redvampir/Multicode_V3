@@ -326,6 +326,27 @@ export class MapSetBlock extends Block {
   }
 }
 
+export class StructBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      StructBlock.defaultSize.width,
+      StructBlock.defaultSize.height,
+      'Struct',
+      getTheme().blockKinds.Struct
+    );
+    this.ports = StructBlock.ports;
+  }
+}
+
 registerBlock('Literal/Number', NumberLiteralBlock);
 registerBlock('Literal/String', StringLiteralBlock);
 registerBlock('Literal/Boolean', BooleanLiteralBlock);
@@ -340,3 +361,4 @@ registerBlock('Array/Set', ArraySetBlock);
 registerBlock('Map/New', MapNewBlock);
 registerBlock('Map/Get', MapGetBlock);
 registerBlock('Map/Set', MapSetBlock);
+registerBlock('Struct', StructBlock);

@@ -37,6 +37,31 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
   textarea.value = vc.metaView.state.doc.sliceString(data.range[0], data.range[1]);
   overlay.appendChild(textarea);
 
+  const fieldInputs: HTMLInputElement[] = [];
+  if (data.kind === 'Struct') {
+    let metaObj: any = {};
+    try {
+      metaObj = JSON.parse(textarea.value);
+    } catch (_) {}
+    const existing = Array.isArray(metaObj?.data?.fields) ? metaObj.data.fields : [];
+    const fieldsContainer = document.createElement('div');
+    fieldsContainer.style.marginTop = '4px';
+    function addField(value = '') {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = value;
+      fieldInputs.push(inp);
+      fieldsContainer.appendChild(inp);
+      fieldsContainer.appendChild(document.createElement('br'));
+    }
+    existing.forEach(f => addField(f));
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Add field';
+    addBtn.addEventListener('click', () => addField());
+    fieldsContainer.appendChild(addBtn);
+    overlay.appendChild(fieldsContainer);
+  }
+
   const btnBar = document.createElement('div');
   btnBar.style.textAlign = 'right';
   btnBar.style.marginTop = '4px';
@@ -56,7 +81,18 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
 
   cancelBtn.addEventListener('click', close);
   saveBtn.addEventListener('click', () => {
-    const newText = textarea.value;
+    let newText = textarea.value;
+    if (fieldInputs.length) {
+      let obj: any = {};
+      try {
+        obj = JSON.parse(newText);
+      } catch (_) {}
+      const fields = fieldInputs.map(i => i.value.trim()).filter(Boolean);
+      obj.data = obj.data || {};
+      obj.data.fields = fields;
+      newText = JSON.stringify(obj);
+      data.data = obj.data;
+    }
     vc.metaView?.dispatch({ changes: { from: data.range[0], to: data.range[1], insert: newText } });
     updateMetaComment(vc.metaView!, { id: block.id });
     try {

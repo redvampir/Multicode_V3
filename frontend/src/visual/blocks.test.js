@@ -13,7 +13,8 @@ import {
   ArraySetBlock,
   MapNewBlock,
   MapGetBlock,
-  MapSetBlock
+  MapSetBlock,
+  StructBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
 
@@ -89,5 +90,13 @@ describe('block utilities', () => {
       expect(b.ports).toEqual(ports);
       expect(b.color).toBe(theme.blockKinds.Map);
     }
+  });
+
+  it('provides struct block', () => {
+    const theme = getTheme();
+    const b = createBlock('Struct', 's', 0, 0, '');
+    expect(b).toBeInstanceOf(StructBlock);
+    expect(b.ports).toEqual(StructBlock.ports);
+    expect(b.color).toBe(theme.blockKinds.Struct || theme.blockFill);
   });
 });
