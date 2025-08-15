@@ -164,7 +164,17 @@ function handleKey(e: KeyboardEvent) {
   }
 
   if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
-    if ('+-*/%'.includes(e.key)) {
+    if (e.key === '+') {
+      if (pendingSymbol === '+') {
+        e.preventDefault();
+        insertOperatorBlock('++');
+        pendingSymbol = '';
+      } else {
+        pendingSymbol = '+';
+      }
+      keywordBuffer = '';
+      symbolBuffer = '';
+    } else if ('-*/%'.includes(e.key)) {
       e.preventDefault();
       insertOperatorBlock(e.key as OperatorSymbol);
       keywordBuffer = '';
@@ -233,6 +243,9 @@ function handleKey(e: KeyboardEvent) {
       } else if (pendingSymbol === '<') {
         e.preventDefault();
         insertComparisonOperatorBlock('<');
+      } else if (pendingSymbol === '+') {
+        e.preventDefault();
+        insertOperatorBlock('+');
       }
       pendingSymbol = '';
       symbolBuffer = '';
@@ -265,8 +278,12 @@ function handleKey(e: KeyboardEvent) {
         e.preventDefault();
         insertKeywordBlock('on');
         keywordBuffer = '';
-      } else if (keywordBuffer.length > 5) {
-        keywordBuffer = keywordBuffer.slice(-5);
+      } else if (keywordBuffer.endsWith('concat')) {
+        e.preventDefault();
+        insertOperatorBlock('++');
+        keywordBuffer = '';
+      } else if (keywordBuffer.length > 6) {
+        keywordBuffer = keywordBuffer.slice(-6);
       }
     }
   }
@@ -408,7 +425,7 @@ function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach'
   canvasRef.draw?.();
 }
 
-type OperatorSymbol = '+' | '-' | '*' | '/' | '%';
+type OperatorSymbol = '+' | '-' | '*' | '/' | '%' | '++';
 
 function insertOperatorBlock(op: OperatorSymbol) {
   if (!canvasRef) return;
@@ -418,7 +435,8 @@ function insertOperatorBlock(op: OperatorSymbol) {
     '-': { kind: 'Operator/Subtract', label: '-' },
     '*': { kind: 'Operator/Multiply', label: '*' },
     '/': { kind: 'Operator/Divide', label: '/' },
-    '%': { kind: 'Operator/Modulo', label: '%' }
+    '%': { kind: 'Operator/Modulo', label: '%' },
+    '++': { kind: 'Operator/Concat', label: '++' }
   };
   const conf = mapping[op];
   const id =
