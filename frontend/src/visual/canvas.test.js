@@ -62,6 +62,32 @@ describe('selection box', () => {
   });
 });
 
+describe('group movement', () => {
+  it('moves all selected blocks together', () => {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    const vc = new VisualCanvas(canvasEl);
+    const a = { id: 'a', x: 0, y: 0, w: 10, h: 10, draw(){}, contains(){ return false; } };
+    const b = { id: 'b', x: 30, y: 0, w: 10, h: 10, draw(){}, contains(){ return false; } };
+    vc.blocks = [a, b];
+    vc.selected = new Set([a, b]);
+    vc.dragged = a;
+    vc.dragOffset = { x: 0, y: 0 };
+    vc.gridEnabled = false;
+    const e = new MouseEvent('mousemove', { clientX: 0, clientY: 0 });
+    Object.defineProperty(e, 'offsetX', { get: () => 50 });
+    Object.defineProperty(e, 'offsetY', { get: () => 20 });
+    vc.canvas.dispatchEvent(e);
+    expect(a.x).toBe(50);
+    expect(a.y).toBe(20);
+    expect(b.x).toBe(80);
+    expect(b.y).toBe(20);
+  });
+});
+
 describe('undo and redo', () => {
   function createCanvas() {
     const canvasEl = document.createElement('canvas');
