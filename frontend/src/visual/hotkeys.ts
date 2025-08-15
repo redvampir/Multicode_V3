@@ -164,37 +164,43 @@ function handleKey(e: KeyboardEvent) {
   }
 
   if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
-    keywordBuffer += e.key.toLowerCase();
-    if (keywordBuffer.endsWith('var')) {
+    if ('+-*/%'.includes(e.key)) {
       e.preventDefault();
-      insertKeywordBlock('var');
+      insertOperatorBlock(e.key as OperatorSymbol);
       keywordBuffer = '';
-    } else if (keywordBuffer.endsWith('let')) {
-      e.preventDefault();
-      insertKeywordBlock('let');
-      keywordBuffer = '';
-    } else if (keywordBuffer.endsWith('for')) {
-      e.preventDefault();
-      insertKeywordBlock('for');
-      keywordBuffer = '';
-    } else if (keywordBuffer.endsWith('while')) {
-      e.preventDefault();
-      insertKeywordBlock('while');
-      keywordBuffer = '';
-    } else if (keywordBuffer.endsWith('await')) {
-      e.preventDefault();
-      insertKeywordBlock('await');
-      keywordBuffer = '';
-    } else if (keywordBuffer.endsWith('delay')) {
-      e.preventDefault();
-      insertKeywordBlock('delay');
-      keywordBuffer = '';
-    } else if (keywordBuffer === 'on') {
-      e.preventDefault();
-      insertKeywordBlock('on');
-      keywordBuffer = '';
-    } else if (keywordBuffer.length > 5) {
-      keywordBuffer = keywordBuffer.slice(-5);
+    } else {
+      keywordBuffer += e.key.toLowerCase();
+      if (keywordBuffer.endsWith('var')) {
+        e.preventDefault();
+        insertKeywordBlock('var');
+        keywordBuffer = '';
+      } else if (keywordBuffer.endsWith('let')) {
+        e.preventDefault();
+        insertKeywordBlock('let');
+        keywordBuffer = '';
+      } else if (keywordBuffer.endsWith('for')) {
+        e.preventDefault();
+        insertKeywordBlock('for');
+        keywordBuffer = '';
+      } else if (keywordBuffer.endsWith('while')) {
+        e.preventDefault();
+        insertKeywordBlock('while');
+        keywordBuffer = '';
+      } else if (keywordBuffer.endsWith('await')) {
+        e.preventDefault();
+        insertKeywordBlock('await');
+        keywordBuffer = '';
+      } else if (keywordBuffer.endsWith('delay')) {
+        e.preventDefault();
+        insertKeywordBlock('delay');
+        keywordBuffer = '';
+      } else if (keywordBuffer === 'on') {
+        e.preventDefault();
+        insertKeywordBlock('on');
+        keywordBuffer = '';
+      } else if (keywordBuffer.length > 5) {
+        keywordBuffer = keywordBuffer.slice(-5);
+      }
     }
   }
 }
@@ -326,6 +332,40 @@ function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach'
   const block = createBlock(kind, id, 0, 0, label, color);
   canvasRef.blocks.push(block);
   const data: any = { kind, visual_id: id, x: 0, y: 0, translations: { en: label } };
+  canvasRef.blocksData.push(data);
+  canvasRef.blockDataMap.set(id, data);
+  canvasRef.selected = new Set([block]);
+  canvasRef.moveCallback?.(block);
+  canvasRef.draw?.();
+}
+
+type OperatorSymbol = '+' | '-' | '*' | '/' | '%';
+
+function insertOperatorBlock(op: OperatorSymbol) {
+  if (!canvasRef) return;
+  const theme = getTheme();
+  const mapping: Record<OperatorSymbol, { kind: string; label: string }> = {
+    '+': { kind: 'Operator/Add', label: '+' },
+    '-': { kind: 'Operator/Subtract', label: '-' },
+    '*': { kind: 'Operator/Multiply', label: '*' },
+    '/': { kind: 'Operator/Divide', label: '/' },
+    '%': { kind: 'Operator/Modulo', label: '%' }
+  };
+  const conf = mapping[op];
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  const color = theme.blockKinds.Operator || theme.blockFill;
+  const block = createBlock(conf.kind, id, 0, 0, conf.label, color);
+  canvasRef.blocks.push(block);
+  const data: any = {
+    kind: conf.kind,
+    visual_id: id,
+    x: 0,
+    y: 0,
+    translations: { en: conf.label }
+  };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);
   canvasRef.selected = new Set([block]);

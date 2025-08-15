@@ -27,7 +27,12 @@ import {
   WhileLoopBlock,
   ForEachLoopBlock,
   BreakBlock,
-  ContinueBlock
+  ContinueBlock,
+  AddBlock,
+  SubtractBlock,
+  MultiplyBlock,
+  DivideBlock,
+  ModuloBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
 
@@ -102,6 +107,24 @@ describe('block utilities', () => {
       expect(b).toBeInstanceOf(Ctor);
       expect(b.ports).toEqual(ports);
       expect(b.color).toBe(theme.blockKinds.Map);
+    }
+  });
+
+  it('provides operator blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['Operator/Add', AddBlock, '+'],
+      ['Operator/Subtract', SubtractBlock, '-'],
+      ['Operator/Multiply', MultiplyBlock, '*'],
+      ['Operator/Divide', DivideBlock, '/'],
+      ['Operator/Modulo', ModuloBlock, '%']
+    ];
+    for (const [kind, Ctor, label] of cases) {
+      const b = createBlock(kind, 'op', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(Ctor.ports);
+      expect(b.label).toBe(label);
+      expect(b.color).toBe(theme.blockKinds.Operator || theme.blockFill);
     }
   });
 
