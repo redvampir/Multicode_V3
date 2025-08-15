@@ -217,6 +217,59 @@ export class ModuloBlock extends OperatorBlockBase {
   }
 }
 
+class LogicOperatorBlockBase extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'lhs', kind: 'data', dir: 'in' },
+    { id: 'rhs', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y, label) {
+    super(
+      id,
+      x,
+      y,
+      LogicOperatorBlockBase.defaultSize.width,
+      LogicOperatorBlockBase.defaultSize.height,
+      label,
+      getTheme().blockKinds.OpLogic || getTheme().blockFill
+    );
+    this.ports = LogicOperatorBlockBase.ports;
+  }
+}
+
+export class OpAndBlock extends LogicOperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '&&');
+  }
+}
+
+export class OpOrBlock extends LogicOperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '||');
+  }
+}
+
+export class OpNotBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'value', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      OpNotBlock.defaultSize.width,
+      OpNotBlock.defaultSize.height,
+      '!',
+      getTheme().blockKinds.OpLogic || getTheme().blockFill
+    );
+    this.ports = OpNotBlock.ports;
+  }
+}
+
 export class FunctionBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Function', getTheme().blockKinds.Function);
@@ -760,6 +813,9 @@ registerBlock('Operator/Subtract', SubtractBlock);
 registerBlock('Operator/Multiply', MultiplyBlock);
 registerBlock('Operator/Divide', DivideBlock);
 registerBlock('Operator/Modulo', ModuloBlock);
+registerBlock('OpLogic/And', OpAndBlock);
+registerBlock('OpLogic/Or', OpOrBlock);
+registerBlock('OpLogic/Not', OpNotBlock);
 registerBlock('Function', FunctionBlock);
 registerBlock('Function/Define', FunctionDefineBlock);
 registerBlock('Function/Call', FunctionCallBlock);
