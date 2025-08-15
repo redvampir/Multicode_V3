@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Compare</title>
+  <style>
+    body { margin: 0; display: flex; height: 100vh; }
+    .editor { flex: 1; }
+    .cm-editor { height: 100%; }
+    .diff-added { background: #e6ffe6; }
+    .diff-removed { background: #ffe6e6; }
+  </style>
+  <script type="module">
+    import { EditorState, StateEffect, StateField } from "@codemirror/state";
+    import { EditorView, Decoration } from "@codemirror/view";
+    import { basicSetup } from "https://cdn.jsdelivr.net/npm/@codemirror/basic-setup@0.20.0/dist/index.js";
+    import * as Diff from "https://cdn.jsdelivr.net/npm/diff@5.2.0/dist/diff.min.js";
+
+    const leftDoc = localStorage.getItem('compareA') || '';
+    const rightDoc = localStorage.getItem('compareB') || '';
+    localStorage.removeItem('compareA');
+    localStorage.removeItem('compareB');
+
+    const setDeco = StateEffect.define();
+    const decoField = StateField.define({
+      create() { return Decoration.none; },
+      update(value, tr) {
+        for (const e of tr.effects) {
+          if (e.is(setDeco)) return e.value;
+        }
+        return value;
+      },
+      provide: f => EditorView.decorations.from(f)
+    });
+
+    const viewA = new EditorView({
+      state: EditorState.create({
+        doc: leftDoc,
+        extensions: [basicSetup, EditorState.readOnly.of(true), decoField]
+      }),
+      parent: document.getElementById('left')
+    });
+
+    const viewB = new EditorView({
+      state: EditorState.create({
+        doc: rightDoc,
+        extensions: [basicSetup, EditorState.readOnly.of(true), decoField]
+      }),
+      parent: document.getElementById('right')
+    });
+
+    function highlightDiff() {
+      const parts = Diff.diffLines(leftDoc, rightDoc);
+      let lineA = 1, lineB = 1;
+      const decoA = [], decoB = [];
+      for (const part of parts) {
+        const count = part.count || part.value.split('\n').length - 1;
+        if (part.removed) {
+          for (let i = 0; i < count; i++) {
+            const line = viewA.state.doc.line(lineA + i);
+            decoA.push(Decoration.line({ class: 'diff-removed' }).range(line.from));
+          }
+          lineA += count;
+        } else if (part.added) {
+          for (let i = 0; i < count; i++) {
+            const line = viewB.state.doc.line(lineB + i);
+            decoB.push(Decoration.line({ class: 'diff-added' }).range(line.from));
+          }
+          lineB += count;
+        } else {
+          lineA += count;
+          lineB += count;
+        }
+      }
+      viewA.dispatch({ effects: setDeco.of(Decoration.set(decoA)) });
+      viewB.dispatch({ effects: setDeco.of(Decoration.set(decoB)) });
+    }
+
+    highlightDiff();
+  </script>
+</head>
+<body>
+  <div id="left" class="editor"></div>
+  <div id="right" class="editor"></div>
+</body>
+</html>
