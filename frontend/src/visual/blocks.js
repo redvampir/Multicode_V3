@@ -338,6 +338,99 @@ export class LoopBlock extends Block {
   }
 }
 
+export class ForLoopBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'init', kind: 'data', dir: 'in' },
+    { id: 'cond', kind: 'data', dir: 'in' },
+    { id: 'iter', kind: 'data', dir: 'in' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      ForLoopBlock.defaultSize.width,
+      ForLoopBlock.defaultSize.height,
+      'For',
+      getTheme().blockKinds.Loop
+    );
+    this.ports = ForLoopBlock.ports;
+  }
+}
+
+export class WhileLoopBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'init', kind: 'data', dir: 'in' },
+    { id: 'cond', kind: 'data', dir: 'in' },
+    { id: 'iter', kind: 'data', dir: 'in' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      WhileLoopBlock.defaultSize.width,
+      WhileLoopBlock.defaultSize.height,
+      'While',
+      getTheme().blockKinds.Loop
+    );
+    this.ports = WhileLoopBlock.ports;
+  }
+}
+
+export class ForEachLoopBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'init', kind: 'data', dir: 'in' },
+    { id: 'cond', kind: 'data', dir: 'in' },
+    { id: 'iter', kind: 'data', dir: 'in' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      ForEachLoopBlock.defaultSize.width,
+      ForEachLoopBlock.defaultSize.height,
+      'For Each',
+      getTheme().blockKinds.Loop
+    );
+    this.ports = ForEachLoopBlock.ports;
+  }
+}
+
+export class BreakBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(id, x, y, BreakBlock.defaultSize.width, BreakBlock.defaultSize.height, 'Break', getTheme().blockKinds.Loop);
+    this.ports = BreakBlock.ports;
+  }
+}
+
+export class ContinueBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(id, x, y, ContinueBlock.defaultSize.width, ContinueBlock.defaultSize.height, 'Continue', getTheme().blockKinds.Loop);
+    this.ports = ContinueBlock.ports;
+  }
+}
+
 export class ArrayNewBlock extends Block {
   static defaultSize = { width: 120, height: 50 };
   static ports = [
@@ -510,6 +603,11 @@ registerBlock('Condition', ConditionBlock);
 registerBlock('If', IfBlock);
 registerBlock('Switch', SwitchBlock);
 registerBlock('Loop', LoopBlock);
+registerBlock('Loop/For', ForLoopBlock);
+registerBlock('Loop/While', WhileLoopBlock);
+registerBlock('Loop/ForEach', ForEachLoopBlock);
+registerBlock('Loop/Break', BreakBlock);
+registerBlock('Loop/Continue', ContinueBlock);
 registerBlock('Array/New', ArrayNewBlock);
 registerBlock('Array/Get', ArrayGetBlock);
 registerBlock('Array/Set', ArraySetBlock);

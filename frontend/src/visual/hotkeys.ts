@@ -21,6 +21,9 @@ export interface HotkeyMap {
   gotoRelated: string;
   gotoLine: string;
   formatCurrentFile: string;
+  insertForLoop: string;
+  insertWhileLoop: string;
+  insertForEachLoop: string;
 }
 
 const cfg: { hotkeys?: Partial<HotkeyMap>; visual?: { gridSize?: number } } = settings as any;
@@ -37,7 +40,10 @@ export const hotkeys: HotkeyMap = {
   redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z',
   gotoRelated: cfg.hotkeys?.gotoRelated || 'Ctrl+Alt+O',
   gotoLine: cfg.hotkeys?.gotoLine || 'Ctrl+G',
-  formatCurrentFile: cfg.hotkeys?.formatCurrentFile || 'Shift+Alt+F'
+  formatCurrentFile: cfg.hotkeys?.formatCurrentFile || 'Shift+Alt+F',
+  insertForLoop: cfg.hotkeys?.insertForLoop || 'Ctrl+Alt+F',
+  insertWhileLoop: cfg.hotkeys?.insertWhileLoop || 'Ctrl+Alt+W',
+  insertForEachLoop: cfg.hotkeys?.insertForEachLoop || 'Ctrl+Alt+E'
 };
 
 function buildCombo(e: KeyboardEvent) {
@@ -107,6 +113,18 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       formatCurrentFile();
       break;
+    case hotkeys.insertForLoop:
+      e.preventDefault();
+      insertKeywordBlock('for');
+      break;
+    case hotkeys.insertWhileLoop:
+      e.preventDefault();
+      insertKeywordBlock('while');
+      break;
+    case hotkeys.insertForEachLoop:
+      e.preventDefault();
+      insertKeywordBlock('foreach');
+      break;
     case 'F2':
       e.preventDefault();
       canvasRef?.renameSelectedBlock?.();
@@ -155,8 +173,16 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       insertKeywordBlock('let');
       keywordBuffer = '';
-    } else if (keywordBuffer.length > 3) {
-      keywordBuffer = keywordBuffer.slice(-3);
+    } else if (keywordBuffer.endsWith('for')) {
+      e.preventDefault();
+      insertKeywordBlock('for');
+      keywordBuffer = '';
+    } else if (keywordBuffer.endsWith('while')) {
+      e.preventDefault();
+      insertKeywordBlock('while');
+      keywordBuffer = '';
+    } else if (keywordBuffer.length > 5) {
+      keywordBuffer = keywordBuffer.slice(-5);
     }
   }
 }
@@ -231,12 +257,41 @@ export function zoomToFit() {
   canvasRef?.zoomToFit();
 }
 
-function insertKeywordBlock(keyword: 'var' | 'let') {
+function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach') {
   if (!canvasRef) return;
   const theme = getTheme();
-  const kind = keyword === 'var' ? 'Variable/Get' : 'Variable/Set';
-  const label = keyword === 'var' ? 'Variable Get' : 'Variable Set';
-  const color = theme.blockKinds.Variable || theme.blockFill;
+  let kind: string;
+  let label: string;
+  let color: string;
+  switch (keyword) {
+    case 'var':
+      kind = 'Variable/Get';
+      label = 'Variable Get';
+      color = theme.blockKinds.Variable || theme.blockFill;
+      break;
+    case 'let':
+      kind = 'Variable/Set';
+      label = 'Variable Set';
+      color = theme.blockKinds.Variable || theme.blockFill;
+      break;
+    case 'for':
+      kind = 'Loop/For';
+      label = 'For';
+      color = theme.blockKinds.Loop || theme.blockFill;
+      break;
+    case 'while':
+      kind = 'Loop/While';
+      label = 'While';
+      color = theme.blockKinds.Loop || theme.blockFill;
+      break;
+    case 'foreach':
+      kind = 'Loop/ForEach';
+      label = 'For Each';
+      color = theme.blockKinds.Loop || theme.blockFill;
+      break;
+    default:
+      return;
+  }
   const id =
     (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
       ? globalThis.crypto.randomUUID()

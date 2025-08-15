@@ -20,7 +20,12 @@ import {
   SwitchBlock,
   FunctionDefineBlock,
   FunctionCallBlock,
-  ReturnBlock
+  ReturnBlock,
+  ForLoopBlock,
+  WhileLoopBlock,
+  ForEachLoopBlock,
+  BreakBlock,
+  ContinueBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
 
@@ -124,6 +129,23 @@ describe('block utilities', () => {
       expect(b).toBeInstanceOf(Ctor);
       expect(b.ports).toEqual(ports);
       expect(b.color).toBe(theme.blockKinds.Variable);
+    }
+  });
+
+  it('provides loop blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['Loop/For', ForLoopBlock, ForLoopBlock.ports],
+      ['Loop/While', WhileLoopBlock, WhileLoopBlock.ports],
+      ['Loop/ForEach', ForEachLoopBlock, ForEachLoopBlock.ports],
+      ['Loop/Break', BreakBlock, BreakBlock.ports],
+      ['Loop/Continue', ContinueBlock, ContinueBlock.ports]
+    ];
+    for (const [kind, Ctor, ports] of cases) {
+      const b = createBlock(kind, 'loop', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(ports);
+      expect(b.color).toBe(theme.blockKinds.Loop || theme.blockFill);
     }
   });
 
