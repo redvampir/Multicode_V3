@@ -50,6 +50,8 @@ fn normalize_kind(kind: &str) -> String {
         "Loop".into()
     } else if k.contains("identifier") || k.contains("variable") {
         "Variable".into()
+    } else if k.contains("map") {
+        "Map".into()
     } else {
         kind.to_string()
     }
