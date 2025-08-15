@@ -17,6 +17,7 @@ import {
   VariableGetBlock,
   VariableSetBlock,
   StructBlock,
+  SwitchBlock,
   FunctionDefineBlock,
   FunctionCallBlock,
   ReturnBlock
@@ -132,5 +133,19 @@ describe('block utilities', () => {
     expect(b).toBeInstanceOf(StructBlock);
     expect(b.ports).toEqual(StructBlock.ports);
     expect(b.color).toBe(theme.blockKinds.Struct || theme.blockFill);
+  });
+
+  it('provides switch block with dynamic cases', () => {
+    const theme = getTheme();
+    const b = createBlock('Switch', 'sw', 0, 0, '', undefined, { cases: ['a', 'b'] });
+    expect(b).toBeInstanceOf(SwitchBlock);
+    expect(b.ports).toEqual([
+      { id: 'value', kind: 'data', dir: 'in' },
+      { id: 'exec', kind: 'exec', dir: 'in' },
+      { id: 'case[a]', kind: 'exec', dir: 'out' },
+      { id: 'case[b]', kind: 'exec', dir: 'out' },
+      { id: 'default', kind: 'exec', dir: 'out' }
+    ]);
+    expect(b.color).toBe(theme.blockKinds.Switch || theme.blockFill);
   });
 });
