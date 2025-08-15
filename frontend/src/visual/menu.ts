@@ -1,5 +1,6 @@
 import { hotkeys, showHotkeyHelp, zoomToFit, focusSearch } from './hotkeys';
 import { exportPNG } from './canvas.js';
+import { emit } from '../shared/event-bus.js';
 
 export function createSearchInput(canvas: any) {
   const input = document.createElement('input');
@@ -21,6 +22,14 @@ export interface MenuItem {
   action?: () => void;
   shortcut?: string;
   submenu?: MenuItem[];
+}
+
+function insertFunctionTemplate(kind: 'Function/Define' | 'Function/Call' | 'Return') {
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  emit('blockCreated', { id, kind });
 }
 
 export const mainMenu: MenuItem[] = [
@@ -47,6 +56,14 @@ export const mainMenu: MenuItem[] = [
     label: 'View',
     submenu: [
       { label: 'Zoom to Fit', action: zoomToFit, shortcut: hotkeys.zoomToFit }
+    ]
+  },
+  {
+    label: 'Templates',
+    submenu: [
+      { label: 'Function Define', action: () => insertFunctionTemplate('Function/Define') },
+      { label: 'Function Call', action: () => insertFunctionTemplate('Function/Call') },
+      { label: 'Return', action: () => insertFunctionTemplate('Return') }
     ]
   },
   {
