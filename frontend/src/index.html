@@ -58,6 +58,7 @@
     import { spellcheck } from "./editor/spellcheck.js";
     import { activeBlock } from "./editor/active-block.js";
     import { todoHighlight, updateTodoPanel } from "./editor/todo-highlight.js";
+    import { attachGitBlame } from "./editor/git-blame.js";
     import { setLanguage, getLanguage, availableLanguages, getLanguageName } from "./shared/i18n.ts";
     import { startTutorial } from "./tutorial/index.ts";
     import { enablePreview, disablePreview, updatePreview } from "./editor/preview.js";
@@ -78,6 +79,7 @@
     let view;
     let removeMinimap;
     let removeOutline;
+    let removeBlame;
 
     await loadBlockPlugins(window.blockPlugins || []);
 
@@ -295,6 +297,8 @@
       parseAndRender();
       foldMetaBlock(view);
       setBlockIds(listMetaIds(view.state.doc.toString()));
+      if (removeBlame) removeBlame();
+      removeBlame = attachGitBlame(view, name);
     }
 
     window.openFile = openFile;
