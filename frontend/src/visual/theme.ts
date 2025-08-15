@@ -20,6 +20,9 @@ export const darkTheme: VisualTheme = darkThemeJson as VisualTheme;
 // ensure color for literal blocks exists
 defaultTheme.blockKinds.Literal = defaultTheme.blockKinds.Literal || '#e1bee7';
 darkTheme.blockKinds.Literal = darkTheme.blockKinds.Literal || '#8e24aa';
+// ensure color for array blocks exists
+defaultTheme.blockKinds.Array = defaultTheme.blockKinds.Array || '#bbdefb';
+darkTheme.blockKinds.Array = darkTheme.blockKinds.Array || '#1976d2';
 
 const themeMap: Record<string, VisualTheme> = {
   default: defaultTheme,

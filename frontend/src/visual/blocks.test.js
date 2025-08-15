@@ -7,7 +7,10 @@ import {
   NumberLiteralBlock,
   StringLiteralBlock,
   BooleanLiteralBlock,
-  NullLiteralBlock
+  NullLiteralBlock,
+  ArrayNewBlock,
+  ArrayGetBlock,
+  ArraySetBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
 
@@ -52,6 +55,21 @@ describe('block utilities', () => {
       expect(b.h).toBe(50);
       expect(b.ports).toEqual([{ id: 'out', kind: 'data', dir: 'out' }]);
       expect(b.color).toBe(theme.blockKinds.Literal);
+    }
+  });
+
+  it('provides array blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['Array/New', ArrayNewBlock, ArrayNewBlock.ports],
+      ['Array/Get', ArrayGetBlock, ArrayGetBlock.ports],
+      ['Array/Set', ArraySetBlock, ArraySetBlock.ports]
+    ];
+    for (const [kind, Ctor, ports] of cases) {
+      const b = createBlock(kind, 'arr', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(ports);
+      expect(b.color).toBe(theme.blockKinds.Array);
     }
   });
 });
