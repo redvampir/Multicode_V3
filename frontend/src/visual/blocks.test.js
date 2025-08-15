@@ -33,6 +33,7 @@ import {
   MultiplyBlock,
   DivideBlock,
   ModuloBlock,
+  OpConcatBlock,
   OpAndBlock,
   OpOrBlock,
   OpNotBlock,
@@ -126,7 +127,8 @@ describe('block utilities', () => {
       ['Operator/Subtract', SubtractBlock, '-'],
       ['Operator/Multiply', MultiplyBlock, '*'],
       ['Operator/Divide', DivideBlock, '/'],
-      ['Operator/Modulo', ModuloBlock, '%']
+      ['Operator/Modulo', ModuloBlock, '%'],
+      ['Operator/Concat', OpConcatBlock, '++']
     ];
     for (const [kind, Ctor, label] of cases) {
       const b = createBlock(kind, 'op', 0, 0, '');

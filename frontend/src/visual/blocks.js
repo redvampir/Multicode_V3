@@ -217,6 +217,12 @@ export class ModuloBlock extends OperatorBlockBase {
   }
 }
 
+export class OpConcatBlock extends OperatorBlockBase {
+  constructor(id, x, y) {
+    super(id, x, y, '++');
+  }
+}
+
 class LogicOperatorBlockBase extends Block {
   static defaultSize = { width: 120, height: 50 };
   static ports = [
@@ -870,6 +876,7 @@ registerBlock('Operator/Subtract', SubtractBlock);
 registerBlock('Operator/Multiply', MultiplyBlock);
 registerBlock('Operator/Divide', DivideBlock);
 registerBlock('Operator/Modulo', ModuloBlock);
+registerBlock('Operator/Concat', OpConcatBlock);
 registerBlock('OpComparison/Equal', OpEqualBlock);
 registerBlock('OpComparison/NotEqual', OpNotEqualBlock);
 registerBlock('OpComparison/Greater', OpGreaterBlock);

@@ -161,6 +161,20 @@
       },
       "additionalProperties": false
     },
+    "OperatorConcatNode": {
+      "type": "object",
+      "required": ["kind", "ports"],
+      "properties": {
+        "kind": { "const": "Operator/Concat" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false
+    },
     "ArrayNewNode": {
       "type": "object",
       "required": ["kind", "ports"],
@@ -297,6 +311,7 @@
     },
     "VizNode": {
       "oneOf": [
+        { "$ref": "#/definitions/OperatorConcatNode" },
         { "$ref": "#/definitions/ArrayNewNode" },
         { "$ref": "#/definitions/ArrayGetNode" },
         { "$ref": "#/definitions/ArraySetNode" },
