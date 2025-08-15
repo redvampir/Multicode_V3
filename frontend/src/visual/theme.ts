@@ -26,6 +26,9 @@ darkTheme.blockKinds.Array = darkTheme.blockKinds.Array || '#1976d2';
 // ensure color for map blocks exists
 defaultTheme.blockKinds.Map = defaultTheme.blockKinds.Map || '#c8e6c9';
 darkTheme.blockKinds.Map = darkTheme.blockKinds.Map || '#388e3c';
+// ensure color for async blocks exists
+defaultTheme.blockKinds.Async = defaultTheme.blockKinds.Async || '#b2dfdb';
+darkTheme.blockKinds.Async = darkTheme.blockKinds.Async || '#00897b';
 
 const themeMap: Record<string, VisualTheme> = {
   default: defaultTheme,

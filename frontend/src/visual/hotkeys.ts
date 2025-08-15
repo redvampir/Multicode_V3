@@ -181,6 +181,18 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       insertKeywordBlock('while');
       keywordBuffer = '';
+    } else if (keywordBuffer.endsWith('await')) {
+      e.preventDefault();
+      insertKeywordBlock('await');
+      keywordBuffer = '';
+    } else if (keywordBuffer.endsWith('delay')) {
+      e.preventDefault();
+      insertKeywordBlock('delay');
+      keywordBuffer = '';
+    } else if (keywordBuffer === 'on') {
+      e.preventDefault();
+      insertKeywordBlock('on');
+      keywordBuffer = '';
     } else if (keywordBuffer.length > 5) {
       keywordBuffer = keywordBuffer.slice(-5);
     }
@@ -257,7 +269,7 @@ export function zoomToFit() {
   canvasRef?.zoomToFit();
 }
 
-function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach') {
+function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach' | 'await' | 'delay' | 'on') {
   if (!canvasRef) return;
   const theme = getTheme();
   let kind: string;
@@ -288,6 +300,21 @@ function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach'
       kind = 'Loop/ForEach';
       label = 'For Each';
       color = theme.blockKinds.Loop || theme.blockFill;
+      break;
+    case 'await':
+      kind = 'Async/Await';
+      label = 'Await';
+      color = theme.blockKinds.Async || theme.blockFill;
+      break;
+    case 'delay':
+      kind = 'Async/Delay';
+      label = 'Delay';
+      color = theme.blockKinds.Async || theme.blockFill;
+      break;
+    case 'on':
+      kind = 'Async/EventOn';
+      label = 'Event On';
+      color = theme.blockKinds.Async || theme.blockFill;
       break;
     default:
       return;
