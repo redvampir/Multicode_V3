@@ -151,6 +151,11 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       insertLogBlock();
       break;
+    case 'Delete':
+    case 'Backspace':
+      e.preventDefault();
+      canvasRef?.deleteSelected?.();
+      break;
     case 'F2':
       e.preventDefault();
       canvasRef?.renameSelectedBlock?.();

@@ -287,6 +287,26 @@ export class VisualCanvas {
     }
   }
 
+  deleteSelected() {
+    if (this.selected.size === 0) return;
+    for (const block of Array.from(this.selected)) {
+      const id = block.id;
+      emit('blockRemoved', { id });
+      this.highlighted.delete(id);
+      this.analysisErrors.delete(id);
+      this.lintErrors.delete(id);
+      this.errorBlocks.delete(id);
+      this.testResults.delete(id);
+      for (const [gid, group] of Array.from(this.groups.entries())) {
+        if (group.blocks.delete(id) && group.blocks.size === 0) {
+          this.groups.delete(gid);
+        }
+      }
+    }
+    this.selected.clear();
+    this.draw();
+  }
+
   async renameSelectedBlock() {
     if (this.selected.size !== 1) return;
     const block = Array.from(this.selected)[0];
