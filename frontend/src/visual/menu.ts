@@ -32,6 +32,14 @@ function insertFunctionTemplate(kind: 'Function/Define' | 'Function/Call' | 'Ret
   emit('blockCreated', { id, kind });
 }
 
+function insertSequenceTemplate() {
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  emit('blockCreated', { id, kind: 'Sequence' });
+}
+
 export const mainMenu: MenuItem[] = [
   {
     label: 'File',
@@ -63,8 +71,9 @@ export const mainMenu: MenuItem[] = [
     submenu: [
       { label: 'Function Define', action: () => insertFunctionTemplate('Function/Define') },
       { label: 'Function Call', action: () => insertFunctionTemplate('Function/Call') },
-      { label: 'Return', action: () => insertFunctionTemplate('Return') }
-    ]
+      { label: 'Return', action: () => insertFunctionTemplate('Return') },
+      { label: 'Sequence', action: insertSequenceTemplate }
+    ].sort((a, b) => a.label.localeCompare(b.label))
   },
   {
     label: 'Help',
