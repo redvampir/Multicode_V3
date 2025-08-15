@@ -24,6 +24,7 @@ export interface HotkeyMap {
   insertForLoop: string;
   insertWhileLoop: string;
   insertForEachLoop: string;
+  insertLogBlock: string;
 }
 
 const cfg: { hotkeys?: Partial<HotkeyMap>; visual?: { gridSize?: number } } = settings as any;
@@ -43,12 +44,13 @@ export const hotkeys: HotkeyMap = {
   formatCurrentFile: cfg.hotkeys?.formatCurrentFile || 'Shift+Alt+F',
   insertForLoop: cfg.hotkeys?.insertForLoop || 'Ctrl+Alt+F',
   insertWhileLoop: cfg.hotkeys?.insertWhileLoop || 'Ctrl+Alt+W',
-  insertForEachLoop: cfg.hotkeys?.insertForEachLoop || 'Ctrl+Alt+E'
+  insertForEachLoop: cfg.hotkeys?.insertForEachLoop || 'Ctrl+Alt+E',
+  insertLogBlock: cfg.hotkeys?.insertLogBlock || 'Ctrl+L'
 };
 
 function buildCombo(e: KeyboardEvent) {
   const parts: string[] = [];
-  if (e.ctrlKey) parts.push('Ctrl');
+  if (e.ctrlKey || e.metaKey) parts.push('Ctrl');
   if (e.altKey) parts.push('Alt');
   if (e.shiftKey) parts.push('Shift');
   const key = e.key.length === 1 ? e.key.toUpperCase() : e.key;
@@ -124,6 +126,10 @@ function handleKey(e: KeyboardEvent) {
     case hotkeys.insertForEachLoop:
       e.preventDefault();
       insertKeywordBlock('foreach');
+      break;
+    case hotkeys.insertLogBlock:
+      e.preventDefault();
+      insertLogBlock();
       break;
     case 'F2':
       e.preventDefault();
@@ -519,6 +525,33 @@ function insertComparisonOperatorBlock(op: ComparisonOperatorSymbol) {
     x: 0,
     y: 0,
     translations: { en: conf.label }
+  };
+  canvasRef.blocksData.push(data);
+  canvasRef.blockDataMap.set(id, data);
+  canvasRef.selected = new Set([block]);
+  canvasRef.moveCallback?.(block);
+  canvasRef.draw?.();
+}
+
+function insertLogBlock() {
+  if (!canvasRef) return;
+  const theme = getTheme();
+  const kind = 'Log';
+  const label = 'Log';
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  const color = theme.blockKinds.Log || theme.blockFill;
+  const block = createBlock(kind, id, 0, 0, label, color, { exec: true });
+  canvasRef.blocks.push(block);
+  const data: any = {
+    kind,
+    visual_id: id,
+    x: 0,
+    y: 0,
+    translations: { en: label },
+    exec: true
   };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);

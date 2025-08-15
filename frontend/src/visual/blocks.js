@@ -166,6 +166,35 @@ export class NullLiteralBlock extends Block {
   }
 }
 
+export class LogBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  constructor(id, x, y, _w, _h, label, color, data) {
+    super(
+      id,
+      x,
+      y,
+      LogBlock.defaultSize.width,
+      LogBlock.defaultSize.height,
+      label || 'Log',
+      color ?? getTheme().blockKinds.Log
+    );
+    this.exec = !!data?.exec;
+    this.updatePorts();
+  }
+
+  updatePorts() {
+    this.ports = [
+      { id: 'data', kind: 'data', dir: 'in' },
+      ...(this.exec
+        ? [
+            { id: 'exec', kind: 'exec', dir: 'in' },
+            { id: 'out', kind: 'exec', dir: 'out' }
+          ]
+        : [])
+    ];
+  }
+}
+
 class OperatorBlockBase extends Block {
   static defaultSize = { width: 120, height: 50 };
   static ports = [
@@ -890,6 +919,7 @@ registerBlock('Function', FunctionBlock);
 registerBlock('Function/Define', FunctionDefineBlock);
 registerBlock('Function/Call', FunctionCallBlock);
 registerBlock('Return', ReturnBlock);
+registerBlock('Log', LogBlock);
 registerBlock('Variable', VariableBlock);
 registerBlock('Variable/Get', VariableGetBlock);
 registerBlock('Variable/Set', VariableSetBlock);
