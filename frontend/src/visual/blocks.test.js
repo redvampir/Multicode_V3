@@ -1,5 +1,15 @@
 import { describe, it, expect } from 'vitest';
-import { Block, registerBlock, unregisterBlock, createBlock } from './blocks.js';
+import {
+  Block,
+  registerBlock,
+  unregisterBlock,
+  createBlock,
+  NumberLiteralBlock,
+  StringLiteralBlock,
+  BooleanLiteralBlock,
+  NullLiteralBlock
+} from './blocks.js';
+import { getTheme } from './theme.ts';
 
 describe('block utilities', () => {
   it('checks point containment and center', () => {
@@ -25,5 +35,23 @@ describe('block utilities', () => {
     unregisterBlock('temp');
     const b = createBlock('temp', '3', 0, 0, 'c');
     expect(b).toBeInstanceOf(Block);
+  });
+
+  it('provides built-in literal blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['Literal/Number', NumberLiteralBlock],
+      ['Literal/String', StringLiteralBlock],
+      ['Literal/Boolean', BooleanLiteralBlock],
+      ['Literal/Null', NullLiteralBlock]
+    ];
+    for (const [kind, Ctor] of cases) {
+      const b = createBlock(kind, 'lit', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.w).toBe(120);
+      expect(b.h).toBe(50);
+      expect(b.ports).toEqual([{ id: 'out', kind: 'data', dir: 'out' }]);
+      expect(b.color).toBe(theme.blockKinds.Literal);
+    }
   });
 });
