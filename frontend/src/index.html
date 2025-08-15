@@ -54,6 +54,7 @@
     import { activeBlock } from "./editor/active-block.js";
     import { todoHighlight, updateTodoPanel } from "./editor/todo-highlight.js";
     import { setLanguage, getLanguage, availableLanguages, getLanguageName } from "./shared/i18n.ts";
+    import { startTutorial } from "./tutorial/index.ts";
 
     const editorCfg = settings.editor || {};
     setLanguage(settings.language || 'en');
@@ -219,6 +220,10 @@
     }
 
     await initEditor(currentLang);
+
+    document.getElementById('tutorial-start')?.addEventListener('click', () => {
+      startTutorial();
+    });
 
       window.openInTextEditor = id => {
       document.getElementById('visual-canvas').style.display = 'none';
@@ -490,6 +495,7 @@
         <button id="redo" data-i18n="redo"></button>
         <button id="history" data-i18n="history"></button>
         <button id="insert-meta" data-i18n="insert_meta"></button>
+        <button id="tutorial-start" data-i18n="tutorial_button"></button>
         <select id="theme"></select>
         <select id="locale"></select>
         <label><span data-i18n="font_size"></span>: <input id="font-size" type="range" min="10" max="24" /></label>

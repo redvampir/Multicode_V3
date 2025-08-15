@@ -27,5 +27,13 @@
   "invalid_line_number": "Invalid line number",
   "related_file_not_found": "Related file not found",
   "failed_load_plugins": "Failed to load plugins",
-  "failed_update_plugin": "Failed to update plugin"
+  "failed_update_plugin": "Failed to update plugin",
+  "tutorial_button": "Tutorial",
+  "tutorial_step_canvas": "This area displays visual blocks.",
+  "tutorial_step_controls": "Use these controls to save, load, and configure the editor.",
+  "tutorial_step_search": "Use the search panel to find text within your project.",
+  "tutorial_prev": "Back",
+  "tutorial_next": "Next",
+  "tutorial_done": "Finish",
+  "tutorial_progress": "Step"
 }
