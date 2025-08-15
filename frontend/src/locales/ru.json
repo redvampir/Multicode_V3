@@ -27,5 +27,13 @@
   "invalid_line_number": "Неверный номер строки",
   "related_file_not_found": "Связанный файл не найден",
   "failed_load_plugins": "Не удалось загрузить плагины",
-  "failed_update_plugin": "Не удалось обновить плагин"
+  "failed_update_plugin": "Не удалось обновить плагин",
+  "tutorial_button": "Обучение",
+  "tutorial_step_canvas": "Здесь отображаются визуальные блоки.",
+  "tutorial_step_controls": "Используйте эти элементы управления для сохранения, загрузки и настройки редактора.",
+  "tutorial_step_search": "Панель поиска помогает находить текст в проекте.",
+  "tutorial_prev": "Назад",
+  "tutorial_next": "Далее",
+  "tutorial_done": "Готово",
+  "tutorial_progress": "Шаг"
 }
