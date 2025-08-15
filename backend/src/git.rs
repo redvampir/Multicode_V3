@@ -1,4 +1,5 @@
-use git2::{BranchType, Commit, DiffOptions, IndexAddOption, Repository};
+use git2::{BlameOptions, BranchType, Commit, DiffOptions, IndexAddOption, Repository};
+use std::path::Path;
 use tracing::error;
 
 pub fn commit(message: &str) -> Result<(), git2::Error> {
@@ -104,4 +105,34 @@ pub fn log() -> Result<Vec<String>, git2::Error> {
         entries.push(format!("{} {}", &oid.to_string()[..7], msg));
     }
     Ok(entries)
+}
+
+#[derive(serde::Serialize)]
+pub struct BlameLine {
+    pub line: usize,
+    pub author: String,
+    /// Seconds since Unix epoch
+    pub time: i64,
+}
+
+pub fn blame(path: &str) -> Result<Vec<BlameLine>, git2::Error> {
+    let repo = Repository::discover(".")?;
+    let mut opts = BlameOptions::new();
+    let blame = repo.blame_file(Path::new(path), Some(&mut opts))?;
+    let mut lines = Vec::new();
+    for hunk in blame.iter() {
+        let sig = hunk.final_signature();
+        let author = sig.name().unwrap_or("Unknown").to_string();
+        let time = sig.when().seconds();
+        let mut line_no = hunk.final_start_line();
+        for _ in 0..hunk.lines_in_hunk() {
+            lines.push(BlameLine {
+                line: line_no as usize,
+                author: author.clone(),
+                time,
+            });
+            line_no += 1;
+        }
+    }
+    Ok(lines)
 }

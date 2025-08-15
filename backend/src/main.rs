@@ -163,6 +163,12 @@ fn git_log_cmd() -> Result<Vec<String>, String> {
 
 #[cfg_attr(not(test), tauri::command)]
 #[cfg(not(test))]
+fn git_blame_cmd(path: String) -> Result<Vec<git::BlameLine>, String> {
+    git::blame(&path).map_err(|e| e.to_string())
+}
+
+#[cfg_attr(not(test), tauri::command)]
+#[cfg(not(test))]
 async fn run_tests(commands: Vec<String>) -> Result<(), String> {
     let status = Command::new("node")
         .arg("scripts/run-tests.js")
@@ -173,7 +179,10 @@ async fn run_tests(commands: Vec<String>) -> Result<(), String> {
     if status.success() {
         Ok(())
     } else {
-        Err(format!("tests failed with code {}", status.code().unwrap_or(-1)))
+        Err(format!(
+            "tests failed with code {}",
+            status.code().unwrap_or(-1)
+        ))
     }
 }
 
@@ -289,6 +298,7 @@ fn main() {
             git_diff_cmd,
             git_branches_cmd,
             git_log_cmd,
+            git_blame_cmd,
             run_tests,
             debug_run,
             debug_step,
