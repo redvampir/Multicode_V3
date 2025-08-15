@@ -37,5 +37,35 @@ describe('block editor', () => {
     expect(updateMetaComment).toHaveBeenCalled();
     expect(vc.upsertMeta).toHaveBeenCalledWith({ id: 'a' }, ['f1']);
   });
+
+  it('allows editing struct fields', () => {
+    const json = '{"id":"a","data":{"fields":["x"]}}';
+    const dispatch = vi.fn();
+    const metaView = {
+      state: { doc: { sliceString: () => json } },
+      dispatch
+    } as any;
+    const vc: any = {
+      canvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) } as any,
+      metaView,
+      blockDataMap: new Map([
+        ['a', { range: [0, json.length], kind: 'Struct' }]
+      ]),
+      upsertMeta: vi.fn(),
+      fileId: 'f1',
+      scale: 1,
+      offset: { x: 0, y: 0 }
+    };
+
+    openBlockEditor(vc, { id: 'a', x: 0, y: 0, w: 10, h: 10 });
+    const fieldInput = document.querySelector('input')! as HTMLInputElement;
+    fieldInput.value = 'y';
+    const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Save')!;
+    btn.dispatchEvent(new Event('click'));
+
+    expect(dispatch).toHaveBeenCalled();
+    const call = dispatch.mock.calls[0][0];
+    expect(call.changes.insert).toContain('"fields":["y"]');
+  });
 });
 

@@ -237,6 +237,31 @@
       },
       "additionalProperties": false
     },
+    "StructNode": {
+      "type": "object",
+      "required": ["kind", "ports", "data"],
+      "properties": {
+        "kind": { "const": "Struct" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 3,
+          "maxItems": 3
+        },
+        "data": {
+          "type": "object",
+          "required": ["fields"],
+          "properties": {
+            "fields": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "VizNode": {
       "oneOf": [
         { "$ref": "#/definitions/ArrayNewNode" },
@@ -244,7 +269,8 @@
         { "$ref": "#/definitions/ArraySetNode" },
         { "$ref": "#/definitions/MapNewNode" },
         { "$ref": "#/definitions/MapGetNode" },
-        { "$ref": "#/definitions/MapSetNode" }
+        { "$ref": "#/definitions/MapSetNode" },
+        { "$ref": "#/definitions/StructNode" }
       ]
     }
   }
