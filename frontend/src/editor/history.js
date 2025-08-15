@@ -1,3 +1,5 @@
+import { t } from "../shared/i18n.ts";
+
 const MAX_SNAPSHOTS = 20;
 const snapshots = [];
 
@@ -18,7 +20,7 @@ export function addSnapshot(view) {
  */
 export function showHistory(view) {
   if (!view || snapshots.length === 0) {
-    if (typeof alert === 'function') alert('No history');
+    if (typeof alert === 'function') alert(t('no_history'));
     return;
   }
 
@@ -34,7 +36,7 @@ export function showHistory(view) {
   });
 
   const okBtn = document.createElement('button');
-  okBtn.textContent = 'Restore';
+  okBtn.textContent = t('restore');
   okBtn.addEventListener('click', () => {
     const idx = parseInt(select.value, 10);
     const snap = snapshots[idx];
@@ -48,7 +50,7 @@ export function showHistory(view) {
   });
 
   const cancelBtn = document.createElement('button');
-  cancelBtn.textContent = 'Cancel';
+  cancelBtn.textContent = t('cancel');
   cancelBtn.addEventListener('click', () => {
     dialog.close();
     dialog.remove();

@@ -1,3 +1,5 @@
+import { t } from "../shared/i18n.ts";
+
 export const RELATED_EXTS = ['js', 'ts', 'jsx', 'tsx', 'json', 'html', 'css', 'md'];
 
 /**
@@ -13,7 +15,7 @@ export async function gotoRelated(view) {
   const el = view?.dom;
   const current = el?.dataset?.fileId;
   if (!current) {
-    alert('Related file not found');
+    alert(t('related_file_not_found'));
     return;
   }
 
@@ -42,5 +44,5 @@ export async function gotoRelated(view) {
     }
   }
 
-  alert('Related file not found');
+  alert(t('related_file_not_found'));
 }

@@ -1,3 +1,5 @@
+import { t } from "../shared/i18n.ts";
+
 export interface PluginInfo {
   name: string;
   version: string;
@@ -7,7 +9,7 @@ export interface PluginInfo {
 export async function initPluginManager(container: HTMLElement) {
   const res = await fetch('/plugins');
   if (!res.ok) {
-    alert('Failed to load plugins');
+    alert(t('failed_load_plugins'));
     return;
   }
   const plugins: PluginInfo[] = await res.json();
@@ -25,7 +27,7 @@ export async function initPluginManager(container: HTMLElement) {
         body: JSON.stringify({ name: p.name, enabled: checkbox.checked })
       });
       if (!res.ok) {
-        alert('Failed to update plugin');
+        alert(t('failed_update_plugin'));
         checkbox.checked = !checkbox.checked;
       }
     });

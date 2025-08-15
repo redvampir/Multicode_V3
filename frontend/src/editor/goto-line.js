@@ -4,13 +4,15 @@
  *
  * @param {import('@codemirror/view').EditorView} view
  */
+import { t } from "../shared/i18n.ts";
+
 export function gotoLine(view) {
   if (!view) return;
-  const input = prompt('Go to line:');
+  const input = prompt(t('goto_line_prompt'));
   if (!input) return;
   const lineNumber = Number(input);
   if (!Number.isInteger(lineNumber) || lineNumber < 1 || lineNumber > view.state.doc.lines) {
-    alert('Invalid line number');
+    alert(t('invalid_line_number'));
     return;
   }
   const line = view.state.doc.line(lineNumber);
