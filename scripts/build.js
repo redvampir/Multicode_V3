@@ -1,9 +1,20 @@
 #!/usr/bin/env node
-const { createLogger, runCommand, createSpinner } = require('./utils');
-
 process.env.NODE_ENV = 'production';
 
 async function main() {
+  let createLogger, runCommand, createSpinner;
+  try {
+    ({ createLogger, runCommand, createSpinner } = require('./utils'));
+  } catch (err) {
+    if (err.code === 'MODULE_NOT_FOUND') {
+      console.error(
+        'Зависимости не установлены. Запустите `npm install` и затем `npm run setup`.'
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
+
   const log = createLogger('build');
   log(`NODE_ENV=${process.env.NODE_ENV}`);
   const spinner = createSpinner('Building application');

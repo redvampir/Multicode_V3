@@ -2,8 +2,6 @@
 const fs = require('fs');
 const fsp = fs.promises;
 const path = require('path');
-const { createLogger, createSpinner } = require('./utils');
-
 if (!fsp || !fsp.rm) {
   console.error('Node.js fs.promises.rm is required to run clean');
   process.exit(1);
@@ -29,6 +27,19 @@ async function emptyDir(dir) {
 }
 
 async function main() {
+  let createLogger, createSpinner;
+  try {
+    ({ createLogger, createSpinner } = require('./utils'));
+  } catch (err) {
+    if (err.code === 'MODULE_NOT_FOUND') {
+      console.error(
+        'Зависимости не установлены. Запустите `npm install` и затем `npm run setup`.'
+      );
+      process.exit(1);
+    }
+    throw err;
+  }
+
   const log = createLogger('clean');
   log(`NODE_ENV=${process.env.NODE_ENV}`);
   const spinner = createSpinner('Cleaning artifacts');
