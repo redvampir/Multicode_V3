@@ -100,6 +100,7 @@ export class VisualCanvas {
     this.selected = new Set();
     this.groups = new Map();
     this.nextGroupId = 1;
+    this.nextRerouteId = 1;
     this.alignGuides = [];
     this.selectionBox = null;
     this.missingEdge = null;
@@ -657,6 +658,35 @@ export class VisualCanvas {
       if (block) {
         this.saveViewState();
         openBlockEditor(this, block);
+      } else {
+        const idx = this.connections.findIndex(
+          ([a, b]) => this.pointToSegmentDist(pos, a.center(), b.center()) < 5
+        );
+        if (idx >= 0) {
+          const [from, to] = this.connections[idx];
+          const theme = getTheme();
+          const id = `__reroute_${this.nextRerouteId++}`;
+          const w = 20;
+          const h = 20;
+          const reroute = createBlock('Reroute', id, pos.x - w / 2, pos.y - h / 2, '', theme.blockFill);
+          this.blocks.push(reroute);
+          const data = {
+            visual_id: id,
+            kind: 'Reroute',
+            x: reroute.x,
+            y: reroute.y,
+            tags: [],
+            links: [],
+            history: [],
+            updated_at: new Date().toISOString()
+          };
+          this.blocksData.push(data);
+          this.blockDataMap.set(id, data);
+          this.connections.splice(idx, 1);
+          this.connections.push([from, reroute], [reroute, to]);
+          this.analyze();
+          this.draw();
+        }
       }
     });
 
