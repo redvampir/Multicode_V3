@@ -144,6 +144,21 @@ function handleKey(e: KeyboardEvent) {
       }
       break;
   }
+
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
+    keywordBuffer += e.key.toLowerCase();
+    if (keywordBuffer.endsWith('var')) {
+      e.preventDefault();
+      insertKeywordBlock('var');
+      keywordBuffer = '';
+    } else if (keywordBuffer.endsWith('let')) {
+      e.preventDefault();
+      insertKeywordBlock('let');
+      keywordBuffer = '';
+    } else if (keywordBuffer.length > 3) {
+      keywordBuffer = keywordBuffer.slice(-3);
+    }
+  }
 }
 
 function handleClick(e: MouseEvent) {
@@ -206,11 +221,33 @@ let clipboard: any = null;
 
 let hotkeyDialog: HTMLDialogElement | null = null;
 
+let keywordBuffer = '';
+
 export function setCanvas(vc: VisualCanvas) {
   canvasRef = vc;
 }
 
 export function zoomToFit() {
   canvasRef?.zoomToFit();
+}
+
+function insertKeywordBlock(keyword: 'var' | 'let') {
+  if (!canvasRef) return;
+  const theme = getTheme();
+  const kind = keyword === 'var' ? 'Variable/Get' : 'Variable/Set';
+  const label = keyword === 'var' ? 'Variable Get' : 'Variable Set';
+  const color = theme.blockKinds.Variable || theme.blockFill;
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  const block = createBlock(kind, id, 0, 0, label, color);
+  canvasRef.blocks.push(block);
+  const data: any = { kind, visual_id: id, x: 0, y: 0, translations: { en: label } };
+  canvasRef.blocksData.push(data);
+  canvasRef.blockDataMap.set(id, data);
+  canvasRef.selected = new Set([block]);
+  canvasRef.moveCallback?.(block);
+  canvasRef.draw?.();
 }
 

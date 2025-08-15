@@ -178,6 +178,43 @@ export class VariableBlock extends Block {
   }
 }
 
+export class VariableGetBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [{ id: 'data', kind: 'data', dir: 'out' }];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      VariableGetBlock.defaultSize.width,
+      VariableGetBlock.defaultSize.height,
+      'Variable Get',
+      getTheme().blockKinds.Variable
+    );
+    this.ports = VariableGetBlock.ports;
+  }
+}
+
+export class VariableSetBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'value', kind: 'data', dir: 'in' },
+    { id: 'exec', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      VariableSetBlock.defaultSize.width,
+      VariableSetBlock.defaultSize.height,
+      'Variable Set',
+      getTheme().blockKinds.Variable
+    );
+    this.ports = VariableSetBlock.ports;
+  }
+}
+
 export class ConditionBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Condition', getTheme().blockKinds.Condition);
@@ -353,6 +390,8 @@ registerBlock('Literal/Boolean', BooleanLiteralBlock);
 registerBlock('Literal/Null', NullLiteralBlock);
 registerBlock('Function', FunctionBlock);
 registerBlock('Variable', VariableBlock);
+registerBlock('Variable/Get', VariableGetBlock);
+registerBlock('Variable/Set', VariableSetBlock);
 registerBlock('Condition', ConditionBlock);
 registerBlock('Loop', LoopBlock);
 registerBlock('Array/New', ArrayNewBlock);

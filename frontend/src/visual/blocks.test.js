@@ -14,6 +14,8 @@ import {
   MapNewBlock,
   MapGetBlock,
   MapSetBlock,
+  VariableGetBlock,
+  VariableSetBlock,
   StructBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
@@ -89,6 +91,20 @@ describe('block utilities', () => {
       expect(b).toBeInstanceOf(Ctor);
       expect(b.ports).toEqual(ports);
       expect(b.color).toBe(theme.blockKinds.Map);
+    }
+  });
+
+  it('provides variable get/set blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['Variable/Get', VariableGetBlock, VariableGetBlock.ports],
+      ['Variable/Set', VariableSetBlock, VariableSetBlock.ports]
+    ];
+    for (const [kind, Ctor, ports] of cases) {
+      const b = createBlock(kind, 'var', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(ports);
+      expect(b.color).toBe(theme.blockKinds.Variable);
     }
   });
 
