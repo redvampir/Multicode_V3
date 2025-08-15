@@ -4,13 +4,16 @@ import { getTheme } from './theme.ts';
 export class Minimap {
   canvas: HTMLCanvasElement;
   ctx: CanvasRenderingContext2D;
+  vc: VisualCanvas;
+  private dragging = false;
 
   constructor(canvas: HTMLCanvasElement, vc: VisualCanvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d')!;
+    this.vc = vc;
 
-    canvas.addEventListener('mousedown', e => {
-      const blocks = vc.blocks;
+    const updateView = (e: MouseEvent) => {
+      const blocks = this.vc.blocks;
       if (!blocks || blocks.length === 0) return;
 
       const width = this.canvas.width;
@@ -30,11 +33,23 @@ export class Minimap {
 
       const worldX = (e.offsetX - originX) / scale;
       const worldY = (e.offsetY - originY) / scale;
-      const viewW = vc.canvas.width / vc.scale;
-      const viewH = vc.canvas.height / vc.scale;
-      vc.offset.x = -(worldX - viewW / 2) * vc.scale;
-      vc.offset.y = -(worldY - viewH / 2) * vc.scale;
+      const viewW = this.vc.canvas.width / this.vc.scale;
+      const viewH = this.vc.canvas.height / this.vc.scale;
+      this.vc.offset.x = -(worldX - viewW / 2) * this.vc.scale;
+      this.vc.offset.y = -(worldY - viewH / 2) * this.vc.scale;
+      if (typeof this.vc.draw === 'function') this.vc.draw();
+    };
+
+    canvas.addEventListener('mousedown', e => {
+      this.dragging = true;
+      updateView(e);
     });
+    canvas.addEventListener('mousemove', e => {
+      if (this.dragging) updateView(e);
+    });
+    const stop = () => { this.dragging = false; };
+    window.addEventListener('mouseup', stop);
+    canvas.addEventListener('mouseleave', stop);
   }
 
   render(vc: VisualCanvas) {
