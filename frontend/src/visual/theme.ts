@@ -35,6 +35,9 @@ darkTheme.blockKinds.OpLogic = darkTheme.blockKinds.OpLogic || '#7e57c2';
 // ensure color for comparison operator blocks exists
 defaultTheme.blockKinds.OpComparison = defaultTheme.blockKinds.OpComparison || '#cfd8dc';
 darkTheme.blockKinds.OpComparison = darkTheme.blockKinds.OpComparison || '#607d8b';
+// ensure color for log blocks exists
+defaultTheme.blockKinds.Log = defaultTheme.blockKinds.Log || '#ffe082';
+darkTheme.blockKinds.Log = darkTheme.blockKinds.Log || '#ffb300';
 
 const themeMap: Record<string, VisualTheme> = {
   default: defaultTheme,

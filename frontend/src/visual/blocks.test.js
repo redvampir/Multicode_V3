@@ -23,6 +23,7 @@ import {
   FunctionDefineBlock,
   FunctionCallBlock,
   ReturnBlock,
+  LogBlock,
   ForLoopBlock,
   WhileLoopBlock,
   ForEachLoopBlock,
@@ -187,6 +188,20 @@ describe('block utilities', () => {
       expect(b.ports).toEqual(Ctor.ports);
       expect(b.color).toBe(theme.blockKinds.Function);
     }
+  });
+
+  it('provides log block with optional exec', () => {
+    const theme = getTheme();
+    const b = createBlock('Log', 'l1', 0, 0, '');
+    expect(b).toBeInstanceOf(LogBlock);
+    expect(b.ports).toEqual([{ id: 'data', kind: 'data', dir: 'in' }]);
+    expect(b.color).toBe(theme.blockKinds.Log || theme.blockFill);
+    const bExec = createBlock('Log', 'l2', 0, 0, '', undefined, { exec: true });
+    expect(bExec.ports).toEqual([
+      { id: 'data', kind: 'data', dir: 'in' },
+      { id: 'exec', kind: 'exec', dir: 'in' },
+      { id: 'out', kind: 'exec', dir: 'out' }
+    ]);
   });
 
   it('provides variable get/set blocks', () => {
