@@ -379,6 +379,71 @@ export class TryBlock extends Block {
   }
 }
 
+export class AwaitBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'value', kind: 'data', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'result', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      AwaitBlock.defaultSize.width,
+      AwaitBlock.defaultSize.height,
+      'Await',
+      getTheme().blockKinds.Async
+    );
+    this.ports = AwaitBlock.ports;
+  }
+}
+
+export class DelayBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'time', kind: 'data', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      DelayBlock.defaultSize.width,
+      DelayBlock.defaultSize.height,
+      'Delay',
+      getTheme().blockKinds.Async
+    );
+    this.ports = DelayBlock.ports;
+  }
+}
+
+export class EventOnBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'target', kind: 'data', dir: 'in' },
+    { id: 'event', kind: 'data', dir: 'in' },
+    { id: 'exec', kind: 'exec', dir: 'out' },
+    { id: 'data', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      EventOnBlock.defaultSize.width,
+      EventOnBlock.defaultSize.height,
+      'Event On',
+      getTheme().blockKinds.Async
+    );
+    this.ports = EventOnBlock.ports;
+  }
+}
+
 export class LoopBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Loop', getTheme().blockKinds.Loop);
@@ -651,6 +716,9 @@ registerBlock('Sequence', SequenceBlock);
 registerBlock('If', IfBlock);
 registerBlock('Switch', SwitchBlock);
 registerBlock('Try', TryBlock);
+registerBlock('Async/Await', AwaitBlock);
+registerBlock('Async/Delay', DelayBlock);
+registerBlock('Async/EventOn', EventOnBlock);
 registerBlock('Loop', LoopBlock);
 registerBlock('Loop/For', ForLoopBlock);
 registerBlock('Loop/While', WhileLoopBlock);
