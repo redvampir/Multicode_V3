@@ -49,6 +49,20 @@ export function showHistory(view) {
     dialog.remove();
   });
 
+  const compareBtn = document.createElement('button');
+  compareBtn.textContent = t('compare_with');
+  compareBtn.addEventListener('click', () => {
+    const idx = parseInt(select.value, 10);
+    const snap = snapshots[idx];
+    if (snap) {
+      localStorage.setItem('compareA', view.state.doc.toString());
+      localStorage.setItem('compareB', snap.content);
+      window.open('compare.html', '_blank');
+    }
+    dialog.close();
+    dialog.remove();
+  });
+
   const cancelBtn = document.createElement('button');
   cancelBtn.textContent = t('cancel');
   cancelBtn.addEventListener('click', () => {
@@ -58,6 +72,7 @@ export function showHistory(view) {
 
   dialog.appendChild(select);
   dialog.appendChild(okBtn);
+  dialog.appendChild(compareBtn);
   dialog.appendChild(cancelBtn);
   document.body.appendChild(dialog);
   if (typeof dialog.showModal === 'function') {

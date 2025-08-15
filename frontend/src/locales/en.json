@@ -22,6 +22,7 @@
   "split_view": "Split View",
   "no_history": "No history",
   "restore": "Restore",
+  "compare_with": "Compare with…",
   "cancel": "Cancel",
   "goto_line_prompt": "Go to line:",
   "invalid_line_number": "Invalid line number",
