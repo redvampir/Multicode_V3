@@ -2,7 +2,7 @@ import { createBlock, GroupBlock } from './blocks.js';
 import { getTheme, onThemeChange } from './theme.ts';
 import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
 import { Minimap } from './minimap.ts';
-import settings from '../../settings.json' assert { type: 'json' };
+import { visualSettings as cfg, GRID_SIZE } from './settings.ts';
 import { createTwoFilesPatch } from 'diff';
 import { updateMetaComment, previewDiff, renameMetaId, getMetaById } from '../editor/visual-meta.js';
 import { emit, on } from '../shared/event-bus.js';
@@ -10,8 +10,6 @@ import { openBlockEditor } from './block-editor.ts';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
 
-const cfg = settings.visual || {};
-const GRID_SIZE = cfg.gridSize || 20;
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 4;
 
@@ -96,7 +94,7 @@ export class VisualCanvas {
     this.dragStart = { x: 0, y: 0 };
     this.highlighted = new Set();
     this.hovered = null;
-    this.gridEnabled = cfg.showGrid ?? false;
+    this.gridEnabled = cfg.showGrid;
     this.selected = new Set();
     this.groups = new Map();
     this.nextGroupId = 1;
