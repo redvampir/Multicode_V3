@@ -46,6 +46,14 @@
         "type": "string"
       }
     },
+    "anchors": {
+      "description": "Optional anchors associated with this block.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "tests": {
       "description": "Optional test commands to run for this block.",
       "default": [],
@@ -286,6 +294,31 @@
       },
       "additionalProperties": false
     },
+    "TryNode": {
+      "type": "object",
+      "required": ["kind", "ports", "data"],
+      "properties": {
+        "kind": { "const": "Try" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "data": {
+          "type": "object",
+          "required": ["exceptions"],
+          "properties": {
+            "exceptions": {
+              "type": "array",
+              "items": { "type": "string" }
+            }
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
     "VizNode": {
       "oneOf": [
         { "$ref": "#/definitions/ArrayNewNode" },
@@ -295,7 +328,8 @@
         { "$ref": "#/definitions/MapGetNode" },
         { "$ref": "#/definitions/MapSetNode" },
         { "$ref": "#/definitions/StructNode" },
-        { "$ref": "#/definitions/SwitchNode" }
+        { "$ref": "#/definitions/SwitchNode" },
+        { "$ref": "#/definitions/TryNode" }
       ]
     }
   }

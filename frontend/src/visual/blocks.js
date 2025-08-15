@@ -356,6 +356,29 @@ export class SwitchBlock extends Block {
   }
 }
 
+export class TryBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'exec', kind: 'exec', dir: 'in' },
+    { id: 'try', kind: 'exec', dir: 'out' },
+    { id: 'catch', kind: 'exec', dir: 'out' },
+    { id: 'finally', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      TryBlock.defaultSize.width,
+      TryBlock.defaultSize.height,
+      'Try',
+      getTheme().blockKinds.Try
+    );
+    this.ports = TryBlock.ports;
+    this.exceptions = [];
+  }
+}
+
 export class LoopBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Loop', getTheme().blockKinds.Loop);
@@ -627,6 +650,7 @@ registerBlock('Condition', ConditionBlock);
 registerBlock('Sequence', SequenceBlock);
 registerBlock('If', IfBlock);
 registerBlock('Switch', SwitchBlock);
+registerBlock('Try', TryBlock);
 registerBlock('Loop', LoopBlock);
 registerBlock('Loop/For', ForLoopBlock);
 registerBlock('Loop/While', WhileLoopBlock);

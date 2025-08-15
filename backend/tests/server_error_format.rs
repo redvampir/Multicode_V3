@@ -72,6 +72,7 @@ async fn metadata_endpoint_unauthorized() {
             y: 0.0,
             tags: vec![],
             links: vec![],
+            anchors: vec![],
             tests: vec![],
             extends: None,
             origin: None,

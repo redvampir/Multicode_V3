@@ -41,6 +41,9 @@ pub struct VisualMeta {
     /// Optional links to other blocks.
     #[serde(default)]
     pub links: Vec<String>,
+    /// Optional anchors associated with this block.
+    #[serde(default)]
+    pub anchors: Vec<String>,
     /// Optional test commands to run for this block.
     #[serde(default)]
     pub tests: Vec<String>,

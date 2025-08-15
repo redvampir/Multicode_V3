@@ -19,6 +19,7 @@ import {
   StructBlock,
   SequenceBlock,
   SwitchBlock,
+  TryBlock,
   FunctionDefineBlock,
   FunctionCallBlock,
   ReturnBlock,
@@ -170,6 +171,18 @@ describe('block utilities', () => {
       { id: 'default', kind: 'exec', dir: 'out' }
     ]);
     expect(b.color).toBe(theme.blockKinds.Switch || theme.blockFill);
+  });
+
+  it('provides try block', () => {
+    const theme = getTheme();
+    const b = createBlock('Try', 't', 0, 0, '');
+    expect(b.ports).toEqual([
+      { id: 'exec', kind: 'exec', dir: 'in' },
+      { id: 'try', kind: 'exec', dir: 'out' },
+      { id: 'catch', kind: 'exec', dir: 'out' },
+      { id: 'finally', kind: 'exec', dir: 'out' }
+    ]);
+    expect(b.color).toBe(theme.blockKinds.Try || theme.blockFill);
   });
 
   it('preserves order of sequence block steps', () => {
