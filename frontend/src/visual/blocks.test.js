@@ -32,7 +32,10 @@ import {
   SubtractBlock,
   MultiplyBlock,
   DivideBlock,
-  ModuloBlock
+  ModuloBlock,
+  OpAndBlock,
+  OpOrBlock,
+  OpNotBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
 
@@ -125,6 +128,22 @@ describe('block utilities', () => {
       expect(b.ports).toEqual(Ctor.ports);
       expect(b.label).toBe(label);
       expect(b.color).toBe(theme.blockKinds.Operator || theme.blockFill);
+    }
+  });
+
+  it('provides logic operator blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['OpLogic/And', OpAndBlock, '&&'],
+      ['OpLogic/Or', OpOrBlock, '||'],
+      ['OpLogic/Not', OpNotBlock, '!']
+    ];
+    for (const [kind, Ctor, label] of cases) {
+      const b = createBlock(kind, 'logic', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(Ctor.ports);
+      expect(b.label).toBe(label);
+      expect(b.color).toBe(theme.blockKinds.OpLogic || theme.blockFill);
     }
   });
 

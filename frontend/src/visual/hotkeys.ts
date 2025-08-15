@@ -168,7 +168,29 @@ function handleKey(e: KeyboardEvent) {
       e.preventDefault();
       insertOperatorBlock(e.key as OperatorSymbol);
       keywordBuffer = '';
+      symbolBuffer = '';
+    } else if (e.key === '!') {
+      e.preventDefault();
+      insertLogicOperatorBlock('!');
+      keywordBuffer = '';
+      symbolBuffer = '';
+    } else if (e.key === '&' || e.key === '|') {
+      symbolBuffer += e.key;
+      if (symbolBuffer.endsWith('&&')) {
+        e.preventDefault();
+        insertLogicOperatorBlock('&&');
+        keywordBuffer = '';
+        symbolBuffer = '';
+      } else if (symbolBuffer.endsWith('||')) {
+        e.preventDefault();
+        insertLogicOperatorBlock('||');
+        keywordBuffer = '';
+        symbolBuffer = '';
+      } else if (symbolBuffer.length > 2) {
+        symbolBuffer = symbolBuffer.slice(-2);
+      }
     } else {
+      symbolBuffer = '';
       keywordBuffer += e.key.toLowerCase();
       if (keywordBuffer.endsWith('var')) {
         e.preventDefault();
@@ -266,6 +288,7 @@ let clipboard: any = null;
 let hotkeyDialog: HTMLDialogElement | null = null;
 
 let keywordBuffer = '';
+let symbolBuffer = '';
 
 export function setCanvas(vc: VisualCanvas) {
   canvasRef = vc;
@@ -357,6 +380,38 @@ function insertOperatorBlock(op: OperatorSymbol) {
       ? globalThis.crypto.randomUUID()
       : Math.random().toString(36).slice(2);
   const color = theme.blockKinds.Operator || theme.blockFill;
+  const block = createBlock(conf.kind, id, 0, 0, conf.label, color);
+  canvasRef.blocks.push(block);
+  const data: any = {
+    kind: conf.kind,
+    visual_id: id,
+    x: 0,
+    y: 0,
+    translations: { en: conf.label }
+  };
+  canvasRef.blocksData.push(data);
+  canvasRef.blockDataMap.set(id, data);
+  canvasRef.selected = new Set([block]);
+  canvasRef.moveCallback?.(block);
+  canvasRef.draw?.();
+}
+
+type LogicOperatorSymbol = '&&' | '||' | '!';
+
+function insertLogicOperatorBlock(op: LogicOperatorSymbol) {
+  if (!canvasRef) return;
+  const theme = getTheme();
+  const mapping: Record<LogicOperatorSymbol, { kind: string; label: string }> = {
+    '&&': { kind: 'OpLogic/And', label: '&&' },
+    '||': { kind: 'OpLogic/Or', label: '||' },
+    '!': { kind: 'OpLogic/Not', label: '!' }
+  };
+  const conf = mapping[op];
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  const color = theme.blockKinds.OpLogic || theme.blockFill;
   const block = createBlock(conf.kind, id, 0, 0, conf.label, color);
   canvasRef.blocks.push(block);
   const data: any = {

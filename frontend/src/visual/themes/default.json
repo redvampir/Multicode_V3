@@ -14,6 +14,7 @@
     "Loop": "#fce4ec",
     "Array": "#bbdefb",
     "Map": "#c8e6c9",
-    "If": "#ffcc80"
+    "If": "#ffcc80",
+    "OpLogic": "#d1c4e9"
   }
 }
