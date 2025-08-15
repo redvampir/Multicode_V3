@@ -15,6 +15,7 @@
     "Array": "#bbdefb",
     "Map": "#c8e6c9",
     "If": "#ffcc80",
-    "OpLogic": "#d1c4e9"
+    "OpLogic": "#d1c4e9",
+    "OpComparison": "#cfd8dc"
   }
 }

@@ -169,11 +169,7 @@ function handleKey(e: KeyboardEvent) {
       insertOperatorBlock(e.key as OperatorSymbol);
       keywordBuffer = '';
       symbolBuffer = '';
-    } else if (e.key === '!') {
-      e.preventDefault();
-      insertLogicOperatorBlock('!');
-      keywordBuffer = '';
-      symbolBuffer = '';
+      pendingSymbol = '';
     } else if (e.key === '&' || e.key === '|') {
       symbolBuffer += e.key;
       if (symbolBuffer.endsWith('&&')) {
@@ -181,15 +177,64 @@ function handleKey(e: KeyboardEvent) {
         insertLogicOperatorBlock('&&');
         keywordBuffer = '';
         symbolBuffer = '';
+        pendingSymbol = '';
       } else if (symbolBuffer.endsWith('||')) {
         e.preventDefault();
         insertLogicOperatorBlock('||');
         keywordBuffer = '';
         symbolBuffer = '';
+        pendingSymbol = '';
       } else if (symbolBuffer.length > 2) {
         symbolBuffer = symbolBuffer.slice(-2);
       }
+    } else if ('=!<>'.includes(e.key)) {
+      if (pendingSymbol) {
+        if (e.key === '=' && pendingSymbol === '!') {
+          e.preventDefault();
+          insertComparisonOperatorBlock('!=');
+          pendingSymbol = '';
+        } else if (e.key === '=' && pendingSymbol === '=') {
+          e.preventDefault();
+          insertComparisonOperatorBlock('==');
+          pendingSymbol = '';
+        } else if (e.key === '=' && pendingSymbol === '>') {
+          e.preventDefault();
+          insertComparisonOperatorBlock('>=');
+          pendingSymbol = '';
+        } else if (e.key === '=' && pendingSymbol === '<') {
+          e.preventDefault();
+          insertComparisonOperatorBlock('<=');
+          pendingSymbol = '';
+        } else {
+          if (pendingSymbol === '!') {
+            e.preventDefault();
+            insertLogicOperatorBlock('!');
+          } else if (pendingSymbol === '>') {
+            e.preventDefault();
+            insertComparisonOperatorBlock('>');
+          } else if (pendingSymbol === '<') {
+            e.preventDefault();
+            insertComparisonOperatorBlock('<');
+          }
+          pendingSymbol = e.key;
+        }
+      } else {
+        pendingSymbol = e.key;
+      }
+      keywordBuffer = '';
+      symbolBuffer = '';
     } else {
+      if (pendingSymbol === '!') {
+        e.preventDefault();
+        insertLogicOperatorBlock('!');
+      } else if (pendingSymbol === '>') {
+        e.preventDefault();
+        insertComparisonOperatorBlock('>');
+      } else if (pendingSymbol === '<') {
+        e.preventDefault();
+        insertComparisonOperatorBlock('<');
+      }
+      pendingSymbol = '';
       symbolBuffer = '';
       keywordBuffer += e.key.toLowerCase();
       if (keywordBuffer.endsWith('var')) {
@@ -289,6 +334,7 @@ let hotkeyDialog: HTMLDialogElement | null = null;
 
 let keywordBuffer = '';
 let symbolBuffer = '';
+let pendingSymbol = '';
 
 export function setCanvas(vc: VisualCanvas) {
   canvasRef = vc;
@@ -412,6 +458,41 @@ function insertLogicOperatorBlock(op: LogicOperatorSymbol) {
       ? globalThis.crypto.randomUUID()
       : Math.random().toString(36).slice(2);
   const color = theme.blockKinds.OpLogic || theme.blockFill;
+  const block = createBlock(conf.kind, id, 0, 0, conf.label, color);
+  canvasRef.blocks.push(block);
+  const data: any = {
+    kind: conf.kind,
+    visual_id: id,
+    x: 0,
+    y: 0,
+    translations: { en: conf.label }
+  };
+  canvasRef.blocksData.push(data);
+  canvasRef.blockDataMap.set(id, data);
+  canvasRef.selected = new Set([block]);
+  canvasRef.moveCallback?.(block);
+  canvasRef.draw?.();
+}
+
+type ComparisonOperatorSymbol = '==' | '!=' | '>' | '>=' | '<' | '<=';
+
+function insertComparisonOperatorBlock(op: ComparisonOperatorSymbol) {
+  if (!canvasRef) return;
+  const theme = getTheme();
+  const mapping: Record<ComparisonOperatorSymbol, { kind: string; label: string }> = {
+    '==': { kind: 'OpComparison/Equal', label: '==' },
+    '!=': { kind: 'OpComparison/NotEqual', label: '!=' },
+    '>': { kind: 'OpComparison/Greater', label: '>' },
+    '>=': { kind: 'OpComparison/GreaterEqual', label: '>=' },
+    '<': { kind: 'OpComparison/Less', label: '<' },
+    '<=': { kind: 'OpComparison/LessEqual', label: '<=' }
+  };
+  const conf = mapping[op];
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  const color = theme.blockKinds.OpComparison || theme.blockFill;
   const block = createBlock(conf.kind, id, 0, 0, conf.label, color);
   canvasRef.blocks.push(block);
   const data: any = {
