@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 process.env.NODE_ENV = 'development';
+const fs = require('fs');
 
 async function main() {
   let createLogger, runCommand, createSpinner;
@@ -17,6 +18,15 @@ async function main() {
 
   const log = createLogger('dev');
   log(`NODE_ENV=${process.env.NODE_ENV}`);
+
+  const cargoTomlPath = 'frontend/src-tauri/../../backend/Cargo.toml';
+  if (!fs.existsSync(cargoTomlPath)) {
+    console.error(
+      `Не найден файл '${cargoTomlPath}'. Убедитесь, что бэкенд инициализирован.`
+    );
+    process.exit(1);
+  }
+
   const spinner = createSpinner('Starting development server');
   spinner.start();
   try {
@@ -38,3 +48,4 @@ async function main() {
 }
 
 main();
+
