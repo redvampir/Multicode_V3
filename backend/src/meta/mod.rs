@@ -380,6 +380,7 @@ mod tests {
             y: 0.0,
             tags: vec!["base".into()],
             links: vec!["l1".into()],
+            anchors: vec!["a1".into()],
             tests: vec![],
             extends: None,
             origin: Some("orig".into()),
@@ -403,6 +404,7 @@ mod tests {
             y: 1.0,
             tags: vec!["child".into()],
             links: vec!["l2".into()],
+            anchors: vec!["a2".into()],
             tests: vec![],
             extends: Some("p".into()),
             origin: None,
@@ -429,6 +431,7 @@ mod tests {
         let merged = metas.iter().find(|m| m.id == "c").unwrap();
         assert_eq!(merged.tags, vec!["base", "child"]);
         assert_eq!(merged.links, vec!["l1", "l2"]);
+        assert_eq!(merged.anchors, vec!["a1", "a2"]);
         assert_eq!(merged.origin.as_deref(), Some("orig"));
         assert_eq!(merged.translations.get("en").unwrap(), "Parent");
         assert_eq!(merged.translations.get("ru").unwrap(), "Дитя");
@@ -446,6 +449,7 @@ mod tests {
             y: 0.0,
             tags: vec!["a".into(), "a".into()],
             links: vec!["l".into(), "l".into()],
+            anchors: vec!["a".into(), "a".into()],
             tests: vec![],
             extends: Some("".into()),
             origin: None,
@@ -459,6 +463,7 @@ mod tests {
         assert!(errs.iter().any(|e| e.field == "x"));
         assert!(errs.iter().any(|e| e.field == "tags"));
         assert!(errs.iter().any(|e| e.field == "links"));
+        assert!(errs.iter().any(|e| e.field == "anchors"));
         assert!(errs.iter().any(|e| e.field == "extends"));
     }
 }
