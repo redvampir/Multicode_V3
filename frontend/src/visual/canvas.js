@@ -273,16 +273,29 @@ export class VisualCanvas {
     const color = getTheme().blockStroke;
     const label = 'Group ' + id;
     this.groups.set(id, { blocks, color, label });
+    // Persist group reference on blocks for .viz.json export
+    for (const bid of blocks) {
+      const data = this.blockDataMap.get(bid);
+      if (data) data.group = id;
+    }
   }
 
   ungroupSelected() {
     const ids = new Set(Array.from(this.selected).map(b => b.id));
     for (const [id, group] of Array.from(this.groups.entries())) {
+      let remove = false;
       for (const bid of ids) {
         if (group.blocks.has(bid)) {
-          this.groups.delete(id);
+          remove = true;
           break;
         }
+      }
+      if (remove) {
+        for (const bid of group.blocks) {
+          const data = this.blockDataMap.get(bid);
+          if (data) delete data.group;
+        }
+        this.groups.delete(id);
       }
     }
   }
@@ -307,6 +320,7 @@ export class VisualCanvas {
       clone.x = (clone.x || 0) + GRID_SIZE;
       clone.y = (clone.y || 0) + GRID_SIZE;
       clone.links = [];
+      delete clone.group;
       const label = (clone.translations && clone.translations[this.locale]) || clone.kind;
       const color = theme.blockKinds[clone.kind] || theme.blockFill;
       const newBlock = createBlock(clone.kind, clone.visual_id, clone.x, clone.y, label, color, clone.data);
@@ -353,6 +367,8 @@ export class VisualCanvas {
           this.groups.delete(gid);
         }
       }
+      const data = this.blockDataMap.get(id);
+      if (data) delete data.group;
     }
     this.selected.clear();
     this.draw();
@@ -468,6 +484,18 @@ export class VisualCanvas {
   }
 
   serialize() {
+    // Sync group references on block data before exporting
+    const grouped = new Set();
+    for (const [gid, group] of this.groups.entries()) {
+      for (const bid of group.blocks) {
+        const data = this.blockDataMap.get(bid);
+        if (data) data.group = gid;
+        grouped.add(bid);
+      }
+    }
+    for (const data of this.blocksData) {
+      if (!grouped.has(data.visual_id)) delete data.group;
+    }
     return {
       blocks: this.blocksData,
       connections: this.connections.map(([a, b]) => [a.id, b.id]),
@@ -505,6 +533,12 @@ export class VisualCanvas {
         }
       ])
     );
+    for (const [gid, group] of this.groups.entries()) {
+      for (const bid of group.blocks) {
+        const data = this.blockDataMap.get(bid);
+        if (data) data.group = gid;
+      }
+    }
     this.nextGroupId = Math.max(0, ...Array.from(this.groups.keys())) + 1;
     this.offset = layout.offset || { x: 0, y: 0 };
     this.scale = layout.scale ?? 1;

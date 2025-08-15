@@ -7,6 +7,7 @@ import { openBlockEditor } from './block-editor.ts';
 import { updateMetaComment } from '../editor/visual-meta.js';
 import { IfBlock, SwitchBlock, createBlock } from './blocks.js';
 import { getTheme } from './theme.ts';
+import { VisualCanvas } from './canvas.js';
 
 describe('block editor', () => {
   it('saves changes and updates meta', () => {
@@ -176,6 +177,50 @@ describe('block editor', () => {
       { id: 'else', kind: 'exec', dir: 'out' }
     ]);
     expect(b.color).toBe(theme.blockKinds.If);
+  });
+});
+
+describe('groups', () => {
+  function createCanvas() {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({
+      save() {},
+      setTransform() {},
+      clearRect() {},
+      beginPath() {},
+      stroke() {},
+      moveTo() {},
+      lineTo() {},
+      fillRect() {},
+      strokeRect() {},
+      fillText() {},
+      restore() {}
+    });
+    globalThis.requestAnimationFrame = () => 0;
+    return canvasEl;
+  }
+
+  it('serializes grouped blocks with references', () => {
+    const vc = new VisualCanvas(createCanvas());
+    const a: any = { id: 'a', x: 0, y: 0, w: 10, h: 10, draw() {}, contains() { return false; } };
+    const b: any = { id: 'b', x: 20, y: 0, w: 10, h: 10, draw() {}, contains() { return false; } };
+    vc.blocks = [a, b];
+    const da = { visual_id: 'a', kind: 'Function', x: 0, y: 0 } as any;
+    const db = { visual_id: 'b', kind: 'Function', x: 20, y: 0 } as any;
+    vc.blocksData = [da, db];
+    vc.blockDataMap.set('a', da);
+    vc.blockDataMap.set('b', db);
+    vc.selected = new Set([a, b]);
+
+    vc.groupSelected();
+    const data = vc.serialize();
+    expect(data.groups.length).toBe(1);
+    const g = data.groups[0];
+    expect(g.blocks).toEqual(['a', 'b']);
+    expect(vc.blockDataMap.get('a')?.group).toBe(g.id);
+    expect(vc.blockDataMap.get('b')?.group).toBe(g.id);
   });
 });
 

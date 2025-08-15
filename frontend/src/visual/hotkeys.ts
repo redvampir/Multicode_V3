@@ -116,10 +116,12 @@ function handleKey(e: KeyboardEvent) {
       canvasRef?.redo?.();
       break;
     case hotkeys.groupBlocks:
+    case 'Meta+G':
       e.preventDefault();
       canvasRef?.groupSelected?.();
       break;
     case hotkeys.ungroupBlocks:
+    case 'Meta+Shift+G':
       e.preventDefault();
       canvasRef?.ungroupSelected?.();
       break;
