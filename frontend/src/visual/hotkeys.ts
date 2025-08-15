@@ -1,4 +1,5 @@
 import settings from '../../settings.json' assert { type: 'json' };
+import { GRID_SIZE } from './settings.ts';
 import { createBlock } from './blocks.js';
 import { getTheme } from './theme.ts';
 import { createHotkeyDialog } from './hotkey-dialog.ts';
@@ -31,8 +32,8 @@ export interface HotkeyMap {
   insertLogBlock: string;
 }
 
-const cfg: { hotkeys?: Partial<HotkeyMap>; visual?: { gridSize?: number } } = settings as any;
-const MOVE_STEP = cfg.visual?.gridSize || 10;
+const cfg: { hotkeys?: Partial<HotkeyMap> } = settings as any;
+const MOVE_STEP = GRID_SIZE;
 
 export const hotkeys: HotkeyMap = {
   copyBlock: cfg.hotkeys?.copyBlock || 'Ctrl+C',

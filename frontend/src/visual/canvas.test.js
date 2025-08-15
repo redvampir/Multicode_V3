@@ -7,6 +7,7 @@ vi.mock('../editor/visual-meta.js', () => ({
 }));
 import { analyzeConnections, VisualCanvas } from './canvas.js';
 import { renameMetaId } from '../editor/visual-meta.js';
+import { GRID_SIZE } from './settings.ts';
 
 describe('analyzeConnections', () => {
   it('detects missing blocks and cycles', () => {
@@ -168,3 +169,40 @@ describe('serialize and load', () => {
     expect(Array.from(g?.blocks || [])).toEqual(['a', 'b']);
   });
 });
+
+describe('alignment and grid snapping', () => {
+  function createCanvas() {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    return canvasEl;
+  }
+
+  it('snaps block to grid while dragging', () => {
+    const vc = new VisualCanvas(createCanvas());
+    vc.gridEnabled = true;
+    const block = { id: 'a', x: 0, y: 0, w: 10, h: 10, draw(){}, contains(){ return false; } };
+    vc.blocks = [block];
+    vc.dragged = block;
+    vc.dragOffset = { x: 0, y: 0 };
+    const e = new MouseEvent('mousemove', { clientX: 0, clientY: 0 });
+    Object.defineProperty(e, 'offsetX', { get: () => GRID_SIZE - 7 });
+    Object.defineProperty(e, 'offsetY', { get: () => GRID_SIZE - 3 });
+    vc.canvas.dispatchEvent(e);
+    expect(block.x).toBe(GRID_SIZE);
+    expect(block.y).toBe(GRID_SIZE);
+  });
+
+  it('shows alignment guides when edges align', () => {
+    const vc = new VisualCanvas(createCanvas());
+    const a = { id: 'a', x: 0, y: 0, w: 20, h: 20, draw(){}, contains(){ return false; } };
+    const b = { id: 'b', x: 19, y: 30, w: 20, h: 20, draw(){}, contains(){ return false; } };
+    vc.blocks = [a, b];
+    vc.dragged = b;
+    vc.updateAlignGuides();
+    expect(vc.alignGuides.some(g => g.type === 'v' && g.x === a.x + a.w)).toBe(true);
+  });
+});
+
