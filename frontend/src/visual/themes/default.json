@@ -11,6 +11,7 @@
     "Function": "#e0f7fa",
     "Variable": "#f1f8e9",
     "Condition": "#fff9c4",
-    "Loop": "#fce4ec"
+    "Loop": "#fce4ec",
+    "Array": "#bbdefb"
   }
 }

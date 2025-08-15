@@ -82,23 +82,13 @@
       "description": "Optional AI-generated note.",
       "default": null,
       "anyOf": [
-        {
-          "$ref": "#/definitions/AiNote"
-        },
-        {
-          "type": "null"
-        }
+        { "$ref": "#/definitions/AiNote" },
+        { "type": "null" }
       ]
     },
     "extras": {
       "description": "Optional plugin-specific metadata.",
       "default": null
-    },
-    "updated_at": {
-      "description": "Timestamp of last update in UTC.",
-      "default": "1970-01-01T00:00:00Z",
-      "type": "string",
-      "format": "date-time"
     },
     "history": {
       "description": "Previous states of this metadata.",
@@ -113,6 +103,20 @@
         "required": ["timestamp", "snapshot"],
         "additionalProperties": false
       }
+    },
+    "node": {
+      "description": "Optional serialized visual node.",
+      "default": null,
+      "anyOf": [
+        { "$ref": "#/definitions/VizNode" },
+        { "type": "null" }
+      ]
+    },
+    "updated_at": {
+      "description": "Timestamp of last update in UTC.",
+      "default": "1970-01-01T00:00:00Z",
+      "type": "string",
+      "format": "date-time"
     }
   },
   "additionalProperties": false,
@@ -138,6 +142,65 @@
         }
       },
       "additionalProperties": false
+    },
+    "VizPort": {
+      "type": "object",
+      "required": ["id", "kind", "dir"],
+      "properties": {
+        "id": { "type": "string" },
+        "kind": { "type": "string", "enum": ["exec", "data"] },
+        "dir": { "type": "string", "enum": ["in", "out"] }
+      },
+      "additionalProperties": false
+    },
+    "ArrayNewNode": {
+      "type": "object",
+      "required": ["kind", "ports"],
+      "properties": {
+        "kind": { "const": "Array/New" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArrayGetNode": {
+      "type": "object",
+      "required": ["kind", "ports"],
+      "properties": {
+        "kind": { "const": "Array/Get" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 5,
+          "maxItems": 5
+        }
+      },
+      "additionalProperties": false
+    },
+    "ArraySetNode": {
+      "type": "object",
+      "required": ["kind", "ports"],
+      "properties": {
+        "kind": { "const": "Array/Set" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 6,
+          "maxItems": 6
+        }
+      },
+      "additionalProperties": false
+    },
+    "VizNode": {
+      "oneOf": [
+        { "$ref": "#/definitions/ArrayNewNode" },
+        { "$ref": "#/definitions/ArrayGetNode" },
+        { "$ref": "#/definitions/ArraySetNode" }
+      ]
     }
   }
 }

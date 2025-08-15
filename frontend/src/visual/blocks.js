@@ -190,6 +190,74 @@ export class LoopBlock extends Block {
   }
 }
 
+export class ArrayNewBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      ArrayNewBlock.defaultSize.width,
+      ArrayNewBlock.defaultSize.height,
+      'Array New',
+      getTheme().blockKinds.Array
+    );
+    this.ports = ArrayNewBlock.ports;
+  }
+}
+
+export class ArrayGetBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'array', kind: 'data', dir: 'in' },
+    { id: 'index', kind: 'data', dir: 'in' },
+    { id: 'value', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      ArrayGetBlock.defaultSize.width,
+      ArrayGetBlock.defaultSize.height,
+      'Array Get',
+      getTheme().blockKinds.Array
+    );
+    this.ports = ArrayGetBlock.ports;
+  }
+}
+
+export class ArraySetBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'array', kind: 'data', dir: 'in' },
+    { id: 'index', kind: 'data', dir: 'in' },
+    { id: 'value', kind: 'data', dir: 'in' },
+    { id: 'result', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      ArraySetBlock.defaultSize.width,
+      ArraySetBlock.defaultSize.height,
+      'Array Set',
+      getTheme().blockKinds.Array
+    );
+    this.ports = ArraySetBlock.ports;
+  }
+}
+
 registerBlock('Literal/Number', NumberLiteralBlock);
 registerBlock('Literal/String', StringLiteralBlock);
 registerBlock('Literal/Boolean', BooleanLiteralBlock);
@@ -198,3 +266,6 @@ registerBlock('Function', FunctionBlock);
 registerBlock('Variable', VariableBlock);
 registerBlock('Condition', ConditionBlock);
 registerBlock('Loop', LoopBlock);
+registerBlock('Array/New', ArrayNewBlock);
+registerBlock('Array/Get', ArrayGetBlock);
+registerBlock('Array/Set', ArraySetBlock);
