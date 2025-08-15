@@ -53,8 +53,10 @@
     import { spellcheck } from "./editor/spellcheck.js";
     import { activeBlock } from "./editor/active-block.js";
     import { todoHighlight, updateTodoPanel } from "./editor/todo-highlight.js";
+    import { setLanguage, getLanguage, availableLanguages, getLanguageName } from "./shared/i18n.ts";
 
     const editorCfg = settings.editor || {};
+    setLanguage(settings.language || 'en');
     document.documentElement.style.setProperty('--editor-font-size', `${editorCfg.fontSize || 14}px`);
     document.documentElement.style.setProperty('--editor-line-height', `${editorCfg.lineHeight || 20}px`);
 
@@ -109,6 +111,23 @@
       await writeTextFile('settings.json', JSON.stringify(settings, null, 2), { dir: BaseDirectory.Resource });
     });
 
+    const localeSelect = document.getElementById('locale');
+    availableLanguages().forEach(l => {
+      const opt = document.createElement('option');
+      opt.value = l;
+      opt.textContent = getLanguageName(l);
+      if (l === getLanguage()) opt.selected = true;
+      localeSelect.appendChild(opt);
+    });
+    localeSelect.addEventListener('change', async e => {
+      const lang = e.target.value;
+      setLanguage(lang);
+      currentLocale = lang;
+      vc.setLocale(lang);
+      settings.language = lang;
+      await writeTextFile('settings.json', JSON.stringify(settings, null, 2), { dir: BaseDirectory.Resource });
+    });
+
     const fontSizeInput = document.getElementById('font-size');
     const lineHeightInput = document.getElementById('line-height');
     fontSizeInput.value = editorCfg.fontSize || 14;
@@ -139,7 +158,7 @@
     });
 
     let currentLang = 'rust';
-    let currentLocale = 'en';
+    let currentLocale = settings.language || 'en';
     vc.setLocale(currentLocale);
 
     async function parseAndRender() {
@@ -339,10 +358,6 @@
       insertVisualMeta(view, currentLang);
       foldMetaBlock(view);
     });
-    document.getElementById('locale').addEventListener('change', e => {
-      currentLocale = e.target.value;
-      vc.setLocale(currentLocale);
-    });
 
     const searchInput = document.getElementById('search-input');
     const searchResultsEl = document.getElementById('search-results');
@@ -465,35 +480,31 @@
       <div id="outline"></div>
       </div>
       <div id="controls">
-        <button id="save">Save</button>
-        <button id="load">Load</button>
-        <button id="export-clean">Экспорт без метаданных</button>
-        <span id="export-progress" style="display:none">Exporting…</span>
-        <button id="layout-export">Export</button>
-        <button id="layout-import">Import</button>
-        <button id="undo">Undo</button>
-        <button id="redo">Redo</button>
-        <button id="history">History</button>
-        <button id="insert-meta">Insert Meta</button>
+        <button id="save" data-i18n="save"></button>
+        <button id="load" data-i18n="load"></button>
+        <button id="export-clean" data-i18n="export_clean"></button>
+        <span id="export-progress" style="display:none" data-i18n="exporting"></span>
+        <button id="layout-export" data-i18n="export"></button>
+        <button id="layout-import" data-i18n="layout_import"></button>
+        <button id="undo" data-i18n="undo"></button>
+        <button id="redo" data-i18n="redo"></button>
+        <button id="history" data-i18n="history"></button>
+        <button id="insert-meta" data-i18n="insert_meta"></button>
         <select id="theme"></select>
-        <select id="locale">
-          <option value="en">English</option>
-          <option value="ru">Русский</option>
-          <option value="es">Español</option>
-        </select>
-        <label>Font Size: <input id="font-size" type="range" min="10" max="24" /></label>
-        <label>Line Height: <input id="line-height" type="range" min="14" max="40" /></label>
+        <select id="locale"></select>
+        <label><span data-i18n="font_size"></span>: <input id="font-size" type="range" min="10" max="24" /></label>
+        <label><span data-i18n="line_height"></span>: <input id="line-height" type="range" min="14" max="40" /></label>
       </div>
       <div id="search-panel">
-        <input id="search-input" placeholder="Search..." />
-        <label><input type="checkbox" id="search-regex"> Regex</label>
-        <label><input type="checkbox" id="search-whole"> Whole word</label>
+        <input id="search-input" data-i18n-placeholder="search_placeholder" />
+        <label><input type="checkbox" id="search-regex" /><span data-i18n="search_regex"></span></label>
+        <label><input type="checkbox" id="search-whole" /><span data-i18n="search_whole"></span></label>
         <select id="search-results" size="5"></select>
       </div>
       <div id="git-panel">
-        <input id="git-message" placeholder="Commit message" />
-        <button id="git-commit">Commit</button>
-        <button id="git-diff">Diff</button>
+        <input id="git-message" data-i18n-placeholder="git_message_placeholder" />
+        <button id="git-commit" data-i18n="git_commit"></button>
+        <button id="git-diff" data-i18n="git_diff"></button>
         <pre id="git-log"></pre>
       </div>
       <div id="todo-panel">
@@ -501,7 +512,7 @@
       </div>
     </div>
   </div>
-  <button id="split-toggle" style="position:fixed;top:10px;right:10px;">Split View</button>
+  <button id="split-toggle" style="position:fixed;top:10px;right:10px;" data-i18n="split_view"></button>
 
 </body>
 </html>

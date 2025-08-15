@@ -28,5 +28,6 @@
     "singleQuote": true,
     "semi": true
   },
-  "plugins": {}
+  "plugins": {},
+  "language": "en"
 }
