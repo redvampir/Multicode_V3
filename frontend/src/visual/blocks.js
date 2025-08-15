@@ -98,6 +98,25 @@ export async function reloadPlugins(urls) {
 
 // ---- Built-in blocks -------------------------------------------------------
 
+export class GroupBlock extends Block {
+  constructor(id, x, y, w = 200, h = 150, label = '', color = getTheme().blockStroke) {
+    super(id, x, y, w, h, label, color);
+  }
+
+  draw(ctx) {
+    ctx.strokeStyle = this.color;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(this.x, this.y, this.w, this.h);
+    if (this.label) {
+      ctx.fillStyle = this.color;
+      ctx.font = '16px sans-serif';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'top';
+      ctx.fillText(this.label, this.x + 4, this.y + 4);
+    }
+  }
+}
+
 export class NumberLiteralBlock extends Block {
   static defaultSize = { width: 120, height: 50 };
   static ports = [{ id: 'out', kind: 'data', dir: 'out' }];
@@ -944,3 +963,4 @@ registerBlock('Map/New', MapNewBlock);
 registerBlock('Map/Get', MapGetBlock);
 registerBlock('Map/Set', MapSetBlock);
 registerBlock('Struct', StructBlock);
+registerBlock('Group', GroupBlock);

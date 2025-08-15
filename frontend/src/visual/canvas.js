@@ -1,4 +1,4 @@
-import { createBlock } from './blocks.js';
+import { createBlock, GroupBlock } from './blocks.js';
 import { getTheme, onThemeChange } from './theme.ts';
 import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
 import { Minimap } from './minimap.ts';
@@ -261,8 +261,8 @@ export class VisualCanvas {
   }
 
   getGroupId(blockId) {
-    for (const [id, set] of this.groups.entries()) {
-      if (set.has(blockId)) return id;
+    for (const [id, group] of this.groups.entries()) {
+      if (group.blocks.has(blockId)) return id;
     }
     return null;
   }
@@ -270,14 +270,17 @@ export class VisualCanvas {
   groupSelected() {
     if (this.selected.size === 0) return;
     const id = this.nextGroupId++;
-    this.groups.set(id, new Set(Array.from(this.selected).map(b => b.id)));
+    const blocks = new Set(Array.from(this.selected).map(b => b.id));
+    const color = getTheme().blockStroke;
+    const label = 'Group ' + id;
+    this.groups.set(id, { blocks, color, label });
   }
 
   ungroupSelected() {
     const ids = new Set(Array.from(this.selected).map(b => b.id));
-    for (const [id, set] of Array.from(this.groups.entries())) {
+    for (const [id, group] of Array.from(this.groups.entries())) {
       for (const bid of ids) {
-        if (set.has(bid)) {
+        if (group.blocks.has(bid)) {
           this.groups.delete(id);
           break;
         }
@@ -317,10 +320,10 @@ export class VisualCanvas {
       this.highlighted.delete(id);
       this.highlighted.add(newId);
     }
-    for (const set of this.groups.values()) {
-      if (set.has(id)) {
-        set.delete(id);
-        set.add(newId);
+    for (const group of this.groups.values()) {
+      if (group.blocks.has(id)) {
+        group.blocks.delete(id);
+        group.blocks.add(newId);
       }
     }
     if (this.analysisErrors.has(id)) {
@@ -398,6 +401,12 @@ export class VisualCanvas {
     return {
       blocks: this.blocksData,
       connections: this.connections.map(([a, b]) => [a.id, b.id]),
+      groups: Array.from(this.groups.entries()).map(([id, g]) => ({
+        id,
+        blocks: Array.from(g.blocks),
+        color: g.color,
+        label: g.label
+      })),
       offset: this.offset,
       scale: this.scale
     };
@@ -416,6 +425,17 @@ export class VisualCanvas {
         return from && to ? [from, to] : null;
       })
       .filter(Boolean);
+    this.groups = new Map(
+      (layout.groups || []).map(g => [
+        g.id,
+        {
+          blocks: new Set(g.blocks || []),
+          color: g.color || getTheme().blockStroke,
+          label: g.label || ''
+        }
+      ])
+    );
+    this.nextGroupId = Math.max(0, ...Array.from(this.groups.keys())) + 1;
     this.offset = layout.offset || { x: 0, y: 0 };
     this.scale = layout.scale ?? 1;
     this.analyze();
@@ -691,8 +711,8 @@ export class VisualCanvas {
         const dy = this.dragged.y - oldY;
         const gid = this.getGroupId(this.dragged.id);
         if (gid !== null) {
-          const set = this.groups.get(gid);
-          for (const id of set) {
+          const group = this.groups.get(gid);
+          for (const id of group.blocks) {
             if (id === this.dragged.id) continue;
             const b = this.blocks.find(bb => bb.id === id);
             if (!b) continue;
@@ -794,8 +814,8 @@ export class VisualCanvas {
           const targets = [this.dragged];
           const gid = this.getGroupId(this.dragged.id);
           if (gid !== null) {
-            const set = this.groups.get(gid);
-            for (const id of set) {
+            const group = this.groups.get(gid);
+            for (const id of group.blocks) {
               if (id === this.dragged.id) continue;
               const b = this.blocks.find(bb => bb.id === id);
               if (b) targets.push(b);
@@ -999,6 +1019,19 @@ export class VisualCanvas {
         this.ctx.lineTo(endX, y);
       }
       this.ctx.stroke();
+    }
+
+    // Draw groups
+    for (const group of this.groups.values()) {
+      const members = this.blocks.filter(b => group.blocks.has(b.id));
+      if (!members.length) continue;
+      const padding = 10;
+      const minX = Math.min(...members.map(b => b.x)) - padding;
+      const minY = Math.min(...members.map(b => b.y)) - padding;
+      const maxX = Math.max(...members.map(b => b.x + b.w)) + padding;
+      const maxY = Math.max(...members.map(b => b.y + b.h)) + padding;
+      const gb = new GroupBlock('', minX, minY, maxX - minX, maxY - minY, group.label, group.color);
+      gb.draw(this.ctx);
     }
 
     // Draw connections

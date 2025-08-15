@@ -20,6 +20,8 @@ export interface HotkeyMap {
   redo: string;
   gotoRelated: string;
   gotoLine: string;
+  groupBlocks: string;
+  ungroupBlocks: string;
   formatCurrentFile: string;
   insertForLoop: string;
   insertWhileLoop: string;
@@ -40,7 +42,9 @@ export const hotkeys: HotkeyMap = {
   undo: cfg.hotkeys?.undo || 'Ctrl+Z',
   redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z',
   gotoRelated: cfg.hotkeys?.gotoRelated || 'Ctrl+Alt+O',
-  gotoLine: cfg.hotkeys?.gotoLine || 'Ctrl+G',
+  gotoLine: cfg.hotkeys?.gotoLine || 'Ctrl+Alt+G',
+  groupBlocks: cfg.hotkeys?.groupBlocks || 'Ctrl+G',
+  ungroupBlocks: cfg.hotkeys?.ungroupBlocks || 'Ctrl+Shift+G',
   formatCurrentFile: cfg.hotkeys?.formatCurrentFile || 'Shift+Alt+F',
   insertForLoop: cfg.hotkeys?.insertForLoop || 'Ctrl+Alt+F',
   insertWhileLoop: cfg.hotkeys?.insertWhileLoop || 'Ctrl+Alt+W',
@@ -102,6 +106,14 @@ function handleKey(e: KeyboardEvent) {
     case hotkeys.redo:
       e.preventDefault();
       canvasRef?.redo?.();
+      break;
+    case hotkeys.groupBlocks:
+      e.preventDefault();
+      canvasRef?.groupSelected?.();
+      break;
+    case hotkeys.ungroupBlocks:
+      e.preventDefault();
+      canvasRef?.ungroupSelected?.();
       break;
     case hotkeys.gotoRelated:
       e.preventDefault();
