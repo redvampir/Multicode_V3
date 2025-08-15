@@ -17,6 +17,7 @@ import {
   VariableGetBlock,
   VariableSetBlock,
   StructBlock,
+  SequenceBlock,
   SwitchBlock,
   FunctionDefineBlock,
   FunctionCallBlock,
@@ -169,5 +170,18 @@ describe('block utilities', () => {
       { id: 'default', kind: 'exec', dir: 'out' }
     ]);
     expect(b.color).toBe(theme.blockKinds.Switch || theme.blockFill);
+  });
+
+  it('preserves order of sequence block steps', () => {
+    const theme = getTheme();
+    const b = createBlock('Sequence', 'seq', 0, 0, '', undefined, { steps: ['a', 'b'] });
+    expect(b).toBeInstanceOf(SequenceBlock);
+    expect(b.ports).toEqual([
+      { id: 'exec[a]', kind: 'exec', dir: 'in' },
+      { id: 'exec[b]', kind: 'exec', dir: 'in' },
+      { id: 'out', kind: 'exec', dir: 'out' }
+    ]);
+    expect(b.color).toBe(theme.blockKinds.Sequence || theme.blockFill);
+    expect(b.steps).toEqual(['a', 'b']);
   });
 });

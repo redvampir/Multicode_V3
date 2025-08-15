@@ -284,6 +284,30 @@ export class ConditionBlock extends Block {
   }
 }
 
+export class SequenceBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  constructor(id, x, y, _w, _h, label, color, data) {
+    super(
+      id,
+      x,
+      y,
+      SequenceBlock.defaultSize.width,
+      SequenceBlock.defaultSize.height,
+      label || 'Sequence',
+      color ?? getTheme().blockKinds.Sequence
+    );
+    this.steps = Array.isArray(data?.steps) ? data.steps : [];
+    this.updatePorts();
+  }
+
+  updatePorts() {
+    this.ports = [
+      ...this.steps.map(s => ({ id: `exec[${s}]`, kind: 'exec', dir: 'in' })),
+      { id: 'out', kind: 'exec', dir: 'out' }
+    ];
+  }
+}
+
 export class IfBlock extends Block {
   static defaultSize = { width: 120, height: 50 };
   static ports = [
@@ -600,6 +624,7 @@ registerBlock('Variable', VariableBlock);
 registerBlock('Variable/Get', VariableGetBlock);
 registerBlock('Variable/Set', VariableSetBlock);
 registerBlock('Condition', ConditionBlock);
+registerBlock('Sequence', SequenceBlock);
 registerBlock('If', IfBlock);
 registerBlock('Switch', SwitchBlock);
 registerBlock('Loop', LoopBlock);
