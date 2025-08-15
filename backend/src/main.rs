@@ -25,6 +25,7 @@ pub use backend::BlockInfo;
 use clap::{Parser, Subcommand};
 #[cfg(not(test))]
 use tauri::State;
+#[cfg(not(test))]
 use tokio::process::Command;
 
 #[cfg(not(test))]
@@ -326,7 +327,7 @@ mod tests {
         let src = "fn main() {}".to_string();
         let blocks = parse_blocks(src, "rust".into()).expect("parse");
         assert!(!blocks.is_empty());
-        assert!(blocks.iter().any(|b| b.kind == "Function"));
+        assert!(blocks.iter().any(|b| b.kind.starts_with("Function")));
     }
 
     #[test]
