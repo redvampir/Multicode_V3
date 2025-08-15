@@ -98,6 +98,74 @@ export async function reloadPlugins(urls) {
 
 // ---- Built-in blocks -------------------------------------------------------
 
+export class NumberLiteralBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [{ id: 'out', kind: 'data', dir: 'out' }];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      NumberLiteralBlock.defaultSize.width,
+      NumberLiteralBlock.defaultSize.height,
+      'Number',
+      getTheme().blockKinds.Literal
+    );
+    this.ports = NumberLiteralBlock.ports;
+  }
+}
+
+export class StringLiteralBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [{ id: 'out', kind: 'data', dir: 'out' }];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      StringLiteralBlock.defaultSize.width,
+      StringLiteralBlock.defaultSize.height,
+      'String',
+      getTheme().blockKinds.Literal
+    );
+    this.ports = StringLiteralBlock.ports;
+  }
+}
+
+export class BooleanLiteralBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [{ id: 'out', kind: 'data', dir: 'out' }];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      BooleanLiteralBlock.defaultSize.width,
+      BooleanLiteralBlock.defaultSize.height,
+      'Boolean',
+      getTheme().blockKinds.Literal
+    );
+    this.ports = BooleanLiteralBlock.ports;
+  }
+}
+
+export class NullLiteralBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [{ id: 'out', kind: 'data', dir: 'out' }];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      NullLiteralBlock.defaultSize.width,
+      NullLiteralBlock.defaultSize.height,
+      'Null',
+      getTheme().blockKinds.Literal
+    );
+    this.ports = NullLiteralBlock.ports;
+  }
+}
+
 export class FunctionBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Function', getTheme().blockKinds.Function);
@@ -122,6 +190,10 @@ export class LoopBlock extends Block {
   }
 }
 
+registerBlock('Literal/Number', NumberLiteralBlock);
+registerBlock('Literal/String', StringLiteralBlock);
+registerBlock('Literal/Boolean', BooleanLiteralBlock);
+registerBlock('Literal/Null', NullLiteralBlock);
 registerBlock('Function', FunctionBlock);
 registerBlock('Variable', VariableBlock);
 registerBlock('Condition', ConditionBlock);

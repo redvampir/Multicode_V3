@@ -17,6 +17,10 @@ export interface VisualTheme {
 export const defaultTheme: VisualTheme = defaultThemeJson as VisualTheme;
 export const darkTheme: VisualTheme = darkThemeJson as VisualTheme;
 
+// ensure color for literal blocks exists
+defaultTheme.blockKinds.Literal = defaultTheme.blockKinds.Literal || '#e1bee7';
+darkTheme.blockKinds.Literal = darkTheme.blockKinds.Literal || '#8e24aa';
+
 const themeMap: Record<string, VisualTheme> = {
   default: defaultTheme,
   dark: darkTheme
