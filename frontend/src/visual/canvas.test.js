@@ -149,6 +149,7 @@ describe('serialize and load', () => {
     vc1.connections = [[a, b]];
     vc1.offset = { x: 5, y: 6 };
     vc1.scale = 2;
+    vc1.groups.set(1, { blocks: new Set(['a', 'b']), color: '#123456', label: 'g1' });
 
     const data = vc1.serialize();
 
@@ -161,5 +162,9 @@ describe('serialize and load', () => {
     expect(vc2.connections[0][1].id).toBe('b');
     expect(vc2.offset).toEqual({ x: 5, y: 6 });
     expect(vc2.scale).toBe(2);
+    expect(vc2.groups.size).toBe(1);
+    const g = vc2.groups.get(1);
+    expect(g?.color).toBe('#123456');
+    expect(Array.from(g?.blocks || [])).toEqual(['a', 'b']);
   });
 });
