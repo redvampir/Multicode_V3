@@ -284,6 +284,28 @@ export class ConditionBlock extends Block {
   }
 }
 
+export class IfBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'cond', kind: 'data', dir: 'in' },
+    { id: 'exec', kind: 'exec', dir: 'in' },
+    { id: 'then', kind: 'exec', dir: 'out' },
+    { id: 'else', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      IfBlock.defaultSize.width,
+      IfBlock.defaultSize.height,
+      'If',
+      getTheme().blockKinds.If
+    );
+    this.ports = IfBlock.ports;
+  }
+}
+
 export class LoopBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Loop', getTheme().blockKinds.Loop);
@@ -459,6 +481,7 @@ registerBlock('Variable', VariableBlock);
 registerBlock('Variable/Get', VariableGetBlock);
 registerBlock('Variable/Set', VariableSetBlock);
 registerBlock('Condition', ConditionBlock);
+registerBlock('If', IfBlock);
 registerBlock('Loop', LoopBlock);
 registerBlock('Array/New', ArrayNewBlock);
 registerBlock('Array/Get', ArrayGetBlock);
