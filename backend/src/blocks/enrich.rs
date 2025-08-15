@@ -41,16 +41,22 @@ pub fn enrich_blocks(blocks: Vec<Block>, content: &str) -> Vec<BlockInfo> {
 }
 
 fn normalize_kind(kind: &str) -> String {
-    let k = kind.to_lowercase();
-    if k.contains("function") {
+    let lower = kind.to_lowercase();
+    if lower == "function/define" {
+        "Function/Define".into()
+    } else if lower == "function/call" {
+        "Function/Call".into()
+    } else if lower == "return" {
+        "Return".into()
+    } else if lower.contains("function") {
         "Function".into()
-    } else if k.contains("if") {
+    } else if lower.contains("if") {
         "Condition".into()
-    } else if k.contains("for") || k.contains("while") || k.contains("loop") {
+    } else if lower.contains("for") || lower.contains("while") || lower.contains("loop") {
         "Loop".into()
-    } else if k.contains("identifier") || k.contains("variable") {
+    } else if lower.contains("identifier") || lower.contains("variable") {
         "Variable".into()
-    } else if k.contains("map") {
+    } else if lower.contains("map") {
         "Map".into()
     } else {
         kind.to_string()

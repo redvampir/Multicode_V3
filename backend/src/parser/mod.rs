@@ -67,11 +67,24 @@ pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
     let mut blocks = Vec::new();
     let mut counter: u64 = 0;
 
+    fn map_kind(kind: &str) -> String {
+        let k = kind.to_lowercase();
+        if k.contains("call") && !k.contains("function") {
+            "Function/Call".into()
+        } else if k.contains("return") {
+            "Return".into()
+        } else if k.contains("function") || k.contains("method") {
+            "Function/Define".into()
+        } else {
+            kind.to_string()
+        }
+    }
+
     fn walk(node: Node, blocks: &mut Vec<Block>, counter: &mut u64) {
         blocks.push(Block {
             visual_id: counter.to_string(),
             node_id: node.id() as u32,
-            kind: node.kind().to_string(),
+            kind: map_kind(node.kind()),
             range: node.byte_range(),
         });
         *counter += 1;

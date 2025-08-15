@@ -16,7 +16,10 @@ import {
   MapSetBlock,
   VariableGetBlock,
   VariableSetBlock,
-  StructBlock
+  StructBlock,
+  FunctionDefineBlock,
+  FunctionCallBlock,
+  ReturnBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
 
@@ -91,6 +94,21 @@ describe('block utilities', () => {
       expect(b).toBeInstanceOf(Ctor);
       expect(b.ports).toEqual(ports);
       expect(b.color).toBe(theme.blockKinds.Map);
+    }
+  });
+
+  it('provides function blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['Function/Define', FunctionDefineBlock],
+      ['Function/Call', FunctionCallBlock],
+      ['Return', ReturnBlock]
+    ];
+    for (const [kind, Ctor] of cases) {
+      const b = createBlock(kind, 'fn', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(Ctor.ports);
+      expect(b.color).toBe(theme.blockKinds.Function);
     }
   });
 

@@ -172,6 +172,69 @@ export class FunctionBlock extends Block {
   }
 }
 
+export class FunctionDefineBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'exec', kind: 'exec', dir: 'in' },
+    { id: 'params', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      FunctionDefineBlock.defaultSize.width,
+      FunctionDefineBlock.defaultSize.height,
+      'Function Define',
+      getTheme().blockKinds.Function
+    );
+    this.ports = FunctionDefineBlock.ports;
+  }
+}
+
+export class FunctionCallBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'exec', kind: 'exec', dir: 'in' },
+    { id: 'params', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      FunctionCallBlock.defaultSize.width,
+      FunctionCallBlock.defaultSize.height,
+      'Function Call',
+      getTheme().blockKinds.Function
+    );
+    this.ports = FunctionCallBlock.ports;
+  }
+}
+
+export class ReturnBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'exec', kind: 'exec', dir: 'in' },
+    { id: 'params', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      ReturnBlock.defaultSize.width,
+      ReturnBlock.defaultSize.height,
+      'Return',
+      getTheme().blockKinds.Function
+    );
+    this.ports = ReturnBlock.ports;
+  }
+}
+
 export class VariableBlock extends Block {
   constructor(id, x, y) {
     super(id, x, y, 120, 50, 'Variable', getTheme().blockKinds.Variable);
@@ -389,6 +452,9 @@ registerBlock('Literal/String', StringLiteralBlock);
 registerBlock('Literal/Boolean', BooleanLiteralBlock);
 registerBlock('Literal/Null', NullLiteralBlock);
 registerBlock('Function', FunctionBlock);
+registerBlock('Function/Define', FunctionDefineBlock);
+registerBlock('Function/Call', FunctionCallBlock);
+registerBlock('Return', ReturnBlock);
 registerBlock('Variable', VariableBlock);
 registerBlock('Variable/Get', VariableGetBlock);
 registerBlock('Variable/Set', VariableSetBlock);
