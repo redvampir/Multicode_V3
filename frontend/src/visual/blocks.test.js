@@ -10,7 +10,10 @@ import {
   NullLiteralBlock,
   ArrayNewBlock,
   ArrayGetBlock,
-  ArraySetBlock
+  ArraySetBlock,
+  MapNewBlock,
+  MapGetBlock,
+  MapSetBlock
 } from './blocks.js';
 import { getTheme } from './theme.ts';
 
@@ -70,6 +73,21 @@ describe('block utilities', () => {
       expect(b).toBeInstanceOf(Ctor);
       expect(b.ports).toEqual(ports);
       expect(b.color).toBe(theme.blockKinds.Array);
+    }
+  });
+
+  it('provides map blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['Map/New', MapNewBlock, MapNewBlock.ports],
+      ['Map/Get', MapGetBlock, MapGetBlock.ports],
+      ['Map/Set', MapSetBlock, MapSetBlock.ports]
+    ];
+    for (const [kind, Ctor, ports] of cases) {
+      const b = createBlock(kind, 'map', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(ports);
+      expect(b.color).toBe(theme.blockKinds.Map);
     }
   });
 });

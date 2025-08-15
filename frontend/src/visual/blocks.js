@@ -258,6 +258,74 @@ export class ArraySetBlock extends Block {
   }
 }
 
+export class MapNewBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      MapNewBlock.defaultSize.width,
+      MapNewBlock.defaultSize.height,
+      'Map New',
+      getTheme().blockKinds.Map
+    );
+    this.ports = MapNewBlock.ports;
+  }
+}
+
+export class MapGetBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'map', kind: 'data', dir: 'in' },
+    { id: 'key', kind: 'data', dir: 'in' },
+    { id: 'value', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      MapGetBlock.defaultSize.width,
+      MapGetBlock.defaultSize.height,
+      'Map Get',
+      getTheme().blockKinds.Map
+    );
+    this.ports = MapGetBlock.ports;
+  }
+}
+
+export class MapSetBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'execIn', kind: 'exec', dir: 'in' },
+    { id: 'execOut', kind: 'exec', dir: 'out' },
+    { id: 'map', kind: 'data', dir: 'in' },
+    { id: 'key', kind: 'data', dir: 'in' },
+    { id: 'value', kind: 'data', dir: 'in' },
+    { id: 'result', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      MapSetBlock.defaultSize.width,
+      MapSetBlock.defaultSize.height,
+      'Map Set',
+      getTheme().blockKinds.Map
+    );
+    this.ports = MapSetBlock.ports;
+  }
+}
+
 registerBlock('Literal/Number', NumberLiteralBlock);
 registerBlock('Literal/String', StringLiteralBlock);
 registerBlock('Literal/Boolean', BooleanLiteralBlock);
@@ -269,3 +337,6 @@ registerBlock('Loop', LoopBlock);
 registerBlock('Array/New', ArrayNewBlock);
 registerBlock('Array/Get', ArrayGetBlock);
 registerBlock('Array/Set', ArraySetBlock);
+registerBlock('Map/New', MapNewBlock);
+registerBlock('Map/Get', MapGetBlock);
+registerBlock('Map/Set', MapSetBlock);

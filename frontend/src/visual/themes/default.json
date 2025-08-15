@@ -12,6 +12,7 @@
     "Variable": "#f1f8e9",
     "Condition": "#fff9c4",
     "Loop": "#fce4ec",
-    "Array": "#bbdefb"
+    "Array": "#bbdefb",
+    "Map": "#c8e6c9"
   }
 }

@@ -195,11 +195,56 @@
       },
       "additionalProperties": false
     },
+    "MapNewNode": {
+      "type": "object",
+      "required": ["kind", "ports"],
+      "properties": {
+        "kind": { "const": "Map/New" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 3,
+          "maxItems": 3
+        }
+      },
+      "additionalProperties": false
+    },
+    "MapGetNode": {
+      "type": "object",
+      "required": ["kind", "ports"],
+      "properties": {
+        "kind": { "const": "Map/Get" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 5,
+          "maxItems": 5
+        }
+      },
+      "additionalProperties": false
+    },
+    "MapSetNode": {
+      "type": "object",
+      "required": ["kind", "ports"],
+      "properties": {
+        "kind": { "const": "Map/Set" },
+        "ports": {
+          "type": "array",
+          "items": { "$ref": "#/definitions/VizPort" },
+          "minItems": 6,
+          "maxItems": 6
+        }
+      },
+      "additionalProperties": false
+    },
     "VizNode": {
       "oneOf": [
         { "$ref": "#/definitions/ArrayNewNode" },
         { "$ref": "#/definitions/ArrayGetNode" },
-        { "$ref": "#/definitions/ArraySetNode" }
+        { "$ref": "#/definitions/ArraySetNode" },
+        { "$ref": "#/definitions/MapNewNode" },
+        { "$ref": "#/definitions/MapGetNode" },
+        { "$ref": "#/definitions/MapSetNode" }
       ]
     }
   }
