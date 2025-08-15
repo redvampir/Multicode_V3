@@ -5,8 +5,10 @@ vi.mock('../editor/visual-meta.js', () => ({
   previewDiff: vi.fn().mockResolvedValue(true),
   renameMetaId: vi.fn().mockResolvedValue(true)
 }));
+vi.mock('./block-editor.ts', () => ({ openBlockEditor: vi.fn() }));
 import { analyzeConnections, VisualCanvas } from './canvas.js';
 import { renameMetaId } from '../editor/visual-meta.js';
+import { openBlockEditor } from './block-editor.ts';
 import { GRID_SIZE } from './settings.ts';
 
 describe('analyzeConnections', () => {
@@ -17,6 +19,35 @@ describe('analyzeConnections', () => {
     expect(Array.from(missing)).toEqual(['c']);
     expect(cycles.has('a->b')).toBe(true);
     expect(cycles.has('b->a')).toBe(true);
+  });
+});
+
+describe('block editor integration', () => {
+  it('opens editor on block double click', () => {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    const vc = new VisualCanvas(canvasEl);
+    vc.metaView = {};
+    vc.saveViewState = vi.fn();
+    const block = {
+      id: 'a',
+      x: 0,
+      y: 0,
+      w: 10,
+      h: 10,
+      contains(x, y) {
+        return x >= 0 && x <= 10 && y >= 0 && y <= 10;
+      }
+    };
+    vc.blocks = [block];
+    const ev = new MouseEvent('dblclick');
+    Object.defineProperty(ev, 'offsetX', { get: () => 5 });
+    Object.defineProperty(ev, 'offsetY', { get: () => 5 });
+    vc.canvas.dispatchEvent(ev);
+    expect(openBlockEditor).toHaveBeenCalledWith(vc, block);
   });
 });
 

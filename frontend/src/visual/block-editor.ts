@@ -127,6 +127,13 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
     overlay.remove();
   }
 
+  textarea.addEventListener('keydown', e => {
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      close();
+    }
+  });
+
   cancelBtn.addEventListener('click', close);
   saveBtn.addEventListener('click', () => {
     let newText = textarea.value;
@@ -169,5 +176,6 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
 
   document.body.appendChild(overlay);
   textarea.focus();
+  return overlay;
 }
 

@@ -674,6 +674,7 @@ export class VisualCanvas {
       const pos = this.toWorld(e.offsetX, e.offsetY);
       const block = this.blocks.find(b => b.contains(pos.x, pos.y));
       if (block) {
+        if (!this.metaView) return;
         this.saveViewState();
         openBlockEditor(this, block);
       } else {
