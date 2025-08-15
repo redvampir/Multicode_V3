@@ -1,7 +1,26 @@
-const fs = require('fs-extra');
+let fs;
+try {
+  fs = require('fs-extra');
+} catch {
+  fs = require('fs');
+  // polyfill ensureDirSync used below
+  fs.ensureDirSync = (dir) => fs.mkdirSync(dir, { recursive: true });
+}
 const path = require('path');
 const { spawn } = require('child_process');
-const ora = require('ora');
+
+let ora;
+try {
+  ora = require('ora');
+} catch {
+  ora = (text) => ({
+    start: () => console.log(text),
+    succeed: (msg) => console.log(msg || text),
+    fail: (msg) => console.log(msg || text),
+    stop: () => console.log(text),
+    isEnabled: false,
+  });
+}
 
 function createLogger(name) {
   const logsDir = path.join(__dirname, '..', 'logs');

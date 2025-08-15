@@ -1,8 +1,14 @@
 #!/usr/bin/env node
-const fs = require('fs-extra');
+const fs = require('fs');
+const fsp = fs.promises;
 const path = require('path');
 const readline = require('readline');
 const { createLogger, runCommand, createSpinner } = require('./utils');
+
+if (!fsp || !fsp.readFile) {
+  console.error('Node.js fs.promises API is required to run setup');
+  process.exit(1);
+}
 
 process.env.NODE_ENV = process.env.NODE_ENV || 'development';
 
@@ -16,26 +22,35 @@ async function ask(question) {
   });
 }
 
+async function pathExists(p) {
+  try {
+    await fsp.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function getWorkspaceDirs(rootDir, patterns) {
   const dirs = [];
   for (const pattern of patterns) {
     if (pattern.endsWith('/*')) {
       const base = pattern.slice(0, -2);
       const baseDir = path.join(rootDir, base);
-      if (!(await fs.pathExists(baseDir))) continue;
-      const entries = await fs.readdir(baseDir);
+      if (!(await pathExists(baseDir))) continue;
+      const entries = await fsp.readdir(baseDir);
       for (const entry of entries) {
         const wsDir = path.join(baseDir, entry);
         if (
-          (await fs.pathExists(path.join(wsDir, 'package.json')))
-          && (await fs.stat(wsDir)).isDirectory()
+          (await pathExists(path.join(wsDir, 'package.json')))
+          && (await fsp.stat(wsDir)).isDirectory()
         ) {
           dirs.push(wsDir);
         }
       }
     } else {
       const wsDir = path.join(rootDir, pattern);
-      if (await fs.pathExists(path.join(wsDir, 'package.json'))) {
+      if (await pathExists(path.join(wsDir, 'package.json'))) {
         dirs.push(wsDir);
       }
     }
@@ -51,13 +66,13 @@ async function main() {
   try {
     const rootDir = path.join(__dirname, '..');
     const pkgPath = path.join(rootDir, 'package.json');
-    const rootPkg = await fs.readJson(pkgPath);
+    const rootPkg = JSON.parse(await fsp.readFile(pkgPath, 'utf8'));
     const workspaces = await getWorkspaceDirs(rootDir, rootPkg.workspaces || []);
     workspaces.unshift(rootDir);
 
     const missing = {};
     for (const wsDir of workspaces) {
-      const pkg = await fs.readJson(path.join(wsDir, 'package.json'));
+      const pkg = JSON.parse(await fsp.readFile(path.join(wsDir, 'package.json'), 'utf8'));
       const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
       const missingDeps = Object.keys(deps).filter((dep) => {
         try {
