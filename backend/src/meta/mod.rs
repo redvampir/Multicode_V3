@@ -84,6 +84,16 @@ pub fn validate(meta: &VisualMeta) -> Result<(), Vec<ValidationError>> {
         }
     }
 
+    let mut anchor_set = HashSet::new();
+    for anc in &meta.anchors {
+        if !anchor_set.insert(anc) {
+            errors.push(ValidationError {
+                field: "anchors".into(),
+                message: format!("duplicate anchor '{anc}'"),
+            });
+        }
+    }
+
     if let Some(ext) = &meta.extends {
         if ext.trim().is_empty() {
             errors.push(ValidationError {
@@ -205,6 +215,16 @@ pub fn merge_base_meta(id: &str) -> Option<VisualMeta> {
                 acc
             },
         );
+        child.anchors = base
+            .anchors
+            .into_iter()
+            .chain(child.anchors.into_iter())
+            .fold(Vec::new(), |mut acc, anc| {
+                if !acc.contains(&anc) {
+                    acc.push(anc);
+                }
+                acc
+            });
         if child.origin.is_none() {
             child.origin = base.origin;
         }
@@ -300,6 +320,7 @@ mod tests {
             y: 20.0,
             tags: vec!["alpha".into(), "beta".into()],
             links: vec![],
+            anchors: vec!["a".into()],
             tests: vec![],
             extends: None,
             origin: None,
@@ -319,6 +340,7 @@ mod tests {
         assert_eq!(metas[0].x, 10.0);
         assert_eq!(metas[0].tags, vec!["alpha", "beta"]);
         assert!(metas[0].links.is_empty());
+        assert_eq!(metas[0].anchors, vec!["a"]);
         assert_eq!(
             metas[0].ai.as_ref().unwrap().description.as_deref(),
             Some("desc")

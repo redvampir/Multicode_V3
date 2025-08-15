@@ -108,6 +108,37 @@ describe('block editor', () => {
     ]);
   });
 
+  it('allows editing try exceptions', () => {
+    const json = '{"id":"a","data":{"exceptions":["Error"]}}';
+    const dispatch = vi.fn();
+    const metaView = {
+      state: { doc: { sliceString: () => json } },
+      dispatch
+    } as any;
+    const block = createBlock('Try', 'a', 0, 0, 'Try', undefined, { exceptions: ['Error'] });
+    const vc: any = {
+      canvas: { getBoundingClientRect: () => ({ left: 0, top: 0 }) } as any,
+      metaView,
+      blockDataMap: new Map([
+        ['a', { range: [0, json.length], kind: 'Try', data: { exceptions: ['Error'] } }]
+      ]),
+      upsertMeta: vi.fn(),
+      fileId: 'f1',
+      scale: 1,
+      offset: { x: 0, y: 0 }
+    };
+
+    openBlockEditor(vc, block);
+    const excInput = document.querySelector('input')! as HTMLInputElement;
+    excInput.value = 'Exception';
+    const btn = Array.from(document.querySelectorAll('button')).find(b => b.textContent === 'Save')!;
+    btn.dispatchEvent(new Event('click'));
+
+    expect(dispatch).toHaveBeenCalled();
+    const call = dispatch.mock.calls[0][0];
+    expect(call.changes.insert).toContain('\"exceptions\":[\"Exception\"]');
+  });
+
   it('visualizes if block branches', () => {
     const theme = getTheme();
     const b = new IfBlock('if1', 0, 0);

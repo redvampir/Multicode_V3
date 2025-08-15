@@ -39,6 +39,7 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
 
   const fieldInputs: HTMLInputElement[] = [];
   const caseInputs: HTMLInputElement[] = [];
+  const exceptionInputs: HTMLInputElement[] = [];
   if (data.kind === 'Struct') {
     let metaObj: any = {};
     try {
@@ -83,6 +84,30 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
     addBtn.addEventListener('click', () => addCase());
     casesContainer.appendChild(addBtn);
     overlay.appendChild(casesContainer);
+  } else if (data.kind === 'Try') {
+    let metaObj: any = {};
+    try {
+      metaObj = JSON.parse(textarea.value);
+    } catch (_) {}
+    const existing = Array.isArray(metaObj?.data?.exceptions)
+      ? metaObj.data.exceptions
+      : [];
+    const excContainer = document.createElement('div');
+    excContainer.style.marginTop = '4px';
+    function addExc(value = '') {
+      const inp = document.createElement('input');
+      inp.type = 'text';
+      inp.value = value;
+      exceptionInputs.push(inp);
+      excContainer.appendChild(inp);
+      excContainer.appendChild(document.createElement('br'));
+    }
+    existing.forEach(e => addExc(e));
+    const addBtn = document.createElement('button');
+    addBtn.textContent = 'Add exception';
+    addBtn.addEventListener('click', () => addExc());
+    excContainer.appendChild(addBtn);
+    overlay.appendChild(excContainer);
   }
 
   const btnBar = document.createElement('div');
@@ -105,7 +130,7 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
   cancelBtn.addEventListener('click', close);
   saveBtn.addEventListener('click', () => {
     let newText = textarea.value;
-    if (fieldInputs.length || caseInputs.length) {
+    if (fieldInputs.length || caseInputs.length || exceptionInputs.length) {
       let obj: any = {};
       try {
         obj = JSON.parse(newText);
@@ -124,6 +149,12 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
           (block as any).updatePorts();
           (vc as any).draw?.();
         }
+      }
+      if (exceptionInputs.length) {
+        const exceptions = exceptionInputs.map(i => i.value.trim()).filter(Boolean);
+        obj.data = obj.data || {};
+        obj.data.exceptions = exceptions;
+        (block as any).exceptions = exceptions;
       }
       newText = JSON.stringify(obj);
       data.data = obj.data;

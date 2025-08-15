@@ -340,6 +340,7 @@ mod tests {
             y: 2.0,
             tags: vec![],
             links: vec![],
+            anchors: vec![],
             tests: vec![],
             extends: None,
             origin: None,
