@@ -306,6 +306,18 @@ function handleKey(e: KeyboardEvent) {
         e.preventDefault();
         insertKeywordBlock('while');
         keywordBuffer = '';
+      } else if (keywordBuffer.endsWith('if')) {
+        e.preventDefault();
+        insertKeywordBlock('if');
+        keywordBuffer = '';
+      } else if (keywordBuffer.endsWith('switch')) {
+        e.preventDefault();
+        insertKeywordBlock('switch');
+        keywordBuffer = '';
+      } else if (keywordBuffer.endsWith('return')) {
+        e.preventDefault();
+        insertKeywordBlock('return');
+        keywordBuffer = '';
       } else if (keywordBuffer.endsWith('await')) {
         e.preventDefault();
         insertKeywordBlock('await');
@@ -402,7 +414,7 @@ export function zoomToFit() {
   canvasRef?.zoomToFit();
 }
 
-function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach' | 'await' | 'delay' | 'on') {
+function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'if' | 'switch' | 'return' | 'foreach' | 'await' | 'delay' | 'on') {
   if (!canvasRef) return;
   const theme = getTheme();
   let kind: string;
@@ -428,6 +440,21 @@ function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach'
       kind = 'Loop/While';
       label = 'While';
       color = theme.blockKinds.Loop || theme.blockFill;
+      break;
+    case 'if':
+      kind = 'If';
+      label = 'If';
+      color = theme.blockKinds.If || theme.blockFill;
+      break;
+    case 'switch':
+      kind = 'Switch';
+      label = 'Switch';
+      color = theme.blockKinds.Switch || theme.blockFill;
+      break;
+    case 'return':
+      kind = 'Return';
+      label = 'Return';
+      color = theme.blockKinds.Function || theme.blockFill;
       break;
     case 'foreach':
       kind = 'Loop/ForEach';
@@ -456,9 +483,10 @@ function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'foreach'
     (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
       ? globalThis.crypto.randomUUID()
       : Math.random().toString(36).slice(2);
-  const block = createBlock(kind, id, 0, 0, label, color);
+  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
+  const block = createBlock(kind, id, pos.x, pos.y, label, color);
   canvasRef.blocks.push(block);
-  const data: any = { kind, visual_id: id, x: 0, y: 0, translations: { en: label } };
+  const data: any = { kind, visual_id: id, x: pos.x, y: pos.y, translations: { en: label } };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);
   canvasRef.selected = new Set([block]);
@@ -484,14 +512,15 @@ function insertOperatorBlock(op: OperatorSymbol) {
     (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
       ? globalThis.crypto.randomUUID()
       : Math.random().toString(36).slice(2);
+  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.Operator || theme.blockFill;
-  const block = createBlock(conf.kind, id, 0, 0, conf.label, color);
+  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
   canvasRef.blocks.push(block);
   const data: any = {
     kind: conf.kind,
     visual_id: id,
-    x: 0,
-    y: 0,
+    x: pos.x,
+    y: pos.y,
     translations: { en: conf.label }
   };
   canvasRef.blocksData.push(data);
@@ -516,14 +545,15 @@ function insertLogicOperatorBlock(op: LogicOperatorSymbol) {
     (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
       ? globalThis.crypto.randomUUID()
       : Math.random().toString(36).slice(2);
+  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.OpLogic || theme.blockFill;
-  const block = createBlock(conf.kind, id, 0, 0, conf.label, color);
+  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
   canvasRef.blocks.push(block);
   const data: any = {
     kind: conf.kind,
     visual_id: id,
-    x: 0,
-    y: 0,
+    x: pos.x,
+    y: pos.y,
     translations: { en: conf.label }
   };
   canvasRef.blocksData.push(data);
@@ -551,14 +581,15 @@ function insertComparisonOperatorBlock(op: ComparisonOperatorSymbol) {
     (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
       ? globalThis.crypto.randomUUID()
       : Math.random().toString(36).slice(2);
+  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.OpComparison || theme.blockFill;
-  const block = createBlock(conf.kind, id, 0, 0, conf.label, color);
+  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
   canvasRef.blocks.push(block);
   const data: any = {
     kind: conf.kind,
     visual_id: id,
-    x: 0,
-    y: 0,
+    x: pos.x,
+    y: pos.y,
     translations: { en: conf.label }
   };
   canvasRef.blocksData.push(data);
@@ -577,14 +608,15 @@ function insertLogBlock() {
     (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
       ? globalThis.crypto.randomUUID()
       : Math.random().toString(36).slice(2);
+  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.Log || theme.blockFill;
-  const block = createBlock(kind, id, 0, 0, label, color, { exec: true });
+  const block = createBlock(kind, id, pos.x, pos.y, label, color, { exec: true });
   canvasRef.blocks.push(block);
   const data: any = {
     kind,
     visual_id: id,
-    x: 0,
-    y: 0,
+    x: pos.x,
+    y: pos.y,
     translations: { en: label },
     exec: true
   };
