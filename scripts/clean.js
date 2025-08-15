@@ -1,9 +1,32 @@
 #!/usr/bin/env node
-const fs = require('fs-extra');
+const fs = require('fs');
+const fsp = fs.promises;
 const path = require('path');
 const { createLogger, createSpinner } = require('./utils');
 
+if (!fsp || !fsp.rm) {
+  console.error('Node.js fs.promises.rm is required to run clean');
+  process.exit(1);
+}
+
 process.env.NODE_ENV = 'development';
+
+async function pathExists(p) {
+  try {
+    await fsp.access(p);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function emptyDir(dir) {
+  await fsp.mkdir(dir, { recursive: true });
+  const entries = await fsp.readdir(dir);
+  await Promise.all(
+    entries.map((entry) => fsp.rm(path.join(dir, entry), { recursive: true, force: true }))
+  );
+}
 
 async function main() {
   const log = createLogger('clean');
@@ -22,13 +45,13 @@ async function main() {
   try {
     for (const target of targets) {
       const full = path.join(root, target);
-      if (await fs.pathExists(full)) {
-        await fs.remove(full);
+      if (await pathExists(full)) {
+        await fsp.rm(full, { recursive: true, force: true });
         log(`Removed ${full}`);
       }
     }
     const logsDir = path.join(root, 'logs');
-    await fs.emptyDir(logsDir);
+    await emptyDir(logsDir);
     log('Logs cleared');
     spinner.succeed('Clean complete');
   } catch (err) {
