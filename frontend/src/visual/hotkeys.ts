@@ -8,6 +8,7 @@ import { gotoLine } from '../editor/goto-line.js';
 import { formatCurrentFile } from '../../scripts/format.js';
 import { EditorSelection } from '@codemirror/state';
 import * as commands from '@codemirror/commands';
+import { openCommandPalette } from '../editor/command-palette.ts';
 
 export interface HotkeyMap {
   copyBlock: string;
@@ -15,6 +16,7 @@ export interface HotkeyMap {
   selectConnections: string;
   focusSearch: string;
   showHelp: string;
+  openPalette: string;
   zoomToFit: string;
   undo: string;
   redo: string;
@@ -38,6 +40,7 @@ export const hotkeys: HotkeyMap = {
   selectConnections: cfg.hotkeys?.selectConnections || 'Ctrl+Shift+A',
   focusSearch: cfg.hotkeys?.focusSearch || 'Ctrl+F',
   showHelp: cfg.hotkeys?.showHelp || 'Ctrl+?',
+  openPalette: cfg.hotkeys?.openPalette || 'Ctrl+P or Space Space',
   zoomToFit: cfg.hotkeys?.zoomToFit || 'Ctrl+0',
   undo: cfg.hotkeys?.undo || 'Ctrl+Z',
   redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z',
@@ -94,6 +97,10 @@ function handleKey(e: KeyboardEvent) {
     case hotkeys.showHelp:
       e.preventDefault();
       showHotkeyHelp();
+      break;
+    case 'Ctrl+P':
+      e.preventDefault();
+      openCommandPalette();
       break;
     case hotkeys.zoomToFit:
       e.preventDefault();
@@ -179,6 +186,21 @@ function handleKey(e: KeyboardEvent) {
         if (canvasRef.redoStack) canvasRef.redoStack = [];
       }
       break;
+  }
+
+  if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === ' ') {
+    const now = Date.now();
+    if (now - lastSpaceTime < 400) {
+      e.preventDefault();
+      openCommandPalette();
+      lastSpaceTime = 0;
+    } else {
+      lastSpaceTime = now;
+    }
+    keywordBuffer = '';
+    symbolBuffer = '';
+    pendingSymbol = '';
+    return;
   }
 
   if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
@@ -370,6 +392,7 @@ let hotkeyDialog: HTMLDialogElement | null = null;
 let keywordBuffer = '';
 let symbolBuffer = '';
 let pendingSymbol = '';
+let lastSpaceTime = 0;
 
 export function setCanvas(vc: VisualCanvas) {
   canvasRef = vc;
