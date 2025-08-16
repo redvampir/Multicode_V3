@@ -9,6 +9,7 @@ import { emit, on } from '../shared/event-bus.js';
 import { openBlockEditor } from './block-editor.ts';
 import { openInspector } from './inspector.tsx';
 import { searchBlocks, replaceBlockLabels, createReplaceDialog } from './search.ts';
+import { highlightRange } from '../code-sync.ts';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
 
@@ -249,6 +250,13 @@ export class VisualCanvas {
     emit('blockSelected', { id });
     const block = id ? this.blocks.find(b => b.id === id) : null;
     openInspector(this, block || null);
+
+    const anchors = id ? this.blockDataMap.get(id)?.anchors : null;
+    if (Array.isArray(anchors) && anchors.length > 0) {
+      anchors.forEach(a => highlightRange(a));
+    } else {
+      highlightRange(null);
+    }
   }
 
   search(label) {
