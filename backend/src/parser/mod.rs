@@ -56,6 +56,8 @@ pub struct Block {
     pub kind: String,
     /// Byte range of the node within the source.
     pub range: Range<usize>,
+    /// Anchors pointing to ranges within the source.
+    pub anchors: Vec<(usize, usize)>,
 }
 
 /// Convert an AST [`Tree`] into a flat list of [`Block`]s.
@@ -68,24 +70,40 @@ pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
     let mut counter: u64 = 0;
 
     fn map_kind(kind: &str) -> String {
-        let k = kind.to_lowercase();
-        if k.contains("call") && !k.contains("function") {
-            "Function/Call".into()
-        } else if k.contains("return") {
-            "Return".into()
-        } else if k.contains("function") || k.contains("method") {
-            "Function/Define".into()
-        } else {
-            kind.to_string()
+        match kind {
+            "+" | "-" | "*" | "/" | "%" | "&&" | "||" | "==" | "!=" | ">" | ">=" | "<" | "<=" => {
+                format!("Op/{kind}")
+            }
+            "identifier" => "Variable/Get".into(),
+            _ => {
+                let k = kind.to_lowercase();
+                if k.contains("call") && !k.contains("function") {
+                    "Function/Call".into()
+                } else if k.contains("return") {
+                    "Return".into()
+                } else if k.contains("function") || k.contains("method") {
+                    "Function/Define".into()
+                } else {
+                    kind.to_string()
+                }
+            }
         }
     }
 
     fn walk(node: Node, blocks: &mut Vec<Block>, counter: &mut u64) {
+        let range = node.byte_range();
+        let kind = map_kind(node.kind());
+        let anchors = if kind.starts_with("Op/") || kind == "Variable/Get" {
+            vec![(range.start, range.end)]
+        } else {
+            vec![]
+        };
         blocks.push(Block {
             visual_id: counter.to_string(),
             node_id: node.id() as u32,
-            kind: map_kind(node.kind()),
-            range: node.byte_range(),
+            kind,
+            range,
+            anchors,
         });
         *counter += 1;
 
@@ -135,5 +153,35 @@ mod tests {
                 assert!(!block.visual_id.is_empty());
             }
         }
+    }
+
+    #[test]
+    fn parse_expression_into_ops_and_variables() {
+        let src = "a + b * c";
+        let tree = parse(src, Lang::Python, None).expect("failed to parse");
+        let blocks = parse_to_blocks(&tree);
+        let mut found = 0;
+        for b in &blocks {
+            match b.kind.as_str() {
+                "Op/+" => {
+                    assert_eq!(b.anchors, vec![(2, 3)]);
+                    found += 1;
+                }
+                "Op/*" => {
+                    assert_eq!(b.anchors, vec![(6, 7)]);
+                    found += 1;
+                }
+                "Variable/Get" => {
+                    if b.anchors == vec![(0, 1)]
+                        || b.anchors == vec![(4, 5)]
+                        || b.anchors == vec![(8, 9)]
+                    {
+                        found += 1;
+                    }
+                }
+                _ => {}
+            }
+        }
+        assert_eq!(found, 5);
     }
 }

@@ -31,6 +31,7 @@ pub fn enrich_blocks(blocks: Vec<Block>, content: &str) -> Vec<BlockInfo> {
                 kind: label,
                 translations,
                 range: (b.range.start, b.range.end),
+                anchors: b.anchors.clone(),
                 x: pos.map(|m| m.x).unwrap_or(0.0),
                 y: pos.map(|m| m.y).unwrap_or(0.0),
                 ai: pos.and_then(|m| m.ai.clone()),
@@ -75,6 +76,7 @@ mod tests {
             node_id: 1,
             kind: "function".into(),
             range: 0..5,
+            anchors: vec![],
         };
         let res = enrich_blocks(vec![block], "");
         assert_eq!(res.len(), 1);
@@ -91,6 +93,7 @@ mod tests {
             node_id: 1,
             kind: "function".into(),
             range: 0..5,
+            anchors: vec![],
         };
         let content = "<!-- @VISUAL_META {\"id\":\"42\",\"x\":1.0,\"y\":2.0,\"translations\":{\"en\":\"Test\"}} -->";
         let res = enrich_blocks(vec![block], content);

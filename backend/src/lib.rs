@@ -38,6 +38,8 @@ pub struct BlockInfo {
     pub kind: String,
     pub translations: HashMap<String, String>,
     pub range: (usize, usize),
+    #[serde(default)]
+    pub anchors: Vec<(usize, usize)>,
     pub x: f64,
     pub y: f64,
     pub ai: Option<AiNote>,
