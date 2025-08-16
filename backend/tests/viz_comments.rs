@@ -1,6 +1,6 @@
-use backend::parser::viz_comments::{load_viz_document, parse_viz_comments, save_viz_document, VizDocument, VizEntry};
-use tempfile::tempdir;
+use backend::parser::viz_comments::{load_viz_document, parse_viz_comments, save_viz_document};
 use std::fs;
+use tempfile::tempdir;
 
 #[test]
 fn parse_comment_into_document() {
@@ -19,7 +19,10 @@ fn parse_comment_into_document() {
 fn roundtrip_import_export() -> std::io::Result<()> {
     let tmp = tempdir()?;
     let path = tmp.path().join("file.rs");
-    fs::write(&path, "// @viz op=Add node=1 id=n1 in=a,b out=c\nfn main() {}\n")?;
+    fs::write(
+        &path,
+        "// @viz op=Add node=1 id=n1 in=a,b out=c\nfn main() {}\n",
+    )?;
     // Import from comment (since .viz.json doesn't exist)
     let doc1 = load_viz_document(&path)?;
     assert_eq!(doc1.nodes.len(), 1);
