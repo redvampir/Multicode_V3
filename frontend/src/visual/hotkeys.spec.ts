@@ -32,7 +32,9 @@ async function setup() {
 describe('hotkeys block insertion', () => {
   const operatorCases = [
     { keys: ['+', 'x'], kind: 'Operator/Add' },
-    { keys: ['-',], kind: 'Operator/Subtract' },
+    { keys: ['-', 'x'], kind: 'Operator/Subtract' },
+    { keys: ['+', '+'], kind: 'Op/Inc' },
+    { keys: ['-', '-'], kind: 'Op/Dec' },
     { keys: ['*'], kind: 'Operator/Multiply' },
     { keys: ['/'], kind: 'Operator/Divide' },
     { keys: ['%'], kind: 'Operator/Modulo' },

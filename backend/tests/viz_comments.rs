@@ -35,3 +35,12 @@ fn roundtrip_import_export() -> std::io::Result<()> {
     assert_eq!(doc1, doc2);
     Ok(())
 }
+
+#[test]
+fn parse_inc_dec_ops() {
+    let src = "// @viz op=inc node=1 id=i in=a out=b\n// @viz op=dec node=2 id=d in=b out=c";
+    let doc = parse_viz_comments(src);
+    assert_eq!(doc.nodes.len(), 2);
+    assert_eq!(doc.nodes[0].op.as_deref(), Some("inc"));
+    assert_eq!(doc.nodes[1].op.as_deref(), Some("dec"));
+}

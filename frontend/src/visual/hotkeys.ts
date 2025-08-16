@@ -227,14 +227,24 @@ function handleKey(e: KeyboardEvent) {
     if (e.key === '+') {
       if (pendingSymbol === '+') {
         e.preventDefault();
-        insertOperatorBlock('++');
+        insertOpBlock('++');
         pendingSymbol = '';
       } else {
         pendingSymbol = '+';
       }
       keywordBuffer = '';
       symbolBuffer = '';
-    } else if ('-*/%'.includes(e.key)) {
+    } else if (e.key === '-') {
+      if (pendingSymbol === '-') {
+        e.preventDefault();
+        insertOpBlock('--');
+        pendingSymbol = '';
+      } else {
+        pendingSymbol = '-';
+      }
+      keywordBuffer = '';
+      symbolBuffer = '';
+    } else if ('*/%'.includes(e.key)) {
       e.preventDefault();
       insertOperatorBlock(e.key as OperatorSymbol);
       keywordBuffer = '';
@@ -306,6 +316,9 @@ function handleKey(e: KeyboardEvent) {
       } else if (pendingSymbol === '+') {
         e.preventDefault();
         insertOperatorBlock('+');
+      } else if (pendingSymbol === '-') {
+        e.preventDefault();
+        insertOperatorBlock('-');
       }
       pendingSymbol = '';
       symbolBuffer = '';
@@ -526,6 +539,38 @@ function insertOperatorBlock(op: OperatorSymbol) {
     '/': { kind: 'Operator/Divide', label: '/' },
     '%': { kind: 'Operator/Modulo', label: '%' },
     '++': { kind: 'Operator/Concat', label: '++' }
+  };
+  const conf = mapping[op];
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
+  const color = theme.blockKinds.Operator || theme.blockFill;
+  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
+  canvasRef.blocks.push(block);
+  const data: any = {
+    kind: conf.kind,
+    visual_id: id,
+    x: pos.x,
+    y: pos.y,
+    translations: { en: conf.label }
+  };
+  canvasRef.blocksData.push(data);
+  canvasRef.blockDataMap.set(id, data);
+  canvasRef.selected = new Set([block]);
+  canvasRef.moveCallback?.(block);
+  canvasRef.draw?.();
+}
+
+type OpSymbol = '++' | '--';
+
+function insertOpBlock(op: OpSymbol) {
+  if (!canvasRef) return;
+  const theme = getTheme();
+  const mapping: Record<OpSymbol, { kind: string; label: string }> = {
+    '++': { kind: 'Op/Inc', label: '++' },
+    '--': { kind: 'Op/Dec', label: '--' }
   };
   const conf = mapping[op];
   const id =

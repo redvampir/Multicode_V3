@@ -314,6 +314,26 @@ class MicroOpBlock extends Block {
   }
 }
 
+class UnaryMicroOpBlock extends Block {
+  static defaultSize = { width: 56, height: 28 };
+  static ports = [
+    { id: 'in', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y, label) {
+    super(
+      id,
+      x,
+      y,
+      UnaryMicroOpBlock.defaultSize.width,
+      UnaryMicroOpBlock.defaultSize.height,
+      label,
+      getTheme().blockKinds.Operator || getTheme().blockFill
+    );
+    this.ports = UnaryMicroOpBlock.ports;
+  }
+}
+
 export class OpPlusMicroBlock extends MicroOpBlock {
   constructor(id, x, y) {
     super(id, x, y, '+');
@@ -323,6 +343,18 @@ export class OpPlusMicroBlock extends MicroOpBlock {
 export class OpMultiplyMicroBlock extends MicroOpBlock {
   constructor(id, x, y) {
     super(id, x, y, '*');
+  }
+}
+
+export class OpIncBlock extends UnaryMicroOpBlock {
+  constructor(id, x, y) {
+    super(id, x, y, '++');
+  }
+}
+
+export class OpDecBlock extends UnaryMicroOpBlock {
+  constructor(id, x, y) {
+    super(id, x, y, '--');
   }
 }
 
@@ -982,6 +1014,8 @@ registerBlock('Operator/Modulo', ModuloBlock);
 registerBlock('Operator/Concat', OpConcatBlock);
 registerBlock('Op/+', OpPlusMicroBlock);
 registerBlock('Op/*', OpMultiplyMicroBlock);
+registerBlock('Op/Inc', OpIncBlock);
+registerBlock('Op/Dec', OpDecBlock);
 registerBlock('OpComparison/Equal', OpEqualBlock);
 registerBlock('OpComparison/NotEqual', OpNotEqualBlock);
 registerBlock('OpComparison/Greater', OpGreaterBlock);
