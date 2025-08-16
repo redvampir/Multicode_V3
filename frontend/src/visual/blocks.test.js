@@ -35,6 +35,8 @@ import {
   DivideBlock,
   ModuloBlock,
   OpConcatBlock,
+  OpPlusMicroBlock,
+  OpMultiplyMicroBlock,
   OpAndBlock,
   OpOrBlock,
   OpNotBlock,
@@ -140,6 +142,23 @@ describe('block utilities', () => {
     }
   });
 
+  it('provides micro operator blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['Op/+', OpPlusMicroBlock, '+'],
+      ['Op/*', OpMultiplyMicroBlock, '*']
+    ];
+    for (const [kind, Ctor, label] of cases) {
+      const b = createBlock(kind, 'mop', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.w).toBe(56);
+      expect(b.h).toBe(28);
+      expect(b.ports).toEqual(Ctor.ports);
+      expect(b.label).toBe(label);
+      expect(b.color).toBe(theme.blockKinds.Operator || theme.blockFill);
+    }
+  });
+
   it('provides logic operator blocks', () => {
     const theme = getTheme();
     const cases = [
@@ -215,6 +234,10 @@ describe('block utilities', () => {
       expect(b).toBeInstanceOf(Ctor);
       expect(b.ports).toEqual(ports);
       expect(b.color).toBe(theme.blockKinds.Variable);
+      if (kind === 'Variable/Get') {
+        expect(b.w).toBe(56);
+        expect(b.h).toBe(28);
+      }
     }
   });
 
