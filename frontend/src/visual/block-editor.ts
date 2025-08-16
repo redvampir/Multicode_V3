@@ -40,6 +40,7 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
   const fieldInputs: HTMLInputElement[] = [];
   const caseInputs: HTMLInputElement[] = [];
   const exceptionInputs: HTMLInputElement[] = [];
+  let typeSelect: HTMLSelectElement | null = null;
   if (data.kind === 'Struct') {
     let metaObj: any = {};
     try {
@@ -108,6 +109,24 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
     addBtn.addEventListener('click', () => addExc());
     excContainer.appendChild(addBtn);
     overlay.appendChild(excContainer);
+  } else if (data.kind === 'Cast') {
+    let metaObj: any = {};
+    try {
+      metaObj = JSON.parse(textarea.value);
+    } catch (_) {}
+    const current = metaObj?.data?.targetType || 'number';
+    const typeContainer = document.createElement('div');
+    typeContainer.style.marginTop = '4px';
+    typeSelect = document.createElement('select');
+    ['number', 'string', 'boolean'].forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t;
+      opt.textContent = t;
+      if (t === current) opt.selected = true;
+      typeSelect!.appendChild(opt);
+    });
+    typeContainer.appendChild(typeSelect);
+    overlay.appendChild(typeContainer);
   }
 
   const btnBar = document.createElement('div');
@@ -163,6 +182,17 @@ export function openBlockEditor(vc: VisualCanvasLike, block: { id: string; x: nu
         obj.data.exceptions = exceptions;
         (block as any).exceptions = exceptions;
       }
+      newText = JSON.stringify(obj);
+      data.data = obj.data;
+    }
+    if (typeSelect) {
+      let obj: any = {};
+      try {
+        obj = JSON.parse(newText);
+      } catch (_) {}
+      obj.data = obj.data || {};
+      obj.data.targetType = typeSelect.value;
+      (block as any).targetType = typeSelect.value;
       newText = JSON.stringify(obj);
       data.data = obj.data;
     }

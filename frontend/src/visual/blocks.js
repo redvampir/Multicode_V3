@@ -207,6 +207,27 @@ export class NullLiteralBlock extends Block {
   }
 }
 
+export class TypeCastBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'value', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y, _w, _h, label, color, data) {
+    super(
+      id,
+      x,
+      y,
+      TypeCastBlock.defaultSize.width,
+      TypeCastBlock.defaultSize.height,
+      label || 'Cast',
+      color ?? getTheme().blockKinds.Cast
+    );
+    this.targetType = data?.targetType || 'number';
+    this.ports = TypeCastBlock.ports;
+  }
+}
+
 export class LogBlock extends Block {
   static defaultSize = { width: 120, height: 50 };
   constructor(id, x, y, _w, _h, label, color, data) {
@@ -1006,6 +1027,7 @@ registerBlock('Literal/Number', NumberLiteralBlock);
 registerBlock('Literal/String', StringLiteralBlock);
 registerBlock('Literal/Boolean', BooleanLiteralBlock);
 registerBlock('Literal/Null', NullLiteralBlock);
+registerBlock('Cast', TypeCastBlock);
 registerBlock('Operator/Add', AddBlock);
 registerBlock('Operator/Subtract', SubtractBlock);
 registerBlock('Operator/Multiply', MultiplyBlock);
