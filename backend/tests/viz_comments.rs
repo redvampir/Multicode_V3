@@ -38,9 +38,10 @@ fn roundtrip_import_export() -> std::io::Result<()> {
 
 #[test]
 fn parse_inc_dec_ops() {
-    let src = "// @viz op=inc node=1 id=i in=a out=b\n// @viz op=dec node=2 id=d in=b out=c";
+    let src = "// @viz op=inc node=1 id=i in=a out=b\n// @viz op=dec node=2 id=d in=b out=c\n// @viz op=ternary node=3 id=t in=a,b,c out=d";
     let doc = parse_viz_comments(src);
-    assert_eq!(doc.nodes.len(), 2);
+    assert_eq!(doc.nodes.len(), 3);
     assert_eq!(doc.nodes[0].op.as_deref(), Some("inc"));
     assert_eq!(doc.nodes[1].op.as_deref(), Some("dec"));
+    assert_eq!(doc.nodes[2].op.as_deref(), Some("ternary"));
 }

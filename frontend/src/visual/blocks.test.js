@@ -35,6 +35,7 @@ import {
   DivideBlock,
   ModuloBlock,
   OpConcatBlock,
+  TernaryBlock,
   OpPlusMicroBlock,
   OpMultiplyMicroBlock,
   OpIncBlock,
@@ -161,6 +162,15 @@ describe('block utilities', () => {
       expect(b.label).toBe(label);
       expect(b.color).toBe(theme.blockKinds.Operator || theme.blockFill);
     }
+  });
+
+  it('provides ternary block', () => {
+    const theme = getTheme();
+    const b = createBlock('Op/Ternary', 'tern', 0, 0, '');
+    expect(b).toBeInstanceOf(TernaryBlock);
+    expect(b.ports).toEqual(TernaryBlock.ports);
+    expect(b.label).toBe('?:');
+    expect(b.color).toBe(theme.blockKinds.Operator || theme.blockFill);
   });
 
   it('provides logic operator blocks', () => {

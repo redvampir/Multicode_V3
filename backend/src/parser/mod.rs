@@ -75,6 +75,7 @@ pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
             "+" | "-" | "*" | "/" | "%" | "&&" | "||" | "==" | "!=" | ">" | ">=" | "<" | "<=" => {
                 format!("Op/{kind}")
             }
+            "?" => "Op/Ternary".into(),
             "identifier" => "Variable/Get".into(),
             _ => {
                 let k = kind.to_lowercase();
@@ -184,5 +185,13 @@ mod tests {
             }
         }
         assert_eq!(found, 5);
+    }
+
+    #[test]
+    fn parse_ternary_expression_into_op() {
+        let src = "a ? b : c";
+        let tree = parse(src, Lang::JavaScript, None).expect("failed to parse");
+        let blocks = parse_to_blocks(&tree);
+        assert!(blocks.iter().any(|b| b.kind == "Op/Ternary"));
     }
 }

@@ -38,6 +38,7 @@ describe('hotkeys block insertion', () => {
     { keys: ['*'], kind: 'Operator/Multiply' },
     { keys: ['/'], kind: 'Operator/Divide' },
     { keys: ['%'], kind: 'Operator/Modulo' },
+    { keys: ['?', ':'], kind: 'Op/Ternary' },
     { keys: ['=', '='], kind: 'OpComparison/Equal' },
     { keys: ['!', '='], kind: 'OpComparison/NotEqual' },
     { keys: ['>', 'x'], kind: 'OpComparison/Greater' },
