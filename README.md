@@ -250,10 +250,13 @@ sudo apt install rustc cargo
    Проверка: `node -v`
 
 2. **Rust** — компилирует backend и плагины.
+   В Debian/Ubuntu установите инструменты из официальных репозиториев:
    ```bash
-   curl https://sh.rustup.rs -sSf | sh
+   sudo apt update
+   sudo apt install rustc cargo
    ```
    Проверка: `rustc --version`
+   *Этой системной версии Rust достаточно для разработки и сборки проекта.*
 
 3. **Tauri CLI** — управляет сборкой и запуском.
    ```bash
