@@ -72,6 +72,33 @@ describe('zoomToFit', () => {
     expect(bottomRight.x).toBeLessThanOrEqual(canvasEl.width);
     expect(bottomRight.y).toBeLessThanOrEqual(canvasEl.height);
   });
+
+  it('handles large graphs', () => {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 500 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 500 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    const vc = new VisualCanvas(canvasEl);
+    vc.blocks = [
+      { x: -5000, y: 0, w: 100, h: 100 },
+      { x: 10000, y: 5000, w: 100, h: 100 },
+      { x: 0, y: 10000, w: 100, h: 100 }
+    ];
+    vc.zoomToFit();
+    expect(vc.scale).toBeGreaterThan(0);
+    expect(vc.scale).toBeLessThanOrEqual(1);
+    const xs = vc.blocks.flatMap(b => [b.x, b.x + b.w]);
+    const ys = vc.blocks.flatMap(b => [b.y, b.y + b.h]);
+    const minX = Math.min(...xs); const minY = Math.min(...ys);
+    const maxX = Math.max(...xs); const maxY = Math.max(...ys);
+    const topLeft = { x: minX * vc.scale + vc.offset.x, y: minY * vc.scale + vc.offset.y };
+    const bottomRight = { x: maxX * vc.scale + vc.offset.x, y: maxY * vc.scale + vc.offset.y };
+    expect(topLeft.x).toBeLessThanOrEqual(canvasEl.width);
+    expect(bottomRight.x).toBeGreaterThanOrEqual(0);
+    expect(topLeft.y).toBeLessThanOrEqual(canvasEl.height);
+    expect(bottomRight.y).toBeGreaterThanOrEqual(0);
+  });
 });
 
 describe('selection box', () => {

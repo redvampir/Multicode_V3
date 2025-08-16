@@ -1041,9 +1041,10 @@ export class VisualCanvas {
   }
 
   zoomToFit() {
-    if (this.blocks.length === 0) return;
+    const blocks = this.selected && this.selected.size ? Array.from(this.selected) : this.blocks;
+    if (blocks.length === 0) return;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
-    for (const b of this.blocks) {
+    for (const b of blocks) {
       minX = Math.min(minX, b.x);
       minY = Math.min(minY, b.y);
       maxX = Math.max(maxX, b.x + b.w);

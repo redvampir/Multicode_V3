@@ -92,6 +92,7 @@ function handleKey(e: KeyboardEvent) {
       selectConnections();
       break;
     case hotkeys.focusSearch:
+    case 'F':
       e.preventDefault();
       focusSearch();
       break;
@@ -104,6 +105,7 @@ function handleKey(e: KeyboardEvent) {
       openCommandPalette();
       break;
     case hotkeys.zoomToFit:
+    case '0':
       e.preventDefault();
       zoomToFit();
       break;
