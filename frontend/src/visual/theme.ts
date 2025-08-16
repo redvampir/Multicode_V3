@@ -38,6 +38,21 @@ darkTheme.blockKinds.OpComparison = darkTheme.blockKinds.OpComparison || '#607d8
 // ensure color for log blocks exists
 defaultTheme.blockKinds.Log = defaultTheme.blockKinds.Log || '#ffe082';
 darkTheme.blockKinds.Log = darkTheme.blockKinds.Log || '#ffb300';
+// ensure color for arithmetic operator blocks exists
+defaultTheme.blockKinds.Operator = defaultTheme.blockKinds.Operator || '#ffcdd2';
+darkTheme.blockKinds.Operator = darkTheme.blockKinds.Operator || '#e57373';
+// ensure color for sequence blocks exists
+defaultTheme.blockKinds.Sequence = defaultTheme.blockKinds.Sequence || '#e6ee9c';
+darkTheme.blockKinds.Sequence = darkTheme.blockKinds.Sequence || '#9e9d24';
+// ensure color for switch blocks exists
+defaultTheme.blockKinds.Switch = defaultTheme.blockKinds.Switch || '#ffe0b2';
+darkTheme.blockKinds.Switch = darkTheme.blockKinds.Switch || '#ffb74d';
+// ensure color for try blocks exists
+defaultTheme.blockKinds.Try = defaultTheme.blockKinds.Try || '#ffccbc';
+darkTheme.blockKinds.Try = darkTheme.blockKinds.Try || '#ff8a65';
+// ensure color for struct blocks exists
+defaultTheme.blockKinds.Struct = defaultTheme.blockKinds.Struct || '#c5cae9';
+darkTheme.blockKinds.Struct = darkTheme.blockKinds.Struct || '#5c6bc0';
 
 const themeMap: Record<string, VisualTheme> = {
   default: defaultTheme,

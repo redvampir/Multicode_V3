@@ -29,7 +29,8 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
         return Some(blocks);
     }
 
-    let blocks = parsing::parse(&content, lang)?;
+    let mut blocks = parsing::parse(&content, lang)?;
+    cache::assign_ids(&content, &mut blocks);
     let result = enrich::enrich_blocks(blocks, &content);
     cache::store(key, content, result.clone());
     Some(result)
