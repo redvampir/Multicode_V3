@@ -12,16 +12,18 @@ async function setup() {
   vi.mock('../../scripts/format.js', () => ({ formatCurrentFile: vi.fn() }));
   vi.mock('../editor/command-palette.ts', () => ({ openCommandPalette: vi.fn() }));
   const mod = await import('./hotkeys.ts');
-  const canvas = {
+  const canvas: any = {
     blocks: [],
     blocksData: [],
     blockDataMap: new Map(),
+    connections: [],
+    connect: vi.fn((a, b) => canvas.connections.push([a, b])),
     selected: new Set(),
     locale: 'en',
     moveCallback: vi.fn(),
     draw: vi.fn(),
     getFreePos: vi.fn(() => ({ x: 10, y: 20 }))
-  } as any;
+  };
   mod.setCanvas(canvas);
   mod.registerHotkeys();
   return { mod, canvas };
@@ -73,5 +75,18 @@ describe('hotkeys block insertion', () => {
       expect(canvas.blocksData[0]).toMatchObject({ kind, x: 10, y: 20 });
       mod.unregisterHotkeys();
     });
+  });
+
+  it('auto connects log block to active output', async () => {
+    const { mod, canvas } = await setup();
+    const src = { id: 'src' } as any;
+    canvas.blocks.push(src);
+    canvas.selected = new Set([src]);
+    (canvas as any).activeOutput = src;
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'l', ctrlKey: true }));
+    expect(canvas.connections).toHaveLength(1);
+    expect(canvas.connections[0][0]).toBe(src);
+    expect(canvas.connections[0][1]).toMatchObject({ kind: 'Log' });
+    mod.unregisterHotkeys();
   });
 });
