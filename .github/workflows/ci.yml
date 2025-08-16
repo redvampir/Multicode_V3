@@ -58,6 +58,9 @@ jobs:
       - name: Check dependencies
         run: npx depcheck
         working-directory: frontend
+      - name: Lint frontend
+        run: npm run lint -- --max-warnings=0
+        working-directory: frontend
       - name: Run frontend tests
         run: npm test
         working-directory: frontend
