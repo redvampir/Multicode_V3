@@ -10,6 +10,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: dtolnay/rust-toolchain@stable
+        env:
+          RUSTUP_MAX_RETRIES: 10
+          RUSTUP_USE_CURL: 1
       - name: Install system dependencies
         run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev pkg-config
       - name: Set PKG_CONFIG_PATH
