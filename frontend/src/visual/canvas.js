@@ -7,6 +7,7 @@ import { createTwoFilesPatch } from 'diff';
 import { updateMetaComment, previewDiff, renameMetaId, getMetaById } from '../editor/visual-meta.js';
 import { emit, on } from '../shared/event-bus.js';
 import { openBlockEditor } from './block-editor.ts';
+import { openInspector } from './inspector.tsx';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
 
@@ -245,6 +246,8 @@ export class VisualCanvas {
     if (id) this.highlightBlocks([id]);
     else this.highlightBlocks([]);
     emit('blockSelected', { id });
+    const block = id ? this.blocks.find(b => b.id === id) : null;
+    openInspector(this, block || null);
   }
 
   search(label) {
