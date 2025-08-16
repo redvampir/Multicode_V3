@@ -42,6 +42,7 @@
     import { loadBlockPlugins } from "./visual/blocks.js";
     import { insertVisualMeta, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta, addBlockToolbar, refreshBlockCount, listMetaIds } from "./editor/visual-meta.js";
     import { registerHotkeys, setCanvas } from "./visual/hotkeys.ts";
+    import { setCanvas as setExportCanvas } from "./visual/export.ts";
     import { registerCommandPalette } from "./editor/command-palette.ts";
     import { gotoLine } from "./editor/goto-line.js";
     import { gotoRelated } from "./editor/navigation.js";
@@ -102,6 +103,7 @@
     }
 
     setCanvas(vc);
+    setExportCanvas(vc);
     registerHotkeys();
     registerCommandPalette([
       { id: 'gotoLine', title: 'Go to Line', run: () => gotoLine(view) },
