@@ -1,5 +1,5 @@
 import { hotkeys, showHotkeyHelp, zoomToFit, focusSearch } from './hotkeys';
-import { exportPNG } from './canvas.js';
+import { exportPNG } from './export.ts';
 import { emit } from '../shared/event-bus.js';
 
 export function createSearchInput(canvas: any) {
@@ -46,7 +46,7 @@ export const mainMenu: MenuItem[] = [
     submenu: [
       { label: 'New', action: () => console.log('new file') },
       { label: 'Open', action: () => console.log('open file') },
-      { label: 'Экспорт в PNG', action: exportPNG }
+      { label: 'Export PNG', action: exportPNG, shortcut: hotkeys.exportPNG }
     ]
   },
   {

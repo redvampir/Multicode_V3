@@ -10,6 +10,7 @@ import { formatCurrentFile } from '../../scripts/format.js';
 import { EditorSelection } from '@codemirror/state';
 import * as commands from '@codemirror/commands';
 import { openCommandPalette } from '../editor/command-palette.ts';
+import { exportPNG } from './export.ts';
 
 export interface HotkeyMap {
   copyBlock: string;
@@ -30,6 +31,7 @@ export interface HotkeyMap {
   insertWhileLoop: string;
   insertForEachLoop: string;
   insertLogBlock: string;
+  exportPNG: string;
 }
 
 const cfg: { hotkeys?: Partial<HotkeyMap> } = settings as any;
@@ -53,7 +55,8 @@ export const hotkeys: HotkeyMap = {
   insertForLoop: cfg.hotkeys?.insertForLoop || 'Ctrl+Alt+F',
   insertWhileLoop: cfg.hotkeys?.insertWhileLoop || 'Ctrl+Alt+W',
   insertForEachLoop: cfg.hotkeys?.insertForEachLoop || 'Ctrl+Alt+E',
-  insertLogBlock: cfg.hotkeys?.insertLogBlock || 'Ctrl+L'
+  insertLogBlock: cfg.hotkeys?.insertLogBlock || 'Ctrl+L',
+  exportPNG: cfg.hotkeys?.exportPNG || 'Ctrl+Shift+E'
 };
 
 function buildCombo(e: KeyboardEvent) {
@@ -138,6 +141,10 @@ function handleKey(e: KeyboardEvent) {
     case hotkeys.formatCurrentFile:
       e.preventDefault();
       formatCurrentFile();
+      break;
+    case hotkeys.exportPNG:
+      e.preventDefault();
+      exportPNG();
       break;
     case hotkeys.insertForLoop:
       e.preventDefault();
