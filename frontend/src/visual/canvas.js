@@ -8,6 +8,7 @@ import { updateMetaComment, previewDiff, renameMetaId, getMetaById } from '../ed
 import { emit, on } from '../shared/event-bus.js';
 import { openBlockEditor } from './block-editor.ts';
 import { openInspector } from './inspector.tsx';
+import { searchBlocks, replaceBlockLabels, createReplaceDialog } from './search.ts';
 
 export const VIEW_STATE_KEY = 'visual-view-state';
 
@@ -251,15 +252,33 @@ export class VisualCanvas {
   }
 
   search(label) {
-    const query = (label || '').trim().toLowerCase();
+    const query = (label || '').trim();
     if (!query) {
       this.highlightBlocks([]);
       return;
     }
-    const ids = this.blocks
-      .filter(b => b.label.toLowerCase().includes(query))
-      .map(b => b.id);
+    const blocks = this.blocks.map(b => {
+      const data = this.blockDataMap.get(b.id);
+      return { id: b.id, label: b.label, kind: data ? data.kind : '' };
+    });
+    const ids = searchBlocks(blocks, query).map(b => b.id);
     this.highlightBlocks(ids);
+  }
+
+  replaceLabels(search, replacement) {
+    const blocks = this.blocks.map(b => {
+      const data = this.blockDataMap.get(b.id);
+      return { id: b.id, label: b.label, kind: data ? data.kind : '', block: b, data };
+    });
+    replaceBlockLabels(blocks, search, replacement, this.locale);
+    this.draw();
+  }
+
+  showReplaceDialog() {
+    const dialog = createReplaceDialog((search, replacement) => {
+      this.replaceLabels(search, replacement);
+    });
+    dialog.showModal();
   }
 
   getGroupId(blockId) {
