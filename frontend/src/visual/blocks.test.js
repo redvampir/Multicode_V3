@@ -24,6 +24,8 @@ import {
   FunctionCallBlock,
   ReturnBlock,
   LogBlock,
+  FileReadBlock,
+  FileWriteBlock,
   ForLoopBlock,
   WhileLoopBlock,
   ForEachLoopBlock,
@@ -220,6 +222,20 @@ describe('block utilities', () => {
       expect(b).toBeInstanceOf(Ctor);
       expect(b.ports).toEqual(Ctor.ports);
       expect(b.color).toBe(theme.blockKinds.Function);
+    }
+  });
+
+  it('provides file read/write blocks', () => {
+    const theme = getTheme();
+    const cases = [
+      ['File/Read', FileReadBlock, FileReadBlock.ports],
+      ['File/Write', FileWriteBlock, FileWriteBlock.ports]
+    ];
+    for (const [kind, Ctor, ports] of cases) {
+      const b = createBlock(kind, 'file', 0, 0, '');
+      expect(b).toBeInstanceOf(Ctor);
+      expect(b.ports).toEqual(ports);
+      expect(b.color).toBe(theme.blockKinds.File || theme.blockFill);
     }
   });
 

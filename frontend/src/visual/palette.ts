@@ -5,7 +5,10 @@ export interface PaletteBlock {
   tags?: string[];
 }
 
-let registry: PaletteBlock[] = [];
+let registry: PaletteBlock[] = [
+  { kind: 'File/Read', name: 'File Read', tags: ['file', 'read'] },
+  { kind: 'File/Write', name: 'File Write', tags: ['file', 'write'] }
+];
 
 /**
  * Replace current registry with provided blocks. Useful for tests.

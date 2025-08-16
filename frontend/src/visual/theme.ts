@@ -56,6 +56,9 @@ darkTheme.blockKinds.Struct = darkTheme.blockKinds.Struct || '#5c6bc0';
 // ensure color for cast blocks exists
 defaultTheme.blockKinds.Cast = defaultTheme.blockKinds.Cast || '#f8bbd0';
 darkTheme.blockKinds.Cast = darkTheme.blockKinds.Cast || '#c2185b';
+// ensure color for file blocks exists
+defaultTheme.blockKinds.File = defaultTheme.blockKinds.File || '#d7ccc8';
+darkTheme.blockKinds.File = darkTheme.blockKinds.File || '#6d4c41';
 
 const themeMap: Record<string, VisualTheme> = {
   default: defaultTheme,
