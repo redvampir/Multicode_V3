@@ -1,4 +1,4 @@
-use backend::export::{serialize_viz_document, deserialize_viz_document, VizDocument};
+use backend::export::{deserialize_viz_document, serialize_viz_document};
 
 #[test]
 fn roundtrip_viz_document() {
