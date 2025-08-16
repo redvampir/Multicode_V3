@@ -11,6 +11,7 @@ import { EditorSelection } from '@codemirror/state';
 import * as commands from '@codemirror/commands';
 import { openCommandPalette } from '../editor/command-palette.ts';
 import { exportPNG } from './export.ts';
+import { push as pushUndo, undo as undoAction, redo as redoAction } from './undo.ts';
 
 export interface HotkeyMap {
   copyBlock: string;
@@ -114,11 +115,11 @@ function handleKey(e: KeyboardEvent) {
       break;
     case hotkeys.undo:
       e.preventDefault();
-      canvasRef?.undo?.();
+      undoAction();
       break;
     case hotkeys.redo:
       e.preventDefault();
-      canvasRef?.redo?.();
+      redoAction();
       break;
     case hotkeys.groupBlocks:
     case 'Meta+G':
@@ -197,13 +198,21 @@ function handleKey(e: KeyboardEvent) {
             break;
         }
         canvasRef.moveCallback?.(block);
-        canvasRef.undoStack?.push({
-          type: 'move',
-          id: block.id,
-          from: before,
-          to: { x: block.x, y: block.y }
+        const after = { x: block.x, y: block.y };
+        pushUndo({
+          undo: async () => {
+            block.x = before.x;
+            block.y = before.y;
+            canvasRef.moveCallback?.(block);
+            canvasRef.draw?.();
+          },
+          redo: async () => {
+            block.x = after.x;
+            block.y = after.y;
+            canvasRef.moveCallback?.(block);
+            canvasRef.draw?.();
+          }
         });
-        if (canvasRef.redoStack) canvasRef.redoStack = [];
       }
       break;
   }
@@ -537,6 +546,24 @@ function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'if' | 's
   canvasRef.selected = new Set([block]);
   canvasRef.moveCallback?.(block);
   canvasRef.draw?.();
+  pushUndo({
+    undo: () => {
+      const idx = canvasRef.blocks.indexOf(block);
+      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
+      const dataIdx = canvasRef.blocksData.indexOf(data);
+      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
+      canvasRef.blockDataMap.delete(id);
+      canvasRef.selected?.delete(block);
+      canvasRef.draw?.();
+    },
+    redo: () => {
+      canvasRef.blocks.push(block);
+      canvasRef.blocksData.push(data);
+      canvasRef.blockDataMap.set(id, data);
+      canvasRef.selected = new Set([block]);
+      canvasRef.draw?.();
+    }
+  });
 }
 
 type OperatorSymbol = '+' | '-' | '*' | '/' | '%' | '++';
@@ -573,6 +600,24 @@ function insertOperatorBlock(op: OperatorSymbol) {
   canvasRef.selected = new Set([block]);
   canvasRef.moveCallback?.(block);
   canvasRef.draw?.();
+  pushUndo({
+    undo: () => {
+      const idx = canvasRef.blocks.indexOf(block);
+      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
+      const dataIdx = canvasRef.blocksData.indexOf(data);
+      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
+      canvasRef.blockDataMap.delete(id);
+      canvasRef.selected?.delete(block);
+      canvasRef.draw?.();
+    },
+    redo: () => {
+      canvasRef.blocks.push(block);
+      canvasRef.blocksData.push(data);
+      canvasRef.blockDataMap.set(id, data);
+      canvasRef.selected = new Set([block]);
+      canvasRef.draw?.();
+    }
+  });
 }
 
 type OpSymbol = '++' | '--';
@@ -605,6 +650,24 @@ function insertOpBlock(op: OpSymbol) {
   canvasRef.selected = new Set([block]);
   canvasRef.moveCallback?.(block);
   canvasRef.draw?.();
+  pushUndo({
+    undo: () => {
+      const idx = canvasRef.blocks.indexOf(block);
+      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
+      const dataIdx = canvasRef.blocksData.indexOf(data);
+      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
+      canvasRef.blockDataMap.delete(id);
+      canvasRef.selected?.delete(block);
+      canvasRef.draw?.();
+    },
+    redo: () => {
+      canvasRef.blocks.push(block);
+      canvasRef.blocksData.push(data);
+      canvasRef.blockDataMap.set(id, data);
+      canvasRef.selected = new Set([block]);
+      canvasRef.draw?.();
+    }
+  });
 }
 
 function insertTernaryBlock() {
@@ -632,6 +695,24 @@ function insertTernaryBlock() {
   canvasRef.selected = new Set([block]);
   canvasRef.moveCallback?.(block);
   canvasRef.draw?.();
+  pushUndo({
+    undo: () => {
+      const idx = canvasRef.blocks.indexOf(block);
+      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
+      const dataIdx = canvasRef.blocksData.indexOf(data);
+      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
+      canvasRef.blockDataMap.delete(id);
+      canvasRef.selected?.delete(block);
+      canvasRef.draw?.();
+    },
+    redo: () => {
+      canvasRef.blocks.push(block);
+      canvasRef.blocksData.push(data);
+      canvasRef.blockDataMap.set(id, data);
+      canvasRef.selected = new Set([block]);
+      canvasRef.draw?.();
+    }
+  });
 }
 
 type LogicOperatorSymbol = '&&' | '||' | '!';
@@ -665,6 +746,24 @@ function insertLogicOperatorBlock(op: LogicOperatorSymbol) {
   canvasRef.selected = new Set([block]);
   canvasRef.moveCallback?.(block);
   canvasRef.draw?.();
+  pushUndo({
+    undo: () => {
+      const idx = canvasRef.blocks.indexOf(block);
+      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
+      const dataIdx = canvasRef.blocksData.indexOf(data);
+      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
+      canvasRef.blockDataMap.delete(id);
+      canvasRef.selected?.delete(block);
+      canvasRef.draw?.();
+    },
+    redo: () => {
+      canvasRef.blocks.push(block);
+      canvasRef.blocksData.push(data);
+      canvasRef.blockDataMap.set(id, data);
+      canvasRef.selected = new Set([block]);
+      canvasRef.draw?.();
+    }
+  });
 }
 
 type ComparisonOperatorSymbol = '==' | '!=' | '>' | '>=' | '<' | '<=';
@@ -701,6 +800,24 @@ function insertComparisonOperatorBlock(op: ComparisonOperatorSymbol) {
   canvasRef.selected = new Set([block]);
   canvasRef.moveCallback?.(block);
   canvasRef.draw?.();
+  pushUndo({
+    undo: () => {
+      const idx = canvasRef.blocks.indexOf(block);
+      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
+      const dataIdx = canvasRef.blocksData.indexOf(data);
+      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
+      canvasRef.blockDataMap.delete(id);
+      canvasRef.selected?.delete(block);
+      canvasRef.draw?.();
+    },
+    redo: () => {
+      canvasRef.blocks.push(block);
+      canvasRef.blocksData.push(data);
+      canvasRef.blockDataMap.set(id, data);
+      canvasRef.selected = new Set([block]);
+      canvasRef.draw?.();
+    }
+  });
 }
 
 function insertLogBlock() {
@@ -739,5 +856,27 @@ function insertLogBlock() {
     (canvasRef as any).connect(connectFrom, block);
   }
   canvasRef.draw?.();
+  pushUndo({
+    undo: () => {
+      const idx = canvasRef.blocks.indexOf(block);
+      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
+      const dataIdx = canvasRef.blocksData.indexOf(data);
+      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
+      canvasRef.blockDataMap.delete(id);
+      canvasRef.selected?.delete(block);
+      canvasRef.draw?.();
+    },
+    redo: () => {
+      canvasRef.blocks.push(block);
+      canvasRef.blocksData.push(data);
+      canvasRef.blockDataMap.set(id, data);
+      canvasRef.selected = new Set([block]);
+      canvasRef.moveCallback?.(block);
+      if (connectFrom && typeof (canvasRef as any).connect === 'function') {
+        (canvasRef as any).connect(connectFrom, block);
+      }
+      canvasRef.draw?.();
+    }
+  });
 }
 

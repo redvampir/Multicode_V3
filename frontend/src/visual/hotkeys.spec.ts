@@ -92,4 +92,19 @@ describe('hotkeys block insertion', () => {
     expect(canvas.connections[0][1]).toMatchObject({ kind: 'Log' });
     mod.unregisterHotkeys();
   });
+
+  it('undos and redoes block insertion', async () => {
+    const { mod, canvas } = await setup();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'i' }));
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'f' }));
+    await Promise.resolve();
+    expect(canvas.blocksData).toHaveLength(1);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true }));
+    await Promise.resolve();
+    expect(canvas.blocksData).toHaveLength(0);
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, shiftKey: true }));
+    await Promise.resolve();
+    expect(canvas.blocksData).toHaveLength(1);
+    mod.unregisterHotkeys();
+  });
 });
