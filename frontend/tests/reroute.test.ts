@@ -3,12 +3,13 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 vi.mock('@codemirror/state', () => ({
   StateField: { define: vi.fn() },
-  RangeSetBuilder: class {}
+  RangeSetBuilder: class {},
+  StateEffect: { define: vi.fn(() => ({ of: vi.fn() })) }
 }));
 
 vi.mock('@codemirror/view', () => ({
   Decoration: { mark: () => ({}) },
-  EditorView: { decorations: { from: vi.fn() }, updateListener: { of: vi.fn() } }
+  EditorView: { decorations: { from: vi.fn() }, updateListener: { of: vi.fn() }, baseTheme: vi.fn() }
 }));
 
 vi.mock('@codemirror/language', () => ({
