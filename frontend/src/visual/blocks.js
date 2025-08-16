@@ -257,6 +257,50 @@ export class LogBlock extends Block {
   }
 }
 
+export class FileReadBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'path', kind: 'data', dir: 'in' },
+    { id: 'content', kind: 'data', dir: 'out' },
+    { id: 'exec', kind: 'exec', dir: 'in' },
+    { id: 'out', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      FileReadBlock.defaultSize.width,
+      FileReadBlock.defaultSize.height,
+      'File Read',
+      getTheme().blockKinds.File
+    );
+    this.ports = FileReadBlock.ports;
+  }
+}
+
+export class FileWriteBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'path', kind: 'data', dir: 'in' },
+    { id: 'content', kind: 'data', dir: 'in' },
+    { id: 'exec', kind: 'exec', dir: 'in' },
+    { id: 'out', kind: 'exec', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      FileWriteBlock.defaultSize.width,
+      FileWriteBlock.defaultSize.height,
+      'File Write',
+      getTheme().blockKinds.File
+    );
+    this.ports = FileWriteBlock.ports;
+  }
+}
+
 class OperatorBlockBase extends Block {
   static defaultSize = { width: 120, height: 50 };
   static ports = [
@@ -1075,6 +1119,8 @@ registerBlock('Function/Define', FunctionDefineBlock);
 registerBlock('Function/Call', FunctionCallBlock);
 registerBlock('Return', ReturnBlock);
 registerBlock('Log', LogBlock);
+registerBlock('File/Read', FileReadBlock);
+registerBlock('File/Write', FileWriteBlock);
 registerBlock('Variable', VariableBlock);
 registerBlock('Variable/Get', VariableGetBlock);
 registerBlock('Variable/Set', VariableSetBlock);
