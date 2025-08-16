@@ -1,3 +1,5 @@
+import { getSnippets } from './snippets.ts';
+
 export interface PaletteBlock {
   kind: string;
   name: string;
@@ -46,14 +48,23 @@ export function filterBlocks(query: string): PaletteBlock[] {
 /**
  * Create simple palette component inside given container element. It consists
  * of a search input and a list of blocks filtered according to the input
- * value. The list is populated from the loaded registry.
+ * value. Additionally, a "Snippets" tab lists predefined sub-graphs.
  */
 export function createPalette(container: HTMLElement): void {
+  const tabs = document.createElement('div');
+  const blocksBtn = document.createElement('button');
+  blocksBtn.textContent = 'Blocks';
+  const snippetsBtn = document.createElement('button');
+  snippetsBtn.textContent = 'Snippets';
+  tabs.appendChild(blocksBtn);
+  tabs.appendChild(snippetsBtn);
+
+  // --- Blocks pane ---
+  const blocksPane = document.createElement('div');
   const search = document.createElement('input');
   search.type = 'search';
   const list = document.createElement('ul');
-
-  const render = () => {
+  const renderBlocks = () => {
     list.innerHTML = '';
     for (const block of filterBlocks(search.value)) {
       const li = document.createElement('li');
@@ -61,11 +72,34 @@ export function createPalette(container: HTMLElement): void {
       list.appendChild(li);
     }
   };
+  search.addEventListener('input', renderBlocks);
+  blocksPane.appendChild(search);
+  blocksPane.appendChild(list);
 
-  search.addEventListener('input', render);
-  container.appendChild(search);
-  container.appendChild(list);
-  render();
+  // --- Snippets pane ---
+  const snippetsPane = document.createElement('div');
+  const snippetList = document.createElement('ul');
+  for (const snip of getSnippets()) {
+    const li = document.createElement('li');
+    li.textContent = snip.name;
+    snippetList.appendChild(li);
+  }
+  snippetsPane.appendChild(snippetList);
+
+  // --- Tab switching ---
+  const showPane = (pane: 'blocks' | 'snippets') => {
+    blocksPane.style.display = pane === 'blocks' ? '' : 'none';
+    snippetsPane.style.display = pane === 'snippets' ? '' : 'none';
+  };
+  blocksBtn.addEventListener('click', () => showPane('blocks'));
+  snippetsBtn.addEventListener('click', () => showPane('snippets'));
+
+  container.appendChild(tabs);
+  container.appendChild(blocksPane);
+  container.appendChild(snippetsPane);
+
+  renderBlocks();
+  showPane('blocks');
 }
 
 export function getRegistry(): PaletteBlock[] {
