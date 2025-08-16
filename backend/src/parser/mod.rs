@@ -9,6 +9,7 @@ pub mod javascript;
 pub mod python;
 pub mod rust;
 pub mod typescript;
+pub mod viz_comments;
 
 /// Supported languages for parsing.
 #[derive(Clone, Copy)]
