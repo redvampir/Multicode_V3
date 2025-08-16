@@ -58,6 +58,25 @@ async function getWorkspaceDirs(rootDir, patterns) {
   return dirs;
 }
 
+function ensureRustupDistServer(log) {
+  if (!process.env.RUSTUP_DIST_SERVER) {
+    const internalMirror = process.env.INTERNAL_RUSTUP_DIST_SERVER;
+    if (internalMirror) {
+      process.env.RUSTUP_DIST_SERVER = internalMirror;
+      log(`RUSTUP_DIST_SERVER not set, using internal mirror ${internalMirror}`);
+    } else {
+      log(
+        'RUSTUP_DIST_SERVER is not set. This variable defines the Rustup distribution server.'
+      );
+    }
+  }
+}
+
+async function runRustCommand(cmd, args = [], log, options = {}) {
+  ensureRustupDistServer(log);
+  return runCommand(cmd, args, log, options);
+}
+
 async function main() {
   const log = createLogger('setup');
   log(`NODE_ENV=${process.env.NODE_ENV}`);
@@ -65,6 +84,7 @@ async function main() {
   spinner.start();
   try {
     const rootDir = path.join(__dirname, '..');
+    await runRustCommand('rustc', ['--version'], log);
     const pkgPath = path.join(rootDir, 'package.json');
     const rootPkg = JSON.parse(await fsp.readFile(pkgPath, 'utf8'));
     const workspaces = await getWorkspaceDirs(rootDir, rootPkg.workspaces || []);
