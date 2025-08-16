@@ -133,17 +133,10 @@
       },
       "additionalProperties": false
     },
-    "VizDocument": {
-      "description": "Collection of visual metadata for a source file.",
-      "type": "object",
-      "required": ["nodes"],
-      "properties": {
-        "nodes": {
-          "type": "array",
-          "items": { "$ref": "#" }
-        }
-      },
-      "additionalProperties": false
+    "BlockKind": {
+      "description": "Available built-in block kinds.",
+      "type": "string",
+      "enum": ["Op/+", "Op/*", "Op/Inc", "Op/Dec"]
     }
   }
 }

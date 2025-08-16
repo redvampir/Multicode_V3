@@ -37,6 +37,8 @@ import {
   OpConcatBlock,
   OpPlusMicroBlock,
   OpMultiplyMicroBlock,
+  OpIncBlock,
+  OpDecBlock,
   OpAndBlock,
   OpOrBlock,
   OpNotBlock,
@@ -146,7 +148,9 @@ describe('block utilities', () => {
     const theme = getTheme();
     const cases = [
       ['Op/+', OpPlusMicroBlock, '+'],
-      ['Op/*', OpMultiplyMicroBlock, '*']
+      ['Op/*', OpMultiplyMicroBlock, '*'],
+      ['Op/Inc', OpIncBlock, '++'],
+      ['Op/Dec', OpDecBlock, '--']
     ];
     for (const [kind, Ctor, label] of cases) {
       const b = createBlock(kind, 'mop', 0, 0, '');
