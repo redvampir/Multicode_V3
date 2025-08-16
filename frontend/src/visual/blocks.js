@@ -314,6 +314,28 @@ export class OpConcatBlock extends OperatorBlockBase {
   }
 }
 
+export class TernaryBlock extends Block {
+  static defaultSize = { width: 120, height: 50 };
+  static ports = [
+    { id: 'cond', kind: 'data', dir: 'in' },
+    { id: 'then', kind: 'data', dir: 'in' },
+    { id: 'else', kind: 'data', dir: 'in' },
+    { id: 'out', kind: 'data', dir: 'out' }
+  ];
+  constructor(id, x, y) {
+    super(
+      id,
+      x,
+      y,
+      TernaryBlock.defaultSize.width,
+      TernaryBlock.defaultSize.height,
+      '?:',
+      getTheme().blockKinds.Operator || getTheme().blockFill
+    );
+    this.ports = TernaryBlock.ports;
+  }
+}
+
 class MicroOpBlock extends Block {
   static defaultSize = { width: 56, height: 28 };
   static ports = [
@@ -1034,6 +1056,7 @@ registerBlock('Operator/Multiply', MultiplyBlock);
 registerBlock('Operator/Divide', DivideBlock);
 registerBlock('Operator/Modulo', ModuloBlock);
 registerBlock('Operator/Concat', OpConcatBlock);
+registerBlock('Op/Ternary', TernaryBlock);
 registerBlock('Op/+', OpPlusMicroBlock);
 registerBlock('Op/*', OpMultiplyMicroBlock);
 registerBlock('Op/Inc', OpIncBlock);

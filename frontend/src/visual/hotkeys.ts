@@ -224,7 +224,19 @@ function handleKey(e: KeyboardEvent) {
   }
 
   if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key.length === 1) {
-    if (e.key === '+') {
+    if (e.key === '?') {
+      pendingSymbol = '?';
+      keywordBuffer = '';
+      symbolBuffer = '';
+    } else if (e.key === ':') {
+      if (pendingSymbol === '?') {
+        e.preventDefault();
+        insertTernaryBlock();
+      }
+      pendingSymbol = '';
+      keywordBuffer = '';
+      symbolBuffer = '';
+    } else if (e.key === '+') {
       if (pendingSymbol === '+') {
         e.preventDefault();
         insertOpBlock('++');
@@ -587,6 +599,33 @@ function insertOpBlock(op: OpSymbol) {
     x: pos.x,
     y: pos.y,
     translations: { en: conf.label }
+  };
+  canvasRef.blocksData.push(data);
+  canvasRef.blockDataMap.set(id, data);
+  canvasRef.selected = new Set([block]);
+  canvasRef.moveCallback?.(block);
+  canvasRef.draw?.();
+}
+
+function insertTernaryBlock() {
+  if (!canvasRef) return;
+  const theme = getTheme();
+  const kind = 'Op/Ternary';
+  const label = '?:';
+  const id =
+    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
+      ? globalThis.crypto.randomUUID()
+      : Math.random().toString(36).slice(2);
+  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
+  const color = theme.blockKinds.Operator || theme.blockFill;
+  const block = createBlock(kind, id, pos.x, pos.y, label, color);
+  canvasRef.blocks.push(block);
+  const data: any = {
+    kind,
+    visual_id: id,
+    x: pos.x,
+    y: pos.y,
+    translations: { en: label }
   };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);

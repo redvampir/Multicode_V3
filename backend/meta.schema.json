@@ -136,7 +136,7 @@
     "BlockKind": {
       "description": "Available built-in block kinds.",
       "type": "string",
-      "enum": ["Op/+", "Op/*", "Op/Inc", "Op/Dec", "Cast"]
+      "enum": ["Op/+", "Op/*", "Op/Inc", "Op/Dec", "Op/Ternary", "Cast"]
     }
   }
 }
