@@ -225,7 +225,7 @@ export class LogBlock extends Block {
 
   updatePorts() {
     this.ports = [
-      { id: 'data', kind: 'data', dir: 'in' },
+      { id: 'data', kind: 'data', dir: 'in', auto: true },
       ...(this.exec
         ? [
             { id: 'exec', kind: 'exec', dir: 'in' },

@@ -194,11 +194,11 @@ describe('block utilities', () => {
     const theme = getTheme();
     const b = createBlock('Log', 'l1', 0, 0, '');
     expect(b).toBeInstanceOf(LogBlock);
-    expect(b.ports).toEqual([{ id: 'data', kind: 'data', dir: 'in' }]);
+    expect(b.ports).toEqual([{ id: 'data', kind: 'data', dir: 'in', auto: true }]);
     expect(b.color).toBe(theme.blockKinds.Log || theme.blockFill);
     const bExec = createBlock('Log', 'l2', 0, 0, '', undefined, { exec: true });
     expect(bExec.ports).toEqual([
-      { id: 'data', kind: 'data', dir: 'in' },
+      { id: 'data', kind: 'data', dir: 'in', auto: true },
       { id: 'exec', kind: 'exec', dir: 'in' },
       { id: 'out', kind: 'exec', dir: 'out' }
     ]);

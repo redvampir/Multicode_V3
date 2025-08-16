@@ -623,6 +623,13 @@ function insertLogBlock() {
       : Math.random().toString(36).slice(2);
   const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.Log || theme.blockFill;
+
+  const connectFrom =
+    (canvasRef as any).activeOutput ||
+    (canvasRef.selected && canvasRef.selected.size === 1
+      ? Array.from(canvasRef.selected)[0]
+      : null);
+
   const block = createBlock(kind, id, pos.x, pos.y, label, color, { exec: true });
   canvasRef.blocks.push(block);
   const data: any = {
@@ -637,6 +644,9 @@ function insertLogBlock() {
   canvasRef.blockDataMap.set(id, data);
   canvasRef.selected = new Set([block]);
   canvasRef.moveCallback?.(block);
+  if (connectFrom && typeof (canvasRef as any).connect === 'function') {
+    (canvasRef as any).connect(connectFrom, block);
+  }
   canvasRef.draw?.();
 }
 
