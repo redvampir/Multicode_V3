@@ -44,7 +44,12 @@ pub fn commit(message: &str) -> Result<(), git2::Error> {
         repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parents)?;
     } else {
         let oid = repo.commit(None, &sig, &sig, message, &tree, &parents)?;
-        repo.set_head_detached(oid)?;
+        // On the initial commit create a "main" branch pointing at the new
+        // commit and move `HEAD` to it.  This avoids leaving the repository in
+        // a detached `HEAD` state which can be confusing to interact with in
+        // subsequent operations.
+        let branch = repo.branch("main", &repo.find_commit(oid)?, true)?;
+        repo.set_head(branch.get().name().unwrap())?;
     }
     Ok(())
 }

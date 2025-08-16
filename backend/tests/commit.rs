@@ -21,8 +21,14 @@ fn commit_creates_commit() {
     commit("initial commit").unwrap();
     env::set_current_dir(prev).unwrap();
 
-    let head = repo.head().unwrap().peel_to_commit().unwrap();
-    assert_eq!(head.summary(), Some("initial commit"));
+    // A new repository should have a `main` branch pointing at the initial
+    // commit and `HEAD` should reference it.
+    let head_ref = repo.head().unwrap();
+    assert_eq!(head_ref.shorthand(), Some("main"));
+    let commit = repo
+        .find_commit(repo.refname_to_id("HEAD").unwrap())
+        .unwrap();
+    assert_eq!(commit.summary(), Some("initial commit"));
 }
 
 #[test]
