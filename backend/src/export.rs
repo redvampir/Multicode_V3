@@ -1,5 +1,29 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
+use serde::{Deserialize, Serialize};
+use crate::meta;
+
+/// Collection of visual metadata associated with a source file.
+#[derive(Debug, Serialize, Deserialize)]
+pub struct VizDocument {
+    /// Visual metadata entries extracted from the file.
+    pub nodes: Vec<meta::VisualMeta>,
+}
+
+/// Serialize all `@VISUAL_META` comments from `content` into a `VizDocument` JSON string.
+pub fn serialize_viz_document(content: &str) -> Option<String> {
+    let metas = meta::read_all(content);
+    if metas.is_empty() {
+        None
+    } else {
+        serde_json::to_string(&VizDocument { nodes: metas }).ok()
+    }
+}
+
+/// Deserialize a `VizDocument` from a JSON string.
+pub fn deserialize_viz_document(json: &str) -> Result<VizDocument, serde_json::Error> {
+    serde_json::from_str(json)
+}
 
 // Regular expressions matching different comment styles that may contain
 // `@VISUAL_META` markers. Each pattern also consumes the trailing newline so

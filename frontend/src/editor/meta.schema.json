@@ -90,35 +90,17 @@
       "description": "Optional AI-generated note.",
       "default": null,
       "anyOf": [
-        { "$ref": "#/definitions/AiNote" },
-        { "type": "null" }
+        {
+          "$ref": "#/definitions/AiNote"
+        },
+        {
+          "type": "null"
+        }
       ]
     },
     "extras": {
       "description": "Optional plugin-specific metadata.",
       "default": null
-    },
-    "history": {
-      "description": "Previous states of this metadata.",
-      "default": [],
-      "type": "array",
-      "items": {
-        "type": "object",
-        "properties": {
-          "timestamp": { "type": "string", "format": "date-time" },
-          "snapshot": { "type": "object" }
-        },
-        "required": ["timestamp", "snapshot"],
-        "additionalProperties": false
-      }
-    },
-    "node": {
-      "description": "Optional serialized visual node.",
-      "default": null,
-      "anyOf": [
-        { "$ref": "#/definitions/VizNode" },
-        { "type": "null" }
-      ]
     },
     "updated_at": {
       "description": "Timestamp of last update in UTC.",
@@ -151,176 +133,17 @@
       },
       "additionalProperties": false
     },
-    "VizPort": {
+    "VizDocument": {
+      "description": "Collection of visual metadata for a source file.",
       "type": "object",
-      "required": ["id", "kind", "dir"],
+      "required": ["nodes"],
       "properties": {
-        "id": { "type": "string" },
-        "kind": { "type": "string", "enum": ["exec", "data"] },
-        "dir": { "type": "string", "enum": ["in", "out"] }
-      },
-      "additionalProperties": false
-    },
-    "OperatorConcatNode": {
-      "type": "object",
-      "required": ["kind", "ports"],
-      "properties": {
-        "kind": { "const": "Operator/Concat" },
-        "ports": {
+        "nodes": {
           "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 3,
-          "maxItems": 3
+          "items": { "$ref": "#" }
         }
       },
       "additionalProperties": false
-    },
-    "ArrayNewNode": {
-      "type": "object",
-      "required": ["kind", "ports"],
-      "properties": {
-        "kind": { "const": "Array/New" },
-        "ports": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 3,
-          "maxItems": 3
-        }
-      },
-      "additionalProperties": false
-    },
-    "ArrayGetNode": {
-      "type": "object",
-      "required": ["kind", "ports"],
-      "properties": {
-        "kind": { "const": "Array/Get" },
-        "ports": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 5,
-          "maxItems": 5
-        }
-      },
-      "additionalProperties": false
-    },
-    "ArraySetNode": {
-      "type": "object",
-      "required": ["kind", "ports"],
-      "properties": {
-        "kind": { "const": "Array/Set" },
-        "ports": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 6,
-          "maxItems": 6
-        }
-      },
-      "additionalProperties": false
-    },
-    "MapNewNode": {
-      "type": "object",
-      "required": ["kind", "ports"],
-      "properties": {
-        "kind": { "const": "Map/New" },
-        "ports": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 3,
-          "maxItems": 3
-        }
-      },
-      "additionalProperties": false
-    },
-    "MapGetNode": {
-      "type": "object",
-      "required": ["kind", "ports"],
-      "properties": {
-        "kind": { "const": "Map/Get" },
-        "ports": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 5,
-          "maxItems": 5
-        }
-      },
-      "additionalProperties": false
-    },
-    "MapSetNode": {
-      "type": "object",
-      "required": ["kind", "ports"],
-      "properties": {
-        "kind": { "const": "Map/Set" },
-        "ports": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 6,
-          "maxItems": 6
-        }
-      },
-      "additionalProperties": false
-    },
-    "StructNode": {
-      "type": "object",
-      "required": ["kind", "ports", "data"],
-      "properties": {
-        "kind": { "const": "Struct" },
-        "ports": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 3,
-          "maxItems": 3
-        },
-        "data": {
-          "type": "object",
-          "required": ["fields"],
-          "properties": {
-            "fields": {
-              "type": "array",
-              "items": { "type": "string" }
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "TryNode": {
-      "type": "object",
-      "required": ["kind", "ports", "data"],
-      "properties": {
-        "kind": { "const": "Try" },
-        "ports": {
-          "type": "array",
-          "items": { "$ref": "#/definitions/VizPort" },
-          "minItems": 4,
-          "maxItems": 4
-        },
-        "data": {
-          "type": "object",
-          "required": ["exceptions"],
-          "properties": {
-            "exceptions": {
-              "type": "array",
-              "items": { "type": "string" }
-            }
-          },
-          "additionalProperties": false
-        }
-      },
-      "additionalProperties": false
-    },
-    "VizNode": {
-      "oneOf": [
-        { "$ref": "#/definitions/OperatorConcatNode" },
-        { "$ref": "#/definitions/ArrayNewNode" },
-        { "$ref": "#/definitions/ArrayGetNode" },
-        { "$ref": "#/definitions/ArraySetNode" },
-        { "$ref": "#/definitions/MapNewNode" },
-        { "$ref": "#/definitions/MapGetNode" },
-        { "$ref": "#/definitions/MapSetNode" },
-        { "$ref": "#/definitions/StructNode" },
-        { "$ref": "#/definitions/TryNode" }
-      ]
     }
   }
 }
