@@ -1,6 +1,7 @@
 import { hotkeys, showHotkeyHelp, zoomToFit, focusSearch } from './hotkeys';
 import { exportPNG } from './export.ts';
 import { emit } from '../shared/event-bus.js';
+import { saveAsMacro } from '../macros.ts';
 
 export function createSearchInput(canvas: any) {
   const input = document.createElement('input');
@@ -87,12 +88,14 @@ export const contextMenus = {
   block: [
     { label: 'Copy Block', action: () => console.log('copy'), shortcut: hotkeys.copyBlock },
     { label: 'Paste Block', action: () => console.log('paste'), shortcut: hotkeys.pasteBlock },
+    { label: 'Save as Macro', action: saveAsMacro },
     { label: 'Сгруппировать', action: () => console.log('group') },
     { label: 'Разгруппировать', action: () => console.log('ungroup') }
   ],
   canvas: [
     { label: 'Paste Block', action: () => console.log('paste'), shortcut: hotkeys.pasteBlock },
     { label: 'Select Connections', action: () => console.log('select'), shortcut: hotkeys.selectConnections },
+    { label: 'Save as Macro', action: saveAsMacro },
     { label: 'Zoom to Fit', action: zoomToFit, shortcut: hotkeys.zoomToFit }
   ]
 };
