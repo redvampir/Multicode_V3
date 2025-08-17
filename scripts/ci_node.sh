@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 WORKDIR="$1"
-LOG_FILE="$PWD/${WORKDIR}-ci.log"
+WORKSPACE_SAFE="${WORKDIR//\//-}"
+LOG_FILE="$PWD/${WORKSPACE_SAFE}-ci.log"
 : > "$LOG_FILE"
 
 pushd "$WORKDIR" >/dev/null
@@ -11,7 +12,7 @@ set -o pipefail
 run() {
   local cmd="$1"
   echo "+ $cmd" | tee -a "$LOG_FILE"
-  bash -c "$cmd" 2>&1 | tee -a "$LOG_FILE" || echo "::error file=$(pwd)/../${WORKDIR}-ci.log,line=1::${cmd} failed" >> "$LOG_FILE"
+  bash -c "$cmd" 2>&1 | tee -a "$LOG_FILE" || echo "::error file=$LOG_FILE,line=1::${cmd} failed" >> "$LOG_FILE"
 }
 
 run "npm ci"
@@ -25,8 +26,8 @@ fi
 
 popd >/dev/null
 
-tee "$LOG_FILE"
-if grep -q "::error" *.log; then
+cat "$LOG_FILE"
+if grep -q "::error" "$LOG_FILE"; then
   echo "Some steps failed. See log."
 fi
 exit 0
