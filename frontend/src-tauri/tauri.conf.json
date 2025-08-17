@@ -2,14 +2,14 @@
   "$schema": "https://schema.tauri.app/config/2",
   "identifier": "com.example.multicode",
   "build": {
-    "beforeDevCommand": "cargo run --manifest-path ../../backend/Cargo.toml",
-    "beforeBuildCommand": "cargo build --release --manifest-path ../../backend/Cargo.toml",
+    "beforeDevCommand": "cargo run --manifest-path ../backend/Cargo.toml",
+    "beforeBuildCommand": "cargo build --release --manifest-path ../backend/Cargo.toml",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
   "bundle": {
     "externalBin": [
-      "../../backend/target/release/backend"
+      "../backend/target/release/backend"
     ]
   },
   "app": {
