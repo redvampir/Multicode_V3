@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+set -e
 
 WORKDIR="$1"
 LOG_FILE="$PWD/${WORKDIR}-ci.log"
@@ -9,7 +10,10 @@ pushd "$WORKDIR" >/dev/null
 run() {
   local cmd="$1"
   echo "+ $cmd" >> "$LOG_FILE"
-  bash -c "$cmd" >> "$LOG_FILE" 2>&1 || echo "::error file=$WORKDIR step=$cmd::failed" >> "$LOG_FILE"
+  bash -c "$cmd" >> "$LOG_FILE" 2>&1 || {
+    echo "::error file=$WORKDIR step=$cmd::failed" >> "$LOG_FILE"
+    return 1
+  }
 }
 
 run "npm ci"
