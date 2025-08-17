@@ -72,6 +72,9 @@ jobs:
       - name: Run frontend tests
         run: npm test -- --coverage
         working-directory: frontend
+      - name: Run frontend e2e tests
+        run: npm run e2e
+        working-directory: frontend
       - name: Upload frontend coverage
         uses: actions/upload-artifact@v3
         with:
