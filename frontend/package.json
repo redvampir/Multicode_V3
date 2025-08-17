@@ -7,7 +7,7 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build",
-    "build:debug": "tauri build --debug --no-bundle",
+    "build:debug": "tauri build --debug",
     "build:release": "tauri build --no-bundle",
     "lint": "npx eslint .",
     "e2e": "playwright test"
