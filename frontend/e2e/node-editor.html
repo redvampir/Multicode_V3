@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Node Editor Test</title>
+  <style>
+    canvas { border: 1px solid #ccc; width: 800px; height: 600px; }
+  </style>
+</head>
+<body>
+  <canvas id="canvas" width="800" height="600"></canvas>
+  <script type="module">
+    import { VisualCanvas } from '../src/visual/canvas.js';
+    import { setLanguage } from '../src/shared/i18n.ts';
+
+    const canvas = document.getElementById('canvas');
+    const minimap = document.createElement('canvas');
+    const vc = new VisualCanvas(canvas, minimap);
+    window.vc = vc;
+
+    const blocks = window.getInitialBlocks ? window.getInitialBlocks() : [];
+    vc.setBlocks(blocks);
+
+    setLanguage('en');
+
+    window.changeLocale = (lang) => vc.setLocale(lang);
+    window.updateBlock = (id, data) => {
+      const block = vc.blocksData.find(b => b.visual_id === id);
+      if (block) Object.assign(block, data);
+      vc.setBlocks(vc.blocksData);
+    };
+    window.connectBlocks = (from, to) => {
+      const block = vc.blocksData.find(b => b.visual_id === from);
+      if (block) {
+        block.links = block.links || [];
+        block.links.push(to);
+        vc.setBlocks(vc.blocksData);
+      }
+    };
+    window.exportClean = content => content.replace(/@VISUAL_META[^\n]*\n?/g, '');
+    window.importContent = content => {
+      const m = content.match(/@VISUAL_META\s*(\{.*\})/);
+      if (m) {
+        const meta = JSON.parse(m[1]);
+        vc.setBlocks([{
+          visual_id: meta.id,
+          kind: 'function',
+          x: meta.x,
+          y: meta.y,
+          translations: meta.translations || {},
+          links: []
+        }]);
+      }
+    };
+    window.addEventListener('storage', e => {
+      if (e.key === 'block-pos') {
+        const pos = JSON.parse(e.newValue);
+        const b = vc.blocksData[0];
+        b.x = pos.x;
+        b.y = pos.y;
+        vc.setBlocks(vc.blocksData);
+      }
+    });
+  </script>
+</body>
+</html>

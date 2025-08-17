@@ -1,9 +1,11 @@
 import en from "../locales/en.json" assert { type: 'json' };
 import ru from "../locales/ru.json" assert { type: 'json' };
+import es from "../locales/es.json" assert { type: 'json' };
 
 const resources: Record<string, Record<string, string>> = {
   en: en as Record<string, string>,
-  ru: ru as Record<string, string>
+  ru: ru as Record<string, string>,
+  es: es as Record<string, string>
 };
 
 let current = 'en';
