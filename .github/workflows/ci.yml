@@ -70,8 +70,13 @@ jobs:
         run: npm run build --verbose
         working-directory: frontend
       - name: Run frontend tests
-        run: npm test
+        run: npm test -- --coverage
         working-directory: frontend
+      - name: Upload frontend coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: frontend-coverage
+          path: frontend/coverage
   lsp:
     runs-on: ubuntu-latest
     steps:
