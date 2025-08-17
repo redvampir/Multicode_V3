@@ -5,8 +5,16 @@ const {
   DiagnosticSeverity
 } = require('vscode-languageserver/node');
 
-// Create a connection for the server using Node's IPC as a transport.
-const connection = createConnection(ProposedFeatures.all);
+let connection;
+if (require.main === module) {
+  // Create a connection for the server using Node's IPC as a transport.
+  connection = createConnection(ProposedFeatures.all);
+} else {
+  connection = {
+    onInitialize: () => {},
+    sendDiagnostics: () => {}
+  };
+}
 const documents = new TextDocuments();
 
 // The server's capabilities on initialization.
@@ -35,12 +43,16 @@ function validateTextDocument(textDocument) {
   connection.sendDiagnostics({ uri: textDocument.uri, diagnostics });
 }
 
-documents.onDidOpen(event => validateTextDocument(event.document));
-documents.onDidChangeContent(change => validateTextDocument(change.document));
+module.exports = { validateTextDocument, connection, documents };
 
-// Make the text document manager listen on the connection
-// for open, change and close text document events
-// and the connection listen on the input for 
-// `initialize` requests.
-documents.listen(connection);
-connection.listen();
+if (require.main === module) {
+  documents.onDidOpen(event => validateTextDocument(event.document));
+  documents.onDidChangeContent(change => validateTextDocument(change.document));
+
+  // Make the text document manager listen on the connection
+  // for open, change and close text document events
+  // and the connection listen on the input for
+  // `initialize` requests.
+  documents.listen(connection);
+  connection.listen();
+}
