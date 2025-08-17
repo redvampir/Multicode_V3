@@ -20,4 +20,20 @@ describe('magnifier', () => {
     window.dispatchEvent(new Event('blur'));
     expect(vc.magnifier.active).toBe(false);
   });
+
+  it('does not call ctx.scale when magnifier inactive', () => {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    const scale = vi.fn();
+    canvasEl.getContext = () => ({
+      save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){},
+      fillRect(){}, strokeRect(){}, fillText(){}, restore(){}, scale
+    });
+    globalThis.requestAnimationFrame = () => 0;
+    const vc = new VisualCanvas(canvasEl);
+    vc.magnifier = { active: false };
+    vc.draw();
+    expect(scale).not.toHaveBeenCalled();
+  });
 });
