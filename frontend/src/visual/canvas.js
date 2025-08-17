@@ -98,6 +98,7 @@ export class VisualCanvas {
     this.highlighted = new Set();
     this.hovered = null;
     this.gridEnabled = cfg.showGrid;
+    this.magnifier = { active: false, x: 0, y: 0 };
     this.selected = new Set();
     this.groups = new Map();
     this.nextGroupId = 1;
@@ -853,6 +854,8 @@ export class VisualCanvas {
     });
 
     this.canvas.addEventListener('mousemove', e => {
+      this.magnifier.x = e.offsetX;
+      this.magnifier.y = e.offsetY;
       const pos = this.toWorld(e.offsetX, e.offsetY);
       if (this.selectionBox) {
         this.selectionBox.x = pos.x;
@@ -933,6 +936,13 @@ export class VisualCanvas {
           }
         }
       }
+    });
+
+    window.addEventListener('keydown', e => {
+      if (e.key === 'Alt') this.magnifier.active = true;
+    });
+    window.addEventListener('keyup', e => {
+      if (e.key === 'Alt') this.magnifier.active = false;
     });
 
     window.addEventListener('mouseup', async e => {
@@ -1241,6 +1251,14 @@ export class VisualCanvas {
 
     // Draw blocks
     this.blocks.forEach(b => {
+      const isMicro = this.magnifier.active && b.w === 56 && b.h === 28;
+      if (isMicro) {
+        this.ctx.save();
+        const s = 1.5;
+        this.ctx.translate(b.x + b.w / 2, b.y + b.h / 2);
+        this.ctx.scale(s, s);
+        this.ctx.translate(-(b.x + b.w / 2), -(b.y + b.h / 2));
+      }
       b.draw(this.ctx);
       if (this.testResults.has(b.id)) {
         const ok = this.testResults.get(b.id);
@@ -1260,6 +1278,7 @@ export class VisualCanvas {
         this.ctx.font = `${12 / this.scale}px sans-serif`;
         this.ctx.fillText('⚠', b.x + 4 / this.scale, b.y + 14 / this.scale);
       }
+      if (isMicro) this.ctx.restore();
     });
 
     // Selection box
@@ -1303,6 +1322,30 @@ export class VisualCanvas {
     }
 
     this.ctx.restore();
+    if (this.magnifier.active) {
+      const radius = 80;
+      const scale = 2;
+      const { x, y } = this.magnifier;
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+      this.ctx.clip();
+      this.ctx.drawImage(
+        this.canvas,
+        x - radius / scale,
+        y - radius / scale,
+        (radius * 2) / scale,
+        (radius * 2) / scale,
+        x - radius,
+        y - radius,
+        radius * 2,
+        radius * 2
+      );
+      this.ctx.strokeStyle = '#000';
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+      this.ctx.restore();
+    }
     if (this.minimap) this.minimap.render(this);
     requestAnimationFrame(() => this.draw());
   }
