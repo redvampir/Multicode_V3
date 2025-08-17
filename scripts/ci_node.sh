@@ -6,10 +6,12 @@ LOG_FILE="$PWD/${WORKDIR}-ci.log"
 
 pushd "$WORKDIR" >/dev/null
 
+set -o pipefail
+
 run() {
   local cmd="$1"
-  echo "+ $cmd" >> "$LOG_FILE"
-  bash -c "$cmd" >> "$LOG_FILE" 2>&1 || echo "::error file=$WORKDIR step=$cmd::failed" >> "$LOG_FILE"
+  echo "+ $cmd" | tee -a "$LOG_FILE"
+  bash -c "$cmd" 2>&1 | tee -a "$LOG_FILE" || echo "::error file=$(pwd)/../${WORKDIR}-ci.log,line=1::${cmd} failed" >> "$LOG_FILE"
 }
 
 run "npm ci"
