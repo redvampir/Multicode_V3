@@ -3,7 +3,7 @@
   "identifier": "com.example.multicode",
   "build": {
     "beforeDevCommand": "cargo run --manifest-path ../backend/Cargo.toml",
-    "beforeBuildCommand": "cargo build --release --manifest-path ../backend/Cargo.toml",
+    "beforeBuildCommand": "cargo build --release --manifest-path ../backend/Cargo.toml && node -e \"const fs=require('fs'); const p='../backend/target/release/backend'; const ext=process.platform==='win32'?'.exe':''; fs.copyFileSync(p+ext, p+'-'+process.env.TAURI_ENV_TARGET_TRIPLE+ext);\"",
     "devUrl": "http://localhost:1420",
     "frontendDist": "../dist"
   },
