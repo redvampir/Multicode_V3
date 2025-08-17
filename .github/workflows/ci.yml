@@ -68,7 +68,7 @@ jobs:
         run: npm ci
         working-directory: frontend
       - name: Build debug
-        run: npm run build:debug -- --no-bundle
+        run: npm run build:debug
         working-directory: frontend
       - name: Build release
         run: npm run build:release -- --no-bundle
