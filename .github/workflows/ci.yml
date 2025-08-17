@@ -27,7 +27,7 @@ jobs:
       - name: Backend quality
         run: bash scripts/ci_backend.sh
         continue-on-error: true
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: backend-log
@@ -45,7 +45,7 @@ jobs:
       - name: Node quality
         run: bash scripts/ci_node.sh ${{ matrix.workdir }}
         continue-on-error: true
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: ${{ matrix.workdir }}-log
