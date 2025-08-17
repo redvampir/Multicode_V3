@@ -9,6 +9,7 @@ pub mod parser;
 pub mod plugins;
 pub mod search;
 pub mod server;
+pub mod viz_lint;
 
 pub use blocks::{parse_blocks, upsert_meta};
 

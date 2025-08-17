@@ -20,6 +20,8 @@ use backend::meta::{fix_all, remove_all, AiNote};
 #[cfg(not(test))]
 use backend::parser::{parse, parse_to_blocks};
 #[cfg(not(test))]
+use backend::viz_lint;
+#[cfg(not(test))]
 use backend::server;
 pub use backend::BlockInfo;
 use clap::{Parser, Subcommand};
@@ -64,6 +66,11 @@ enum Commands {
         #[command(subcommand)]
         command: MetaCommands,
     },
+    /// Work with viz documents
+    Viz {
+        #[command(subcommand)]
+        command: VizCommands,
+    },
 }
 
 #[derive(Subcommand)]
@@ -80,6 +87,15 @@ enum MetaCommands {
     },
     /// Remove all metadata comments from a file
     Remove {
+        /// Path to the source file
+        path: String,
+    },
+}
+
+#[derive(Subcommand)]
+enum VizCommands {
+    /// Lint a source file for @viz comment issues
+    Lint {
         /// Path to the source file
         path: String,
     },
@@ -257,6 +273,20 @@ fn handle_cli_command(command: Commands) -> Result<(), String> {
                 std::fs::write(&path, cleaned)
                     .map_err(|e| format!("Failed to write file {path}: {e}"))?;
                 Ok(())
+            }
+        },
+        Commands::Viz { command } => match command {
+            VizCommands::Lint { path } => {
+                if !Path::new(&path).exists() {
+                    return Err(format!("File {path} does not exist"));
+                }
+                let issues = viz_lint::lint_file(Path::new(&path))
+                    .map_err(|e| format!("Failed to read file {path}: {e}"))?;
+                if issues.is_empty() {
+                    Ok(())
+                } else {
+                    Err(issues.join("\n"))
+                }
             }
         },
     }
