@@ -16,8 +16,26 @@ describe('magnifier', () => {
     canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
     globalThis.requestAnimationFrame = () => 0;
     const vc = new VisualCanvas(canvasEl);
-    vc.magnifier = { active: true };
+    vc.magnifier.active = true;
     window.dispatchEvent(new Event('blur'));
     expect(vc.magnifier.active).toBe(false);
+  });
+
+  it('changes scale on wheel', () => {
+    const canvasEl = document.createElement('canvas');
+    Object.defineProperty(canvasEl, 'clientWidth', { value: 200 });
+    Object.defineProperty(canvasEl, 'clientHeight', { value: 200 });
+    canvasEl.getContext = () => ({ save(){}, setTransform(){}, clearRect(){}, beginPath(){}, stroke(){}, moveTo(){}, lineTo(){}, fillRect(){}, strokeRect(){}, fillText(){}, restore(){} });
+    globalThis.requestAnimationFrame = () => 0;
+    const vc = new VisualCanvas(canvasEl);
+    vc.magnifier.active = true;
+    const start = vc.magnifier.scale;
+    const up = new WheelEvent('wheel', { deltaY: -100, cancelable: true });
+    canvasEl.dispatchEvent(up);
+    const increased = vc.magnifier.scale;
+    expect(increased).toBeGreaterThan(start);
+    const down = new WheelEvent('wheel', { deltaY: 100, cancelable: true });
+    canvasEl.dispatchEvent(down);
+    expect(vc.magnifier.scale).toBeLessThan(increased);
   });
 });

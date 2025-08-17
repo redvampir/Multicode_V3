@@ -16,6 +16,11 @@ export const VIEW_STATE_KEY = 'visual-view-state';
 const MIN_SCALE = 0.5;
 const MAX_SCALE = 4;
 
+const MIN_MAGNIFIER_SCALE = 1;
+const MAX_MAGNIFIER_SCALE = 10;
+const DEFAULT_MAGNIFIER_RADIUS = 80;
+const DEFAULT_MAGNIFIER_SCALE = 2;
+
 // Utility used in tests and debug mode to analyze graph connections.
 // Accepts an array of block ids and array of edges [fromId, toId].
 // Returns sets of block ids that lack connections and edges participating in cycles.
@@ -108,6 +113,13 @@ export class VisualCanvas {
     this.nextAutoPos = { x: 0, y: 0 };
     this.fileId = 'current';
     this.lang = 'rust';
+    this.magnifier = {
+      active: false,
+      x: 0,
+      y: 0,
+      radius: DEFAULT_MAGNIFIER_RADIUS,
+      scale: DEFAULT_MAGNIFIER_SCALE
+    };
 
     this.tooltip = document.createElement('div');
     const theme = getTheme();
@@ -853,6 +865,10 @@ export class VisualCanvas {
     });
 
     this.canvas.addEventListener('mousemove', e => {
+      if (this.magnifier?.active) {
+        this.magnifier.x = e.offsetX;
+        this.magnifier.y = e.offsetY;
+      }
       const pos = this.toWorld(e.offsetX, e.offsetY);
       if (this.selectionBox) {
         this.selectionBox.x = pos.x;
@@ -1056,6 +1072,15 @@ export class VisualCanvas {
 
     this.canvas.addEventListener('wheel', e => {
       e.preventDefault();
+      if (this.magnifier && this.magnifier.active) {
+        const factor = e.deltaY < 0 ? 1.1 : 0.9;
+        this.magnifier.scale *= factor;
+        this.magnifier.scale = Math.max(
+          MIN_MAGNIFIER_SCALE,
+          Math.min(MAX_MAGNIFIER_SCALE, this.magnifier.scale)
+        );
+        return;
+      }
       const mouseX = e.offsetX;
       const mouseY = e.offsetY;
       const worldPos = this.toWorld(mouseX, mouseY);
@@ -1307,6 +1332,36 @@ export class VisualCanvas {
     }
 
     this.ctx.restore();
+    if (this.magnifier && this.magnifier.active) {
+      const { x, y, radius, scale } = this.magnifier;
+      const off = document.createElement('canvas');
+      off.width = this.canvas.width;
+      off.height = this.canvas.height;
+      const offCtx = off.getContext('2d');
+      offCtx.drawImage(this.canvas, 0, 0);
+
+      const sx = x - radius / scale;
+      const sy = y - radius / scale;
+      const sw = (radius * 2) / scale;
+      const sh = (radius * 2) / scale;
+      const dx = x - radius;
+      const dy = y - radius;
+      const dw = radius * 2;
+      const dh = radius * 2;
+
+      this.ctx.save();
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+      this.ctx.clip();
+      this.ctx.drawImage(off, sx, sy, sw, sh, dx, dy, dw, dh);
+      this.ctx.restore();
+
+      this.ctx.beginPath();
+      this.ctx.arc(x, y, radius, 0, Math.PI * 2);
+      this.ctx.strokeStyle = theme.connection;
+      this.ctx.lineWidth = 2;
+      this.ctx.stroke();
+    }
     if (this.minimap) this.minimap.render(this);
     requestAnimationFrame(() => this.draw());
   }
