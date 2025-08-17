@@ -93,3 +93,9 @@ jobs:
       - name: Check dependencies
         run: npx depcheck
         working-directory: plugins/lsp
+      - name: Lint lsp
+        run: npm run lint
+        working-directory: plugins/lsp
+      - name: Run lsp tests
+        run: npm test
+        working-directory: plugins/lsp

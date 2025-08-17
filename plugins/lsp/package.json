@@ -5,9 +5,12 @@
   "description": "Prototype language server highlighting metadata",
   "main": "server.js",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "test": "vitest",
+    "lint": "npx eslint ."
   },
   "dependencies": {
     "vscode-languageserver": "^9.0.1"
   }
 }
+
