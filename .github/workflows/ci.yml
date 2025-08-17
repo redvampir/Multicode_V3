@@ -45,10 +45,12 @@ jobs:
       - name: Node quality
         run: bash scripts/ci_node.sh ${{ matrix.workdir }}
         continue-on-error: true
+      - name: Compute safe artifact name
+        run: echo "SAFE_WORKDIR=${{ matrix.workdir }}" | tr '/' '-' >> $GITHUB_ENV
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: ${{ matrix.workdir }}-log
+          name: ${{ env.SAFE_WORKDIR }}-log
           path: ${{ matrix.workdir }}-ci.log
   desktop-build:
     continue-on-error: true
