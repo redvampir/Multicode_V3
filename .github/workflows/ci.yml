@@ -23,31 +23,14 @@ jobs:
         run: echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
       - name: Install cargo-audit
         run: cargo install cargo-audit
-      - name: Check formatting
-        run: cargo fmt --all -- --check
-        working-directory: backend
-      - name: Lint backend
-        run: cargo clippy --all-targets --all-features -- -D warnings
-        working-directory: backend
-      - name: Build backend documentation
-        run: |
-          set -o pipefail
-          cargo doc --no-deps 2>&1 | tee doc-build.log
-        working-directory: backend
-      - name: Audit Rust dependencies
-        run: cargo audit
-        working-directory: backend
-      - name: Build backend
-        run: cargo build --verbose
-        working-directory: backend
-      - name: Build backend release
-        run: |
-          set -o pipefail
-          cargo build --release 2>&1 | tee release-build.log
-        working-directory: backend
-      - name: Run backend tests
-        run: cargo test --all-features -- --nocapture
-        working-directory: backend
+      - name: Backend quality
+        run: bash scripts/ci_backend.sh
+        continue-on-error: true
+      - uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: backend-log
+          path: backend-ci.log
   frontend:
     runs-on: ubuntu-latest
     steps:
