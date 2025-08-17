@@ -31,6 +31,9 @@ fi
 popd >/dev/null
 
 cat "$LOG_FILE"
+if [ "$FAILED" -ne 0 ]; then
+  echo "::error::One or more steps failed (see log above)"
+fi
 if grep -q "::error" "$LOG_FILE"; then
   echo "Some steps failed. See log."
 fi
