@@ -1075,10 +1075,12 @@ export class VisualCanvas {
     if (blocks.length === 0) return;
     let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
     for (const b of blocks) {
+      const w = b.isMicro ? 120 : b.w;
+      const h = b.isMicro ? 50 : b.h;
       minX = Math.min(minX, b.x);
       minY = Math.min(minY, b.y);
-      maxX = Math.max(maxX, b.x + b.w);
-      maxY = Math.max(maxY, b.y + b.h);
+      maxX = Math.max(maxX, b.x + w);
+      maxY = Math.max(maxY, b.y + h);
     }
     const width = maxX - minX;
     const height = maxY - minY;

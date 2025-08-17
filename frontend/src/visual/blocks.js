@@ -398,6 +398,7 @@ class MicroOpBlock extends Block {
       getTheme().blockKinds.Operator || getTheme().blockFill
     );
     this.ports = MicroOpBlock.ports;
+    this.isMicro = true;
   }
 }
 
@@ -418,6 +419,7 @@ class UnaryMicroOpBlock extends Block {
       getTheme().blockKinds.Operator || getTheme().blockFill
     );
     this.ports = UnaryMicroOpBlock.ports;
+    this.isMicro = true;
   }
 }
 
@@ -644,6 +646,7 @@ export class VariableGetBlock extends Block {
       getTheme().blockKinds.Variable
     );
     this.ports = VariableGetBlock.ports;
+    this.isMicro = true;
   }
 }
 
