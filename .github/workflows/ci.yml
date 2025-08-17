@@ -18,7 +18,10 @@ jobs:
           RUSTUP_MAX_RETRIES: 10
       - name: Install system dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y libglib2.0-dev libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev pkg-config
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglib2.0-dev libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev pkg-config
       - name: Set PKG_CONFIG_PATH
         if: runner.os == 'Linux'
         run: echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
@@ -71,8 +74,10 @@ jobs:
         working-directory: frontend
       - name: Install system dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update && sudo apt-get install -y \
-             libglib2.0-dev libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev pkg-config
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libglib2.0-dev libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev pkg-config
       - name: Set PKG_CONFIG_PATH
         if: runner.os == 'Linux'
         run: echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
