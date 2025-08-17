@@ -80,6 +80,9 @@ jobs:
       - name: Build frontend debug
         run: npm run build:debug
         working-directory: frontend
+      - name: Build frontend release
+        run: npm run build:release
+        working-directory: frontend
       - name: Run frontend tests
         run: npm test -- --coverage
         working-directory: frontend
