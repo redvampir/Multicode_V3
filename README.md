@@ -12,7 +12,7 @@ Multicode V3 — редактор исходного кода, который о
 - **Backend (Rust, Tauri):** парсинг файлов через tree-sitter, хранение и обработка метаданных, управление плагинами.
 - **Frontend (Vite, JavaScript):** интерфейс с Monaco‑редактором и canvas‑основанным редактором блоков.
 - **Локальный WebSocket‑сервер:** синхронизирует состояния между частями приложения.
-- **Neira (экспериментальный ИИ‑модуль):** [docs/neira/README.md](docs/neira/README.md)
+- **Neira (экспериментальный ИИ‑модуль):** [docs/neira/README.md](docs/neira/README.md) — см. [описание узлов анализа](docs/neira/analysis-nodes.md)
 
 ## Быстрый старт
 
