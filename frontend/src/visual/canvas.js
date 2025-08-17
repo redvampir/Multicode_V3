@@ -1046,6 +1046,10 @@ export class VisualCanvas {
       this.alignGuides = [];
     });
 
+    window.addEventListener('blur', () => {
+      if (this.magnifier) this.magnifier.active = false;
+    });
+
     this.canvas.addEventListener('mouseleave', () => {
       this.tooltip.style.display = 'none';
     });
