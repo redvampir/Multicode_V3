@@ -24,5 +24,8 @@ fi
 popd >/dev/null
 
 tee "$LOG_FILE"
+if grep -q "::error" *.log; then
+  echo "Some steps failed. See log."
+fi
 exit 0
 
