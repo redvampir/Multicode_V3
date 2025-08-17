@@ -10,10 +10,14 @@ pushd "$WORKDIR" >/dev/null
 run() {
   local cmd="$1"
   echo "+ $cmd" >> "$LOG_FILE"
-  bash -c "$cmd" >> "$LOG_FILE" 2>&1 || {
-    echo "::error file=$WORKDIR step=$cmd::failed" >> "$LOG_FILE"
+  if ! err=$(bash -c "$cmd" 2>&1); then
+    echo "$err" >> "$LOG_FILE"
+    local path=$(printf '%s\n' "$err" | grep -oE '[^ :]+\.[a-z]+:[0-9]+' | head -n1)
+    echo "::error file=${path:-$WORKDIR} step=$cmd::failed" >> "$LOG_FILE"
     return 1
-  }
+  else
+    echo "$err" >> "$LOG_FILE"
+  fi
 }
 
 run "npm ci"
