@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 LOG_FILE="backend-ci.log"
 : > "$LOG_FILE"
 
@@ -8,7 +10,10 @@ pushd backend >/dev/null
 run() {
   local cmd="$1"
   echo "+ $cmd" >> "../$LOG_FILE"
-  bash -c "$cmd" >> "../$LOG_FILE" 2>&1 || echo "::error file=backend step=$cmd::failed" >> "../$LOG_FILE"
+  bash -c "$cmd" >> "../$LOG_FILE" 2>&1 || {
+    echo "::error file=backend step=$cmd::failed" >> "../$LOG_FILE"
+    return 1
+  }
 }
 
 run "cargo fmt --all -- --check"
