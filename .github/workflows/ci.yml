@@ -6,7 +6,6 @@ on:
 
 jobs:
   backend:
-    continue-on-error: true
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
@@ -26,14 +25,12 @@ jobs:
         run: cargo install cargo-audit
       - name: Backend quality
         run: bash scripts/ci_backend.sh
-        continue-on-error: true
       - uses: actions/upload-artifact@v3
         if: always()
         with:
           name: backend
           path: backend-ci.log
   node-workspaces:
-    continue-on-error: true
     strategy:
       matrix:
         workdir: [frontend, plugins/lsp]
@@ -44,14 +41,12 @@ jobs:
         with: { node-version: 18 }
       - name: Node quality
         run: bash scripts/ci_node.sh ${{ matrix.workdir }}
-        continue-on-error: true
       - uses: actions/upload-artifact@v3
         if: always()
         with:
           name: ${{ replace(matrix.workdir, '/', '-') }}
           path: ${{ replace(matrix.workdir, '/', '-') }}-ci.log
   desktop-build:
-    continue-on-error: true
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest, macos-latest]
