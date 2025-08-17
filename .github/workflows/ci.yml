@@ -28,7 +28,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: backend
+          name: backend-log
           path: backend-ci.log
   node-workspaces:
     strategy:
@@ -44,7 +44,7 @@ jobs:
       - uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: ${{ replace(matrix.workdir, '/', '-') }}
+          name: ${{ matrix.workdir == 'frontend' && 'frontend-log' || 'lsp-log' }}
           path: ${{ replace(matrix.workdir, '/', '-') }}-ci.log
   desktop-build:
     strategy:
