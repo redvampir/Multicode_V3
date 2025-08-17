@@ -40,6 +40,11 @@ jobs:
       - name: Build backend
         run: cargo build --verbose
         working-directory: backend
+      - name: Build backend release
+        run: |
+          set -o pipefail
+          cargo build --release 2>&1 | tee release-build.log
+        working-directory: backend
       - name: Run backend tests
         run: cargo test --all-features -- --nocapture
         working-directory: backend
