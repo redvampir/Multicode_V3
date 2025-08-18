@@ -72,6 +72,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
         working-directory: frontend
+      - name: Check environment
+        if: runner.os != 'macOS'
+        run: npm run check-env
       - name: Install system dependencies
         if: runner.os == 'Linux'
         run: |

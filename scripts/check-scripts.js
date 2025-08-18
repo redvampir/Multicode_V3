@@ -40,6 +40,7 @@ const scriptFiles = [
   'scripts/build.js',
   'scripts/test.js',
   'scripts/clean.js',
+  'scripts/check-env.js',
 ];
 
 const pkgFiles = workspacePackagePaths();
