@@ -13,6 +13,10 @@ mkdir -p "$APP_BUNDLE/Contents/Resources"
 
 cp "$BIN_PATH" "$APP_BUNDLE/Contents/MacOS/$APP_NAME"
 
+if [ -f "$ROOT_DIR/desktop/assets/icon.png" ]; then
+  cp "$ROOT_DIR/desktop/assets/icon.png" "$APP_BUNDLE/Contents/Resources/icon.png"
+fi
+
 cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -22,6 +26,7 @@ cat > "$APP_BUNDLE/Contents/Info.plist" <<'PLIST'
   <key>CFBundleIdentifier</key><string>com.example.multicode</string>
   <key>CFBundleName</key><string>Multicode</string>
   <key>CFBundleVersion</key><string>0.1.0</string>
+  <key>CFBundleIconFile</key><string>icon.png</string>
 </dict>
 </plist>
 PLIST
