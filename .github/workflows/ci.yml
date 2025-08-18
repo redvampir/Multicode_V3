@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  legacy_backend:
+  core-desktop:
     continue-on-error: true
     strategy:
       matrix:
@@ -25,16 +25,36 @@ jobs:
       - name: Set PKG_CONFIG_PATH
         if: runner.os == 'Linux'
         run: echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-      - name: Legacy backend quality
-        run: bash scripts/ci_backend.sh
+      - name: Core and desktop quality
+        run: |
+          LOG_FILE="core-desktop-ci.log"
+          : > "$LOG_FILE"
+          run() {
+            local cmd="$1"
+            echo "+ $cmd" >> "$LOG_FILE"
+            if ! err=$(bash -c "$cmd" 2>&1); then
+              echo "$err" >> "$LOG_FILE"
+              local path=$(printf '%s\n' "$err" | grep -oE '[^ :]+\.[a-z]+:[0-9]+' | head -n1)
+              echo "::error file=${path:-core-desktop} step=$cmd::failed" >> "$LOG_FILE"
+              return 1
+            else
+              echo "$err" >> "$LOG_FILE"
+            fi
+          }
+          for crate in core desktop; do
+            pushd "$crate" >/dev/null
+            run "cargo fmt --all -- --check"
+            run "cargo clippy --all-targets -- -D warnings"
+            run "cargo test --all-features"
+            popd >/dev/null
+          done
+          cat "$LOG_FILE"
         continue-on-error: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: legacy-backend-log-${{ matrix.os }}
-          path: legacy-backend-ci.log
+          name: core-desktop-log-${{ matrix.os }}
+          path: core-desktop-ci.log
   node-workspaces:
     continue-on-error: true
     strategy:
