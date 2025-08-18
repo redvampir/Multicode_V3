@@ -1,57 +1,58 @@
-# Multicode Desktop Builds
 
-This document describes how to build and package the `desktop` application for the major operating systems. All build artifacts are written to the `dist/` directory.
+# Сборка Multicode Desktop
 
-## Prerequisites
+Этот документ описывает, как собрать и упаковать приложение `desktop` для основных операционных систем. Все артефакты сборки сохраняются в каталоге `dist/`.
 
-- Rust toolchain (`cargo`) installed
-- For Windows packaging: [Inno Setup](https://jrsoftware.org/isinfo.php)
-- For macOS bundling: macOS with Xcode command line tools
-- For AppImage creation: `appimagetool` available in `PATH`
+## Предварительные требования
 
-## Building the binary
+- установленный инструментарий Rust (`cargo`)
+- для упаковки Windows: [Inno Setup](https://jrsoftware.org/isinfo.php)
+- для сборки пакета macOS: macOS с установленными инструментами командной строки Xcode
+- для создания AppImage: `appimagetool` должен быть доступен в `PATH`
+
+## Сборка бинарного файла
 
 ```sh
 cargo build --release -p desktop
 ```
 
-The compiled binary will be located at `target/release/desktop` (or `desktop.exe` on Windows).
+Скомпилированный бинарник будет находиться по пути `target/release/desktop` (или `desktop.exe` на Windows).
 
-## Packaging
+## Упаковка
 
 ### Windows
 
-1. Ensure Inno Setup is installed.
-2. Run the installer script:
+1. Убедитесь, что установлен Inno Setup.
+2. Запустите скрипт установщика:
    ```sh
    iscc scripts/installer.iss
    ```
-3. The installer `MulticodeSetup.exe` will appear in `dist/`.
+3. В каталоге `dist/` появится установщик `MulticodeSetup.exe`.
 
-_The installer contains a placeholder for future WinSparkle integration. Auto-updates are currently disabled._
+*В установщик включён заглушенный модуль WinSparkle для будущих автообновлений, сейчас он отключён.*
 
 ### macOS
 
-1. Run the bundling script:
+1. Запустите скрипт упаковки:
    ```sh
    bash scripts/macos_bundle.sh
    ```
-2. The `.app` bundle will be created at `dist/Multicode.app`.
-3. Set `CODESIGN_IDENTITY` to sign the bundle if desired.
+2. `.app`-пакет будет создан в `dist/Multicode.app`.
+3. Установите переменную `CODESIGN_IDENTITY`, чтобы при необходимости подписать пакет.
 
-_Sparkle auto-updater hooks are stubbed out and disabled._
+*Заглушки для автообновлений через Sparkle присутствуют, но отключены.*
 
 ### Linux (AppImage)
 
-1. Ensure `appimagetool` is installed.
-2. Run the AppImage script:
+1. Убедитесь, что установлен `appimagetool`.
+2. Запустите скрипт создания AppImage:
    ```sh
    bash scripts/build_appimage.sh
    ```
-3. The resulting AppImage will be saved as `dist/Multicode-x86_64.AppImage`.
+3. Полученный файл AppImage будет сохранён как `dist/Multicode-x86_64.AppImage`.
 
-_A placeholder for a future version check auto-updater is included but disabled._
+*В скрипте предусмотрена заглушка проверки версии для будущего автообновления, но сейчас она отключена.*
 
 ## GitHub Actions
 
-The workflow defined in `.github/workflows/desktop.yml` builds the `desktop` project on `windows-latest`, `macos-latest` and `ubuntu-latest`, packaging the artifacts described above and uploading them for download.
+Рабочий процесс `.github/workflows/desktop.yml` собирает проект `desktop` на платформах `windows-latest`, `macos-latest` и `ubuntu-latest`, упаковывает описанные выше артефакты и загружает их как артефакты в Actions.
