@@ -62,4 +62,27 @@
 - Алгоритмы автономного расширения и согласования.
 - API для редактора и взаимодействия с пользователем.
 - Примеры новых доменных подтипов и процедур их обучения.
+ 
+## 7. Счётчик ревизий и критерий улучшения
+
+Каждый узел анализа ведёт счётчик ревизий, фиксируя количество попыток
+пересмотреть ответ. Новая версия принимается только в случае, если прирост
+качества превышает установленный порог `IMPROVEMENT_THRESHOLD`.
+
+```pseudo
+revision = 0
+prevScore = initialScore
+while revision < MAX_REVISIONS:
+    candidate = generateProposal()
+    newScore = evaluate(candidate)
+    if newScore - prevScore < IMPROVEMENT_THRESHOLD:
+        break
+    accept(candidate)
+    prevScore = newScore
+    revision += 1
+```
+
+Пользователь может влиять на пределы через диалоговые команды, например:
+- `set revisions 5` — ограничить количество пересмотров.
+- `set improvement 0.02` — изменить порог `IMPROVEMENT_THRESHOLD`.
 
