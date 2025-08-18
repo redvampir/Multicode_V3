@@ -1,7 +1,7 @@
-// Example block plugin used in documentation.
-// The module exposes a `register` function which receives the base Block
-// class and a helper for registration. The plugin can be reloaded at runtime
-// with `reloadPlugins(['./my-block.js'])`.
+// Пример плагина блока, используемый в документации.
+// Модуль предоставляет функцию `register`, которая получает базовый класс Block
+// и помощник для регистрации. Плагин можно перезагружать во время работы через
+// `reloadPlugins(['./my-block.js'])`.
 export function register({ Block, registerBlock }) {
   class MyBlock extends Block {
     constructor(id, x, y, w, h, label, color, extras = {}) {

@@ -11,7 +11,7 @@ pub mod rust;
 pub mod typescript;
 pub mod viz_comments;
 
-/// Supported languages for parsing.
+/// Поддерживаемые языки для парсинга.
 #[derive(Clone, Copy)]
 pub enum Lang {
     Rust,
@@ -23,7 +23,7 @@ pub enum Lang {
     TypeScript,
 }
 
-/// Get a tree-sitter [`Language`] from [`Lang`].
+/// Возвращает [`Language`] tree-sitter из [`Lang`].
 fn language(lang: Lang) -> Language {
     match lang {
         Lang::Rust => rust::language(),
@@ -36,36 +36,36 @@ fn language(lang: Lang) -> Language {
     }
 }
 
-/// Parse the provided `source` using the parser for `lang`.
+/// Разбирает `source`, используя парсер для `lang`.
 ///
-/// An optional previously parsed [`Tree`] can be supplied to enable
-/// incremental parsing.
+/// Необязательное ранее разобранное [`Tree`] позволяет выполнять
+/// инкрементальный парсинг.
 pub fn parse(source: &str, lang: Lang, old_tree: Option<&Tree>) -> Option<Tree> {
     let mut parser = Parser::new();
     parser.set_language(&language(lang)).ok()?;
     parser.parse(source, old_tree)
 }
 
-/// Block of code tied to a visual metadata identifier.
+/// Блок кода, связанный с идентификатором визуальных метаданных.
 #[derive(Debug, Clone, Serialize)]
 pub struct Block {
-    /// Identifier linking this node with [`VisualMeta`].
+    /// Идентификатор, связывающий этот узел с [`VisualMeta`].
     pub visual_id: String,
-    /// Unique identifier of the underlying AST node.
+    /// Уникальный идентификатор соответствующего узла AST.
     pub node_id: u32,
-    /// Node kind as reported by tree-sitter.
+    /// Тип узла, сообщаемый tree-sitter.
     pub kind: String,
-    /// Byte range of the node within the source.
+    /// Байтовый диапазон узла в исходнике.
     pub range: Range<usize>,
-    /// Anchors pointing to ranges within the source.
+    /// Якоря, указывающие на диапазоны в исходном коде.
     pub anchors: Vec<(usize, usize)>,
 }
 
-/// Convert an AST [`Tree`] into a flat list of [`Block`]s.
+/// Преобразует AST [`Tree`] в плоский список [`Block`].
 ///
-/// Each node in the tree is assigned a sequential `visual_id` which can later
-/// be associated with a [`VisualMeta`] entry. The mapping between the tree-sitter
-/// node id and `visual_id` is preserved in the returned blocks.
+/// Каждому узлу дерева присваивается последовательный `visual_id`, который
+/// позже может быть связан с записью [`VisualMeta`]. Соответствие между
+/// идентификатором узла tree-sitter и `visual_id` сохраняется в возвращаемых блоках.
 pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
     let mut blocks = Vec::new();
     let mut counter: u64 = 0;
@@ -146,7 +146,7 @@ mod tests {
         ];
 
         for (lang, source) in cases {
-            let tree = parse(source, lang, None).expect("failed to parse");
+            let tree = parse(source, lang, None).expect("не удалось разобрать");
             let blocks = parse_to_blocks(&tree);
             assert!(!blocks.is_empty());
             let mut unique = HashSet::new();
@@ -160,7 +160,7 @@ mod tests {
     #[test]
     fn parse_expression_into_ops_and_variables() {
         let src = "a + b * c";
-        let tree = parse(src, Lang::Python, None).expect("failed to parse");
+        let tree = parse(src, Lang::Python, None).expect("не удалось разобрать");
         let blocks = parse_to_blocks(&tree);
         let mut found = 0;
         for b in &blocks {
@@ -190,7 +190,7 @@ mod tests {
     #[test]
     fn parse_ternary_expression_into_op() {
         let src = "a ? b : c";
-        let tree = parse(src, Lang::JavaScript, None).expect("failed to parse");
+        let tree = parse(src, Lang::JavaScript, None).expect("не удалось разобрать");
         let blocks = parse_to_blocks(&tree);
         assert!(blocks.iter().any(|b| b.kind == "Op/Ternary"));
     }

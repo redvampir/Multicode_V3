@@ -12,7 +12,7 @@ pub struct ServerConfig {
     pub request_timeout_secs: u64,
     pub max_body_size: usize,
     pub max_requests_per_second: u64,
-    /// Disable authentication (debug builds only)
+    /// Отключить аутентификацию (только в отладочных сборках)
     pub disable_auth: bool,
 }
 

@@ -2,30 +2,30 @@ use crate::parser::viz_comments::{load_viz_document, parse_viz_comments, VizDocu
 use std::collections::HashSet;
 use std::path::Path;
 
-/// List of allowed operation names. This is a minimal set used by tests and
-/// can be extended in the future as new visual blocks are added.
+/// Список разрешённых названий операций. Это минимальный набор, используемый в
+/// тестах, и его можно расширять по мере добавления новых визуальных блоков.
 const ALLOWED_OPS: &[&str] = &["inc", "dec", "Add", "ternary"];
 
-/// Lint raw source content containing `@viz` comments.
+/// Проверяет исходный текст, содержащий комментарии `@viz`.
 ///
-/// Returns a list of human readable error messages. An empty list
-/// indicates that no issues were found.
+/// Возвращает список понятных человеку сообщений об ошибках. Пустой список
+/// означает, что проблемы не обнаружены.
 pub fn lint_str(content: &str) -> Vec<String> {
     let doc = parse_viz_comments(content);
     lint_document(&doc)
 }
 
-/// Lint a file on disk using either a sibling `*.viz.json` document or
-/// inline `@viz` comments.
+/// Проверяет файл на диске, используя соседний документ `*.viz.json` или
+/// встроенные комментарии `@viz`.
 ///
-/// The function returns a list of detected problems or an I/O error if
-/// the file could not be read.
+/// Функция возвращает список обнаруженных проблем или ошибку ввода-вывода,
+/// если файл не удалось прочитать.
 pub fn lint_file(path: &Path) -> std::io::Result<Vec<String>> {
     let doc = load_viz_document(path)?;
     Ok(lint_document(&doc))
 }
 
-/// Perform linting on a [`VizDocument`].
+/// Выполняет проверку [`VizDocument`].
 fn lint_document(doc: &VizDocument) -> Vec<String> {
     let mut errors = Vec::new();
     let mut node_ids = HashSet::new();
@@ -40,30 +40,30 @@ fn lint_document(doc: &VizDocument) -> Vec<String> {
 
         match entry.op.as_deref() {
             Some(op) if ALLOWED_OPS.contains(&op) => {}
-            Some(op) => errors.push(format!("node {ident}: unknown op `{op}`")),
-            None => errors.push(format!("node {ident}: missing op")),
+            Some(op) => errors.push(format!("узел {ident}: неизвестная операция `{op}`")),
+            None => errors.push(format!("узел {ident}: отсутствует операция")),
         }
 
         match entry.node.as_deref() {
             Some(n) => {
                 if n.parse::<u32>().is_err() {
-                    errors.push(format!("node {ident}: invalid node `{n}`"));
+                    errors.push(format!("узел {ident}: некорректный node `{n}`"));
                 }
                 if !node_ids.insert(n) {
-                    errors.push(format!("duplicate node identifier `{n}`"));
+                    errors.push(format!("дублирующийся идентификатор узла `{n}`"));
                 }
             }
-            None => errors.push(format!("node {ident}: missing node")),
+            None => errors.push(format!("узел {ident}: отсутствует node")),
         }
 
         for inp in &entry.inputs {
             if !known_ids.contains(inp.as_str()) {
-                errors.push(format!("node {ident}: unknown input `{inp}`"));
+                errors.push(format!("узел {ident}: неизвестный вход `{inp}`"));
             }
         }
         for out in &entry.outputs {
             if !known_ids.contains(out.as_str()) {
-                errors.push(format!("node {ident}: unknown output `{out}`"));
+                errors.push(format!("узел {ident}: неизвестный выход `{out}`"));
             }
         }
     }

@@ -11,5 +11,5 @@ fn valid_graph_passes() {
 fn detects_unknown_op() {
     let src = "// @viz op=foo node=1 id=a";
     let errors = lint_str(src);
-    assert!(errors.iter().any(|e| e.contains("unknown op")), "{errors:?}");
+    assert!(errors.iter().any(|e| e.contains("неизвестная операция")), "{errors:?}");
 }

@@ -20,13 +20,13 @@ fn log_action(action: &str) {
 }
 
 pub fn debug_run() {
-    log_action("run");
+    log_action("запуск");
 }
 
 pub fn debug_step() {
-    log_action("step");
+    log_action("шаг");
 }
 
 pub fn debug_break() {
-    log_action("break");
+    log_action("остановка");
 }

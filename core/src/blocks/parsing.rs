@@ -3,10 +3,10 @@ use tree_sitter::{InputEdit, Point};
 use crate::{get_document_tree, update_document_tree};
 use crate::parser::{parse as ts_parse, parse_to_blocks, Block, Lang};
 
-/// Parse source `content` of language `lang` into syntax `Block`s.
+/// Преобразует исходное `content` языка `lang` в синтаксические `Block`.
 ///
-/// Reuses the previously stored parse tree for incremental parsing when
-/// available, updating the cached tree after parsing.
+/// Повторно использует ранее сохранённое дерево разбора для
+/// инкрементального парсинга, обновляя кэшированное дерево после разбора.
 pub fn parse(content: &str, lang: Lang) -> Option<Vec<Block>> {
     let old = get_document_tree("current");
     let tree = if let Some(mut old_tree) = old {

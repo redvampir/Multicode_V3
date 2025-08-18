@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use sqlx::{Row, SqlitePool};
 
-/// Initialize the database by creating the `visual_meta` table if it does not exist.
+/// Инициализирует базу данных, создавая таблицу `visual_meta`, если она отсутствует.
 pub async fn init(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     sqlx::query(
         r#"CREATE TABLE IF NOT EXISTS visual_meta (
@@ -25,7 +25,7 @@ pub async fn init(pool: &SqlitePool) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-/// Insert or replace a [`VisualMeta`] entry in the database.
+/// Вставляет или заменяет запись [`VisualMeta`] в базе данных.
 pub async fn upsert(pool: &SqlitePool, meta: &VisualMeta) -> Result<(), sqlx::Error> {
     let mut tx = pool.begin().await?;
     if let Some(row) = sqlx::query("SELECT meta FROM visual_meta WHERE id = ?")
@@ -121,7 +121,7 @@ pub async fn rollback(
     }
 }
 
-/// Fetch a [`VisualMeta`] by id.
+/// Получает [`VisualMeta`] по идентификатору.
 pub async fn get(pool: &SqlitePool, id: &str) -> Result<Option<VisualMeta>, sqlx::Error> {
     if let Some(row) = sqlx::query("SELECT meta FROM visual_meta WHERE id = ?")
         .bind(id)
@@ -136,7 +136,7 @@ pub async fn get(pool: &SqlitePool, id: &str) -> Result<Option<VisualMeta>, sqlx
     }
 }
 
-/// Delete a metadata entry by id.
+/// Удаляет запись метаданных по идентификатору.
 pub async fn delete(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     sqlx::query("DELETE FROM visual_meta WHERE id = ?")
         .bind(id)
@@ -145,7 +145,7 @@ pub async fn delete(pool: &SqlitePool, id: &str) -> Result<(), sqlx::Error> {
     Ok(())
 }
 
-/// List all metadata entries in the database.
+/// Перечисляет все записи метаданных в базе данных.
 pub async fn list(pool: &SqlitePool) -> Result<Vec<VisualMeta>, sqlx::Error> {
     let rows = sqlx::query("SELECT meta FROM visual_meta")
         .fetch_all(pool)

@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-/// Return default translations for known block kinds.
+/// Возвращает стандартные переводы для известных типов блоков.
 pub fn lookup(kind: &str) -> Option<HashMap<String, String>> {
     let mut map = HashMap::new();
     match kind {

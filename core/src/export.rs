@@ -3,14 +3,14 @@ use regex::Regex;
 use serde::{Deserialize, Serialize};
 use crate::meta;
 
-/// Collection of visual metadata associated with a source file.
+/// Набор визуальных метаданных, связанных с исходным файлом.
 #[derive(Debug, Serialize, Deserialize)]
 pub struct VizDocument {
-    /// Visual metadata entries extracted from the file.
+    /// Записи визуальных метаданных, извлечённые из файла.
     pub nodes: Vec<meta::VisualMeta>,
 }
 
-/// Serialize all `@VISUAL_META` comments from `content` into a `VizDocument` JSON string.
+/// Сериализует все комментарии `@VISUAL_META` из `content` в JSON‑строку `VizDocument`.
 pub fn serialize_viz_document(content: &str) -> Option<String> {
     let metas = meta::read_all(content);
     if metas.is_empty() {
@@ -20,14 +20,14 @@ pub fn serialize_viz_document(content: &str) -> Option<String> {
     }
 }
 
-/// Deserialize a `VizDocument` from a JSON string.
+/// Десериализует `VizDocument` из JSON‑строки.
 pub fn deserialize_viz_document(json: &str) -> Result<VizDocument, serde_json::Error> {
     serde_json::from_str(json)
 }
 
-// Regular expressions matching different comment styles that may contain
-// `@VISUAL_META` markers. Each pattern also consumes the trailing newline so
-// the entire line is removed from the output.
+// Регулярные выражения для разных стилей комментариев, которые могут содержать
+// маркеры `@VISUAL_META`. Каждый шаблон также поглощает завершающий перевод строки,
+// чтобы убрать всю строку из вывода.
 static PYTHON_SINGLE: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?m)^\s*#\s*@VISUAL_META\s*\{.*\}\s*\n?").unwrap());
 
@@ -40,10 +40,10 @@ static C_STYLE_MULTI: Lazy<Regex> =
 static HTML_MULTI: Lazy<Regex> =
     Lazy::new(|| Regex::new(r"(?ms)^\s*<!--\s*@VISUAL_META\s*\{.*?\}\s*-->\s*\n?").unwrap());
 
-/// Remove all lines containing `@VISUAL_META` comments from `content`.
+/// Удаляет из `content` все строки, содержащие комментарии `@VISUAL_META`.
 ///
-/// Supports single line comments beginning with `#` or `//` and block style
-/// comments like `/* */` and `<!-- -->`.
+/// Поддерживаются однострочные комментарии, начинающиеся с `#` или `//`, и
+/// блочные комментарии вида `/* */` и `<!-- -->`.
 pub fn remove_meta_lines(content: &str) -> String {
     let mut out = content.to_string();
     for re in [&PYTHON_SINGLE, &SLASH_SINGLE, &C_STYLE_MULTI, &HTML_MULTI] {
@@ -52,10 +52,10 @@ pub fn remove_meta_lines(content: &str) -> String {
     out
 }
 
-/// Prepare source content for export.
+/// Подготавливает исходный текст к экспорту.
 ///
-/// When `strip_meta` is true all `@VISUAL_META` comments are removed.
-/// Otherwise the content is returned unchanged.
+/// Если `strip_meta` равно `true`, все комментарии `@VISUAL_META` удаляются.
+/// Иначе содержимое возвращается без изменений.
 pub fn prepare_for_export(content: &str, strip_meta: bool) -> String {
     if strip_meta {
         remove_meta_lines(content)

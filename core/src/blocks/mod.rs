@@ -18,7 +18,7 @@ pub fn parse_blocks(content: String, lang: String) -> Option<Vec<BlockInfo>> {
     let lang = match to_lang(&lang) {
         Some(l) => l,
         None => {
-            tracing::error!("unsupported language: {}", lang);
+            tracing::error!("неподдерживаемый язык: {}", lang);
             return None;
         }
     };
@@ -72,7 +72,7 @@ pub fn upsert_meta(
     let lang = match to_lang(&lang) {
         Some(l) => l,
         None => {
-            tracing::error!("unsupported language: {}", lang);
+            tracing::error!("неподдерживаемый язык: {}", lang);
             let updated =
                 metas.clone().into_iter().fold(cleaned.clone(), |acc, m| upsert(&acc, &m));
             let mut result = HashMap::new();

@@ -4,25 +4,24 @@ use tracing::error;
 
 pub fn commit(message: &str) -> Result<(), git2::Error> {
     if message.trim().is_empty() {
-        return Err(git2::Error::from_str("commit message cannot be empty"));
+        return Err(git2::Error::from_str("сообщение коммита не может быть пустым"));
     }
 
     let repo = Repository::discover(".")?;
     let mut index = repo.index()?;
-    // Limit the paths that can be added to the index to avoid accidentally
-    // committing large or unrelated directories.
+    // Ограничиваем пути, которые могут быть добавлены в индекс, чтобы
+    // случайно не закоммитить большие или несвязанные каталоги.
     let paths = ["backend", "frontend", "docs"];
     index.add_all(paths.iter(), IndexAddOption::DEFAULT, None)?;
     index.write()?;
     let tree_id = index.write_tree()?;
     let tree = repo.find_tree(tree_id)?;
 
-    // Obtain commit signature from repository configuration.  In some
-    // environments (for example in tests or CI) the user may not have global
-    // git configuration set up.  Previously we bubbled up the `config value
-    // 'user.name' was not found` error which caused the commit tests to fail
-    // on a freshly initialised repository.  Instead, attempt to read the values
-    // and fall back to placeholder defaults when they are missing.
+    // Получаем подпись коммита из конфигурации репозитория. В некоторых
+    // средах (например, в тестах или CI) у пользователя может не быть глобальной
+    // конфигурации git. Ранее это приводило к ошибке `config value 'user.name' was not found`
+    // и падению тестов в только что инициализированном репозитории. Вместо этого
+    // пытаемся прочитать значения и используем заглушки по умолчанию, если они отсутствуют.
     let cfg = repo.config()?;
     let name = cfg
         .get_string("user.name")
@@ -31,11 +30,11 @@ pub fn commit(message: &str) -> Result<(), git2::Error> {
         .get_string("user.email")
         .unwrap_or_else(|_| "unknown@example.com".to_string());
     let sig = git2::Signature::now(&name, &email)?;
-    // Determine whether the repository already has a HEAD reference. In a
-    // freshly initialised repository `head()` will fail which previously caused
-    // `commit` to error. Instead of bubbling this error up we handle the
-    // initial commit case explicitly by committing without updating `HEAD` and
-    // then setting `HEAD` to point to the new commit.
+    // Определяем, есть ли в репозитории ссылка HEAD. В только что
+    // инициализированном репозитории `head()` завершится ошибкой, что раньше
+    // приводило к сбою `commit`. Вместо того чтобы передавать ошибку дальше,
+    // обрабатываем начальный коммит явно: создаём его без обновления `HEAD`,
+    // а затем устанавливаем `HEAD` на новый коммит.
     let head = repo.head();
     let parent = head.as_ref().ok().and_then(|h| h.peel_to_commit().ok());
     let parents: Vec<&Commit> = parent.iter().collect();
@@ -44,10 +43,10 @@ pub fn commit(message: &str) -> Result<(), git2::Error> {
         repo.commit(Some("HEAD"), &sig, &sig, message, &tree, &parents)?;
     } else {
         let oid = repo.commit(None, &sig, &sig, message, &tree, &parents)?;
-        // On the initial commit create a "main" branch pointing at the new
-        // commit and move `HEAD` to it.  This avoids leaving the repository in
-        // a detached `HEAD` state which can be confusing to interact with in
-        // subsequent operations.
+        // При первом коммите создаём ветку "main", указывающую на новый
+        // коммит, и переводим `HEAD` на неё. Это не позволяет оставить
+        // репозиторий в состоянии отсоединённого `HEAD`, что может запутать
+        // при дальнейшей работе.
         let branch = repo.branch("main", &repo.find_commit(oid)?, true)?;
         repo.set_head(branch.get().name().unwrap())?;
     }
@@ -55,7 +54,7 @@ pub fn commit(message: &str) -> Result<(), git2::Error> {
 }
 
 pub fn diff() -> Result<String, git2::Error> {
-    const MAX_DIFF_LEN: usize = 100_000; // Limit diff output to ~100 KB
+    const MAX_DIFF_LEN: usize = 100_000; // Ограничение вывода diff примерно 100 КБ
 
     let repo = Repository::discover(".")?;
     let mut opts = DiffOptions::new();
@@ -77,7 +76,7 @@ pub fn diff() -> Result<String, git2::Error> {
                 }
             }
             Err(e) => {
-                error!("diff decode error: {e}");
+                error!("ошибка декодирования diff: {e}");
                 true
             }
         },
@@ -116,7 +115,7 @@ pub fn log() -> Result<Vec<String>, git2::Error> {
 pub struct BlameLine {
     pub line: usize,
     pub author: String,
-    /// Seconds since Unix epoch
+    /// Секунды с начала эпохи Unix
     pub time: i64,
 }
 
@@ -127,7 +126,7 @@ pub fn blame(path: &str) -> Result<Vec<BlameLine>, git2::Error> {
     let mut lines = Vec::new();
     for hunk in blame.iter() {
         let sig = hunk.final_signature();
-        let author = sig.name().unwrap_or("Unknown").to_string();
+        let author = sig.name().unwrap_or("Неизвестно").to_string();
         let time = sig.when().seconds();
         let mut line_no = hunk.final_start_line();
         for _ in 0..hunk.lines_in_hunk() {

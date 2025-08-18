@@ -2,10 +2,10 @@ use std::collections::HashMap;
 
 use crate::{i18n, meta::read_all, parser::Block, BlockInfo};
 
-/// Combine raw `blocks` with metadata extracted from `content`.
+/// Объединяет исходные `blocks` с метаданными, извлечёнными из `content`.
 ///
-/// Each block receives default translations based on its kind and is then
-/// enriched with positional and custom metadata when available.
+/// Каждый блок получает базовые переводы в зависимости от своего типа и
+/// дополняется позиционными и пользовательскими метаданными, если они есть.
 pub fn enrich_blocks(blocks: Vec<Block>, content: &str) -> Vec<BlockInfo> {
     let metas = read_all(content);
     let map: HashMap<_, _> = metas.into_iter().map(|m| (m.id.clone(), m)).collect();

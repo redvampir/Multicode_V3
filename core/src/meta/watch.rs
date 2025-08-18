@@ -3,10 +3,10 @@ use notify::{recommended_watcher, Event, EventKind, RecursiveMode, Watcher};
 use std::{env, fs, path::PathBuf, sync::mpsc::channel, thread};
 use tokio::sync::broadcast::Sender;
 
-/// Spawn a background thread watching the current directory for changes to
-/// source files and `.meta.json` files.  When a file is written the
-/// corresponding source is parsed and the resulting blocks are sent to the
-/// provided broadcast channel as a JSON string.
+/// Запускает фоновый поток, отслеживающий текущий каталог на изменения
+/// исходных файлов и файлов `.meta.json`. При записи файла соответствующий
+/// исходник разбирается, а полученные блоки отправляются в переданный
+/// канал вещания в виде JSON-строки.
 pub fn spawn(tx: Sender<String>) {
     thread::spawn(move || {
         let (fs_tx, fs_rx) = channel::<Event>();
@@ -15,11 +15,11 @@ pub fn spawn(tx: Sender<String>) {
                 let _ = fs_tx.send(event);
             }
         })
-        .expect("watcher");
-        let path = env::current_dir().expect("cwd");
+        .expect("наблюдатель");
+        let path = env::current_dir().expect("текущий каталог");
         watcher
             .watch(&path, RecursiveMode::Recursive)
-            .expect("watch");
+            .expect("наблюдение");
         while let Ok(event) = fs_rx.recv() {
             if let EventKind::Modify(_) = event.kind {
                 if let Some(path) = event.paths.first() {

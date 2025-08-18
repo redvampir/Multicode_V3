@@ -24,7 +24,7 @@ impl Plugin for MyPlugin {
     }
 }
 
-// Example of constructing `VisualMeta` with plugin-specific extras.
+// Пример создания `VisualMeta` с расширениями, специфичными для плагина.
 #[allow(dead_code)]
 fn example_meta_with_extras() -> VisualMeta {
     VisualMeta {

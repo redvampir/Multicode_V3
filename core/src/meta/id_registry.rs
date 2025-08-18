@@ -13,7 +13,7 @@ struct Registry {
 
 static REGISTRY: Lazy<Mutex<Registry>> = Lazy::new(|| Mutex::new(Registry::default()));
 
-/// Register a [`VisualMeta`] entry, tracking duplicates.
+/// Регистрирует запись [`VisualMeta`], отслеживая дубликаты.
 pub fn register(meta: VisualMeta) {
     match REGISTRY.lock() {
         Ok(mut reg) => {
@@ -22,39 +22,39 @@ pub fn register(meta: VisualMeta) {
             }
             reg.metas.insert(meta.id.clone(), meta);
         }
-        Err(e) => error!("failed to lock ID registry for register: {e}"),
+        Err(e) => error!("не удалось заблокировать реестр ID для регистрации: {e}"),
     }
 }
 
-/// Retrieve a [`VisualMeta`] by id.
+/// Получает [`VisualMeta`] по идентификатору.
 pub fn get(id: &str) -> Option<VisualMeta> {
     match REGISTRY.lock() {
         Ok(reg) => reg.metas.get(id).cloned(),
         Err(e) => {
-            error!("failed to lock ID registry for get: {e}");
+            error!("не удалось заблокировать реестр ID для получения: {e}");
             None
         }
     }
 }
 
-/// Return a list of duplicate ids encountered so far.
+/// Возвращает список встреченных дубликатов идентификаторов.
 pub fn duplicates() -> Vec<String> {
     match REGISTRY.lock() {
         Ok(reg) => reg.dups.iter().cloned().collect(),
         Err(e) => {
-            error!("failed to lock ID registry for duplicates: {e}");
+            error!("не удалось заблокировать реестр ID при проверке дубликатов: {e}");
             Vec::new()
         }
     }
 }
 
-/// Clear the registry. Useful for tests.
+/// Очищает реестр. Полезно для тестов.
 pub fn clear() {
     match REGISTRY.lock() {
         Ok(mut reg) => {
             reg.metas.clear();
             reg.dups.clear();
         }
-        Err(e) => error!("failed to lock ID registry for clear: {e}"),
+        Err(e) => error!("не удалось заблокировать реестр ID для очистки: {e}"),
     }
 }
