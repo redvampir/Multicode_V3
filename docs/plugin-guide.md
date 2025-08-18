@@ -43,3 +43,5 @@ export function register({ Block, registerBlock }: any) {
 
 Плагин регистрирует новый блок `ExampleBlock`, который сразу можно
 использовать после загрузки.
+
+Дополнительные сведения о модулях см. в [modules.md](modules.md). Общие возможности описаны в [features.md](features.md), термины — в [glossary.md](glossary.md).
