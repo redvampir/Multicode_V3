@@ -1,7 +1,9 @@
 use iced::futures::stream;
 use iced::widget::{button, column, container, row, scrollable, text, text_input};
-use iced::{alignment, subscription, Application, Command, Element, Length, Settings, Subscription, Theme};
-use multicode_core::{export, git, search};
+use iced::{
+    alignment, subscription, Application, Command, Element, Length, Settings, Subscription, Theme,
+};
+use multicode_core::{blocks, export, git, search};
 use tokio::sync::broadcast;
 
 use directories::ProjectDirs;
@@ -38,11 +40,11 @@ enum Message {
     RunSearch,
     SearchFinished(Result<Vec<String>, String>),
     RunParse,
-    ParseFinished(Result<(), String>),
+    ParseFinished(Result<Vec<String>, String>),
     RunGitLog,
     GitFinished(Result<Vec<String>, String>),
     RunExport,
-    ExportFinished(Result<(), String>),
+    ExportFinished(Result<Vec<String>, String>),
     CoreEvent(String),
     SaveSettings,
 }
@@ -137,15 +139,18 @@ impl Application for MulticodeApp {
             Message::RunSearch => {
                 let root = self.current_root();
                 let query = self.query.clone();
-                Command::perform(async move {
-                    let results = search::search_metadata(Path::new(&root), &query);
-                    Ok::<_, String>(
-                        results
-                            .into_iter()
-                            .map(|r| r.file.display().to_string())
-                            .collect(),
-                    )
-                }, |r| Message::SearchFinished(r))
+                Command::perform(
+                    async move {
+                        let results = search::search_metadata(Path::new(&root), &query);
+                        Ok::<_, String>(
+                            results
+                                .into_iter()
+                                .map(|r| r.file.display().to_string())
+                                .collect(),
+                        )
+                    },
+                    |r| Message::SearchFinished(r),
+                )
             }
             Message::SearchFinished(Ok(list)) => {
                 for item in list {
@@ -158,20 +163,59 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::RunParse => {
-                let sender = self.sender.clone();
-                Command::perform(async move {
-                    sender.send("разбор".into()).ok();
-                    Ok::<_, String>(())
-                }, Message::ParseFinished)
+                let files = self.files.clone();
+                Command::perform(
+                    async move {
+                        let mut lines = Vec::new();
+                        for path in files {
+                            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                            let lang = match ext {
+                                "rs" => "rust",
+                                "py" => "python",
+                                "js" => "javascript",
+                                "css" => "css",
+                                "html" => "html",
+                                _ => {
+                                    lines.push(format!("{}: неизвестный язык", path.display()));
+                                    continue;
+                                }
+                            };
+                            match fs::read_to_string(&path) {
+                                Ok(content) => {
+                                    match blocks::parse_blocks(content, lang.to_string()) {
+                                        Some(b) => lines.push(format!(
+                                            "{}: блоков {}",
+                                            path.display(),
+                                            b.len()
+                                        )),
+                                        None => lines.push(format!(
+                                            "{}: не удалось разобрать",
+                                            path.display()
+                                        )),
+                                    }
+                                }
+                                Err(e) => {
+                                    lines.push(format!("{}: ошибка чтения {e}", path.display()))
+                                }
+                            }
+                        }
+                        Ok::<_, String>(lines)
+                    },
+                    Message::ParseFinished,
+                )
             }
-            Message::ParseFinished(Ok(())) => Command::none(),
+            Message::ParseFinished(Ok(lines)) => {
+                self.log.extend(lines);
+                Command::none()
+            }
             Message::ParseFinished(Err(e)) => {
                 self.log.push(format!("ошибка разбора: {e}"));
                 Command::none()
             }
-            Message::RunGitLog => {
-                Command::perform(async move { git::log().map_err(|e| e.to_string()) }, Message::GitFinished)
-            }
+            Message::RunGitLog => Command::perform(
+                async move { git::log().map_err(|e| e.to_string()) },
+                Message::GitFinished,
+            ),
             Message::GitFinished(Ok(lines)) => {
                 self.log.extend(lines);
                 Command::none()
@@ -181,11 +225,31 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::RunExport => {
-                Command::perform(async move {
-                    export::serialize_viz_document("{}").ok_or_else(|| "экспорт".to_string()).map(|_| ())
-                }, Message::ExportFinished)
+                let files = self.files.clone();
+                Command::perform(
+                    async move {
+                        let mut lines = Vec::new();
+                        for path in files {
+                            match fs::read_to_string(&path) {
+                                Ok(content) => match export::serialize_viz_document(&content) {
+                                    Some(json) => lines.push(format!("{}: {json}", path.display())),
+                                    None => lines
+                                        .push(format!("{}: метаданных не найдено", path.display())),
+                                },
+                                Err(e) => {
+                                    lines.push(format!("{}: ошибка чтения {e}", path.display()))
+                                }
+                            }
+                        }
+                        Ok::<_, String>(lines)
+                    },
+                    Message::ExportFinished,
+                )
             }
-            Message::ExportFinished(Ok(())) => Command::none(),
+            Message::ExportFinished(Ok(lines)) => {
+                self.log.extend(lines);
+                Command::none()
+            }
             Message::ExportFinished(Err(e)) => {
                 self.log.push(format!("ошибка экспорта: {e}"));
                 Command::none()
@@ -241,18 +305,16 @@ impl Application for MulticodeApp {
                 ]
                 .spacing(10);
 
-                let sidebar = container(
-                    scrollable(column(
-                        self.files
-                            .iter()
-                            .map(|p| {
-                                button(text(p.file_name().unwrap().to_string_lossy().to_string()))
-                                    .on_press(Message::CoreEvent(format!("открыть {:?}", p)))
-                                    .into()
-                            })
-                            .collect::<Vec<Element<Message>>>()
-                    )),
-                )
+                let sidebar = container(scrollable(column(
+                    self.files
+                        .iter()
+                        .map(|p| {
+                            button(text(p.file_name().unwrap().to_string_lossy().to_string()))
+                                .on_press(Message::CoreEvent(format!("открыть {:?}", p)))
+                                .into()
+                        })
+                        .collect::<Vec<Element<Message>>>(),
+                )))
                 .width(200);
 
                 let content = column![
@@ -268,9 +330,7 @@ impl Application for MulticodeApp {
 
                 let body = row![sidebar, content].spacing(10);
 
-                column![menu, body, text("Готово")]
-                    .spacing(10)
-                    .into()
+                column![menu, body, text("Готово")].spacing(10).into()
             }
         }
     }
@@ -289,19 +349,21 @@ impl MulticodeApp {
     }
 
     fn load_files(&self, root: PathBuf) -> Command<Message> {
-        Command::perform(async move {
-            let mut files = Vec::new();
-            if let Ok(entries) = fs::read_dir(&root) {
-                for entry in entries.flatten() {
-                    if let Ok(ft) = entry.file_type() {
-                        if ft.is_file() {
-                            files.push(entry.path());
+        Command::perform(
+            async move {
+                let mut files = Vec::new();
+                if let Ok(entries) = fs::read_dir(&root) {
+                    for entry in entries.flatten() {
+                        if let Ok(ft) = entry.file_type() {
+                            if ft.is_file() {
+                                files.push(entry.path());
+                            }
                         }
                     }
                 }
-            }
-            files
-        }, Message::FilesLoaded)
+                files
+            },
+            Message::FilesLoaded,
+        )
     }
 }
-
