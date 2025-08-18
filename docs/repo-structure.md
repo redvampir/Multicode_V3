@@ -1,9 +1,24 @@
 # Структура репозитория
 
-- `core/` — библиотека ядра. Дополнительные возможности подключаются через флаги: `git`, `watch`, `export`, `db`.
-- `desktop/` — оффлайн‑приложение на Iced.
-- `plugins/` — плагины блоков.
-- `examples/` — примеры использования.
-- `legacy-backend/` — опциональный архивный backend.
+## Каталоги
 
-Список модулей приведён в [modules.md](modules.md). Руководство по созданию плагинов находится в [plugin-guide.md](plugin-guide.md). Термины описаны в [глоссарии](glossary.md).
+- `core/` — библиотека ядра. Дополнительные возможности подключаются через флаги: `git`, `watch`, `export`, `db`. Список модулей см. в [modules.md](modules.md).
+- `desktop/` — оффлайн‑приложение на Iced. Подробности в [README-desktop.md](../README-desktop.md).
+- `plugins/` — плагины блоков на JavaScript/TypeScript. Руководство и API: [plugin-guide.md](plugin-guide.md), [plugins.md](plugins.md).
+- `examples/` — примеры использования, включая демонстрацию плагинов. Инструкции: [`examples/plugins/README.md`](../examples/plugins/README.md) и [event-bus-plugin-example.md](event-bus-plugin-example.md).
+- `legacy-backend/` — опциональный архивный backend на Tauri.
+
+## Схема зависимостей
+
+```mermaid
+graph LR
+  core --> plugins
+  core --> desktop
+  plugins --> desktop
+  core --> examples
+  plugins --> examples
+  core --> legacy-backend
+```
+
+Дополнительные материалы: [modules.md](modules.md), [plugin-guide.md](plugin-guide.md), [plugins.md](plugins.md), [glossary.md](glossary.md).
+
