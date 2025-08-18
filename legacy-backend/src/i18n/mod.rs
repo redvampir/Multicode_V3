@@ -1,33 +1,39 @@
 use std::collections::HashMap;
+use std::fs;
+use std::sync::OnceLock;
+
+/// Internal type for storing translations.
+type Map = HashMap<String, HashMap<String, String>>;
+
+/// Global storage for translations loaded from JSON.
+static TRANSLATIONS: OnceLock<Map> = OnceLock::new();
+
+fn translations() -> &'static Map {
+    TRANSLATIONS.get_or_init(|| {
+        serde_json::from_str(include_str!("translations.json"))
+            .expect("invalid default translations")
+    })
+}
+
+/// Load translations from a JSON file at runtime.
+pub fn load_from_file(path: &str) -> Result<(), Box<dyn std::error::Error>> {
+    let data = fs::read_to_string(path)?;
+    let map: Map = serde_json::from_str(&data)?;
+    TRANSLATIONS
+        .set(map)
+        .map_err(|_| "translations already loaded".into())
+}
 
 /// Return default translations for known block kinds.
 pub fn lookup(kind: &str) -> Option<HashMap<String, String>> {
-    let mut map = HashMap::new();
-    match kind {
-        "Function" => {
-            map.insert("ru".into(), "Функция".into());
-            map.insert("en".into(), "Function".into());
-            map.insert("es".into(), "Función".into());
-            Some(map)
-        }
-        "Variable" => {
-            map.insert("ru".into(), "Переменная".into());
-            map.insert("en".into(), "Variable".into());
-            map.insert("es".into(), "Variable".into());
-            Some(map)
-        }
-        "Condition" => {
-            map.insert("ru".into(), "Условие".into());
-            map.insert("en".into(), "Condition".into());
-            map.insert("es".into(), "Condición".into());
-            Some(map)
-        }
-        "Loop" => {
-            map.insert("ru".into(), "Цикл".into());
-            map.insert("en".into(), "Loop".into());
-            map.insert("es".into(), "Bucle".into());
-            Some(map)
-        }
-        _ => None,
-    }
+    translations().get(kind).cloned()
+}
+
+/// List of languages available in the current translations.
+pub fn languages() -> Vec<String> {
+    translations()
+        .values()
+        .next()
+        .map(|m| m.keys().cloned().collect())
+        .unwrap_or_default()
 }

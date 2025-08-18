@@ -1,0 +1,22 @@
+{
+  "Condition": {
+    "en": "Condition",
+    "es": "Condición",
+    "ru": "Условие"
+  },
+  "Function": {
+    "en": "Function",
+    "es": "Función",
+    "ru": "Функция"
+  },
+  "Loop": {
+    "en": "Loop",
+    "es": "Bucle",
+    "ru": "Цикл"
+  },
+  "Variable": {
+    "en": "Variable",
+    "es": "Variable",
+    "ru": "Переменная"
+  }
+}

@@ -16,9 +16,9 @@ pub fn enrich_blocks(blocks: Vec<Block>, content: &str) -> Vec<BlockInfo> {
             let label = normalize_kind(&b.kind);
             let mut translations = i18n::lookup(&label).unwrap_or_else(|| {
                 let mut m = HashMap::new();
-                m.insert("ru".into(), label.clone());
-                m.insert("en".into(), label.clone());
-                m.insert("es".into(), label.clone());
+                for lang in i18n::languages() {
+                    m.insert(lang, label.clone());
+                }
                 m
             });
             if let Some(meta) = map.get(&b.visual_id) {
