@@ -15,3 +15,5 @@ export default function activate() {
   });
 }
 ```
+
+See [plugin-guide.md](plugin-guide.md) for general information on writing plugins.
