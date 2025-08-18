@@ -2,6 +2,8 @@ use iced::futures::stream;
 use iced::widget::{
     button, column, container, row, scrollable, text, text_editor, text_input, Space,
 };
+#[allow(unused_imports)]
+use iced::widget::overlay::menu;
 use iced::{
     alignment, subscription, Application, Command, Element, Length, Settings, Subscription, Theme,
 };
@@ -60,6 +62,8 @@ enum Message {
     NewFileNameChanged(String),
     CreateFile,
     FileCreated(Result<PathBuf, String>),
+    CreateFolder,
+    FolderCreated(Result<PathBuf, String>),
     RenameFileNameChanged(String),
     RenameFile,
     FileRenamed(Result<PathBuf, String>),
@@ -266,6 +270,34 @@ impl Application for MulticodeApp {
             }
             Message::FileCreated(Err(e)) => {
                 self.log.push(format!("ошибка создания: {e}"));
+                Command::none()
+            }
+            Message::CreateFolder => {
+                if let Some(root) = self.current_root_path() {
+                    let name = self.new_file_name.clone();
+                    if name.is_empty() {
+                        self.log.push("имя файла не задано".into());
+                        return Command::none();
+                    }
+                    let path = root.join(&name);
+                    return Command::perform(
+                        async move {
+                            fs::create_dir(&path)
+                                .map(|_| path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FolderCreated,
+                    );
+                }
+                Command::none()
+            }
+            Message::FolderCreated(Ok(path)) => {
+                self.log.push(format!("создан каталог {}", path.display()));
+                self.new_file_name.clear();
+                return self.load_files(self.current_root_path().unwrap());
+            }
+            Message::FolderCreated(Err(e)) => {
+                self.log.push(format!("ошибка создания каталога: {e}"));
                 Command::none()
             }
             Message::RenameFileNameChanged(s) => {
@@ -521,7 +553,8 @@ impl Application for MulticodeApp {
                 let file_menu = row![
                     text_input("новый файл", &self.new_file_name)
                         .on_input(Message::NewFileNameChanged),
-                    button("Создать").on_press(Message::CreateFile),
+                    button("Создать файл").on_press(Message::CreateFile),
+                    button("Создать папку").on_press(Message::CreateFolder),
                     text_input("новое имя", &self.rename_file_name)
                         .on_input(Message::RenameFileNameChanged),
                     rename_btn,
