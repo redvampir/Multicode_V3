@@ -3,3 +3,5 @@
 /desktop/target/
 /legacy-backend/target/
 node_modules/
+/backend/target
+/desktop/target
