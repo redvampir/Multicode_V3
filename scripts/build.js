@@ -20,7 +20,7 @@ async function main() {
   const spinner = createSpinner('Building application');
   spinner.start();
   try {
-    await runCommand('npm', ['--prefix', 'frontend', 'run', 'build'], log, { env: process.env });
+    await runCommand('npm', ['--prefix', 'frontend', 'run', 'build:release'], log, { env: process.env });
     spinner.succeed('Build completed');
   } catch (err) {
     spinner.fail('Build failed');
@@ -28,7 +28,7 @@ async function main() {
     try {
       log('Running setup as fallback');
       await runCommand('node', ['scripts/setup.js'], log, { env: process.env });
-      await runCommand('npm', ['--prefix', 'frontend', 'run', 'build'], log, { env: process.env });
+      await runCommand('npm', ['--prefix', 'frontend', 'run', 'build:release'], log, { env: process.env });
       spinner.succeed('Build completed after setup');
     } catch (err2) {
       log('Build failed after setup');

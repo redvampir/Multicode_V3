@@ -7,8 +7,8 @@
     "tauri": "tauri",
     "dev": "tauri dev",
     "build": "tauri build",
-    "build:debug": "tauri build --debug",
-    "build:release": "tauri build",
+    "build:debug": "pkg-config --libs gdk-3.0 >/dev/null || { echo 'gdk-3.0 libraries not found. Install Windows prerequisites.'; exit 1; } && tauri build --debug",
+    "build:release": "pkg-config --libs gdk-3.0 >/dev/null || { echo 'gdk-3.0 libraries not found. Install Windows prerequisites.'; exit 1; } && tauri build",
     "lint": "npx eslint .",
     "e2e": "playwright test"
   },
