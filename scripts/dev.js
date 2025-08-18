@@ -19,7 +19,7 @@ async function main() {
   const log = createLogger('dev');
   log(`NODE_ENV=${process.env.NODE_ENV}`);
 
-  const cargoTomlPath = 'frontend/src-tauri/../../legacy-backend/Cargo.toml';
+  const cargoTomlPath = 'legacy-backend/Cargo.toml';
   if (!fs.existsSync(cargoTomlPath)) {
     console.error(
       `Не найден файл '${cargoTomlPath}'. Убедитесь, что бэкенд инициализирован.`

@@ -335,9 +335,7 @@ fn main() {
             debug_step,
             debug_break
         ])
-        .run(tauri::generate_context!(
-            "../frontend/src-tauri/tauri.conf.json"
-        ))
+        .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }
 
