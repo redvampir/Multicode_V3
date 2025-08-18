@@ -1,10 +1,10 @@
-# Layout export format
+# Формат экспорта размещения
 
-The visual editor can save and restore its state through JSON.
+Визуальный редактор может сохранять и восстанавливать своё состояние в формате JSON.
 
-See [glossary.md](glossary.md) for terminology definitions. Use the **Export** and **Import** buttons in the interface or call the methods directly on `VisualCanvas`.
+Определения терминов см. в [glossary.md](glossary.md). Используйте кнопки **Export** и **Import** в интерфейсе или вызывайте методы напрямую у `VisualCanvas`.
 
-## JSON structure
+## Структура JSON
 
 ```json
 {
@@ -15,17 +15,17 @@ See [glossary.md](glossary.md) for terminology definitions. Use the **Export** a
 }
 ```
 
-- `blocks` — array of block metadata (`blocksData`).
-- `connections` — list of edges as pairs of block `visual_id`s.
-- `offset` — current pan offset of the canvas.
-- `scale` — zoom level.
+- `blocks` — массив метаданных блоков (`blocksData`).
+- `connections` — список связей в виде пар `visual_id` блоков.
+- `offset` — текущий сдвиг холста.
+- `scale` — коэффициент масштабирования холста.
 
-## Example
+## Пример
 
 ```js
-// Export current layout
+// Экспорт текущего размещения
 const json = JSON.stringify(vc.serialize(), null, 2);
 
-// Restore layout
+// Восстановление размещения
 vc.load(JSON.parse(json));
 ```

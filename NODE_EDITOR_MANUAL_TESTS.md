@@ -1,38 +1,38 @@
-# Node Editor Manual Test Scenarios
+# Сценарии ручного тестирования редактора блоков
 
-These scenarios help to manually verify core functionality of the node editor.
+Эти сценарии помогают вручную проверить основную функциональность редактора блоков.
 
-## 1. Block Parsing and Display
-1. Open the application with a sample source file.
-2. Ensure blocks appear for major constructs (functions, variables, conditions, loops).
-3. Change locale to Russian and Spanish; block labels should update accordingly.
+## 1. Разбор и отображение блоков
+1. Откройте приложение с примером исходного файла.
+2. Убедитесь, что для основных конструкций (функции, переменные, условия, циклы) появляются блоки.
+3. Смените язык интерфейса на русский и испанский; подписи блоков должны обновиться.
 
-## 2. Synchronization of Positions
-1. Drag a block to a new position.
-2. Save and reload the project.
-3. Verify the block stays at the moved position.
-4. Use undo/redo buttons to ensure movement history is tracked.
+## 2. Синхронизация координат
+1. Перетащите блок в новое положение.
+2. Сохраните и заново загрузите проект.
+3. Проверьте, что блок остался на перемещённом месте.
+4. Используйте кнопки отмены/повтора, чтобы убедиться, что история перемещений сохраняется.
 
-## 3. Metadata Editing
-1. Select a block and edit its translations.
-2. Confirm changes appear on the canvas after closing the editor.
-3. Add an AI note and hover the block to view the tooltip.
+## 3. Редактирование метаданных
+1. Выберите блок и отредактируйте его переводы.
+2. Убедитесь, что после закрытия редактора изменения отражаются на холсте.
+3. Добавьте AI‑заметку и наведите курсор на блок, чтобы увидеть подсказку.
 
-## 4. Connections
-1. Create a connection between two blocks.
-2. Move one block and ensure the connection updates.
-3. Delete a block and check that associated connections are removed.
+## 4. Связи
+1. Создайте соединение между двумя блоками.
+2. Переместите один блок и убедитесь, что связь обновилась.
+3. Удалите блок и проверьте, что соответствующие соединения тоже удалены.
 
-## 5. Export
-1. Use the export command to save cleaned source code.
-2. Open the exported file and verify no `@VISUAL_META` comments remain.
+## 5. Экспорт
+1. Выполните команду экспорта, чтобы сохранить очищенный исходный код.
+2. Откройте экспортированный файл и убедитесь, что в нём нет комментариев `@VISUAL_META`.
 
-## 6. Import/Parsing
-1. Load a file containing `@VISUAL_META` comments.
-2. Ensure blocks appear at the correct positions with the stored translations.
+## 6. Импорт и разбор
+1. Загрузите файл, содержащий комментарии `@VISUAL_META`.
+2. Убедитесь, что блоки появились на нужных позициях с сохранёнными переводами.
 
-## 7. WebSocket Synchronization
-1. Open the editor in two windows.
-2. Move a block in the first window and verify the change appears in the second.
+## 7. Синхронизация через WebSocket
+1. Откройте редактор в двух окнах.
+2. Переместите блок в первом окне и убедитесь, что изменение отображается во втором.
 
-These steps provide a baseline for manual validation of the editor's parsing, synchronization, and export features.
+Эти шаги служат основой для ручной проверки возможности разбора, синхронизации и экспорта редактора.

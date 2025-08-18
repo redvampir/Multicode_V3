@@ -1,28 +1,28 @@
-# Metadata LSP Prototype
+# Прототип LSP для метаданных
 
-This directory contains a prototype [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) implementation. The server scans documents for metadata markers and exposes them to editors so they can be highlighted in other IDEs.
+Этот каталог содержит прототип реализации [Language Server Protocol](https://microsoft.github.io/language-server-protocol/). Сервер сканирует документы в поисках маркеров метаданных и передаёт их редакторам, чтобы они могли подсвечивать эти места в других IDE.
 
-## Running the server
+## Запуск сервера
 
 ```bash
 npm install
 npm start
 ```
 
-The server communicates over standard input/output and therefore can be embedded in any LSP‑aware editor.
+Сервер общается через стандартный ввод/вывод, поэтому его можно встроить в любой редактор, поддерживающий LSP.
 
-## Protocol
+## Протокол
 
-The server uses the standard LSP messages:
+Сервер использует стандартные сообщения LSP:
 
-* `initialize` – the client initializes the connection. The server replies with support for basic text document synchronization.
-* `textDocument/didOpen` and `textDocument/didChange` – whenever a document is opened or changed the server scans its contents for `meta:` markers.
-* `textDocument/publishDiagnostics` – for every occurrence of `meta:` the server publishes a diagnostic with severity `Hint`. Editors can use these diagnostics to highlight metadata ranges.
+* `initialize` — клиент инициирует соединение. В ответ сервер сообщает о поддержке базовой синхронизации текстовых документов.
+* `textDocument/didOpen` и `textDocument/didChange` — при открытии или изменении документа сервер ищет маркеры `meta:` в его содержимом.
+* `textDocument/publishDiagnostics` — для каждого найденного `meta:` сервер отправляет диагностическое сообщение с уровнем `Hint`. Редакторы могут использовать эти сообщения для подсветки диапазонов с метаданными.
 
-A metadata marker has the form:
+Маркер метаданных имеет вид:
 
 ```
-meta: description of the data
+meta: описание данных
 ```
 
-The text after `meta:` is included in the diagnostic message so an IDE can render it to the user.
+Текст после `meta:` включается в диагностическое сообщение, чтобы IDE могла показать его пользователю.
