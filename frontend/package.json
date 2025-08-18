@@ -8,9 +8,9 @@
     "dev": "tauri dev",
     "build": "tauri build",
     "prebuild:debug": "rimraf src-tauri/target",
-    "build:debug": "pkg-config --libs gdk-3.0 >/dev/null || { echo 'gdk-3.0 libraries not found. Install Windows prerequisites.'; exit 1; } && tauri build --debug",
+    "build:debug": "node ../scripts/check-gdk.js && tauri build --debug",
     "prebuild:release": "rimraf src-tauri/target",
-    "build:release": "pkg-config --libs gdk-3.0 >/dev/null || { echo 'gdk-3.0 libraries not found. Install Windows prerequisites.'; exit 1; } && tauri build",
+    "build:release": "node ../scripts/check-gdk.js && tauri build",
     "lint": "npx eslint .",
     "e2e": "playwright test"
   },
