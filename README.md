@@ -77,6 +77,25 @@ npm run check:scripts # проверяет, что сценарии актуал
 - `npm run check:scripts` — контроль актуальности служебных скриптов.
 
 
+## Verification
+
+Чтобы убедиться, что сборка проходит без ошибок парсинга TOML, выполните в корне проекта:
+
+```bash
+npm run --workspace frontend build:debug > build_debug.log
+npm run --workspace frontend build:release > build_release.log
+```
+
+Затем убедитесь, что в полученных логах отсутствует строка `TOML parsing error` (на Windows можно использовать `findstr`, на Unix‑подобных системах — `grep` или `rg`):
+
+```bash
+rg -i "TOML parsing error" build_debug.log
+rg -i "TOML parsing error" build_release.log
+```
+
+Обе команды поиска не должны выводить результаты.
+
+
 ## Ключевые возможности
 - Переключение между текстовым и визуальным режимами.
 - Сохранение метаданных в комментариях к исходному коду.
