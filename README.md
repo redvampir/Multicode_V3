@@ -344,7 +344,8 @@ npm run dev
 ```bash
 npm run build
 ```
-*Готовые бинарники появятся в `frontend/src-tauri/target/release`.*
+*Перед сборкой каталог `frontend/src-tauri/target` автоматически очищается.
+Готовые бинарники появятся в `frontend/src-tauri/target/release`.*
 
 ### Быстрая проверка
 ```bash
