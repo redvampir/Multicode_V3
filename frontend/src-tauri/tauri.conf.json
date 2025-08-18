@@ -9,7 +9,7 @@
   },
   "bundle": {
     "externalBin": [
-      "../backend/target/release/backend"
+      "../../backend/target/release/backend"
     ]
   },
   "app": {
