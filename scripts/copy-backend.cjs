@@ -6,7 +6,7 @@ if (!triple) {
   process.exit(1);
 }
 const ext = process.platform === 'win32' ? '.exe' : '';
-const src = path.resolve(__dirname, '../backend/target/release/backend' + ext);
-const dest = path.resolve(__dirname, '../backend/target/release/backend-' + triple + ext);
+const src = path.resolve(__dirname, '../legacy-backend/target/release/backend' + ext);
+const dest = path.resolve(__dirname, '../legacy-backend/target/release/backend-' + triple + ext);
 fs.copyFileSync(src, dest);
 console.log('Copied backend to', dest);

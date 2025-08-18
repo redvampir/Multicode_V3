@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  backend:
+  legacy_backend:
     continue-on-error: true
     strategy:
       matrix:
@@ -27,14 +27,14 @@ jobs:
         run: echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
       - name: Install cargo-audit
         run: cargo install cargo-audit
-      - name: Backend quality
+      - name: Legacy backend quality
         run: bash scripts/ci_backend.sh
         continue-on-error: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backend-log-${{ matrix.os }}
-          path: backend-ci.log
+          name: legacy-backend-log-${{ matrix.os }}
+          path: legacy-backend-ci.log
   node-workspaces:
     continue-on-error: true
     strategy:
@@ -85,12 +85,12 @@ jobs:
         if: runner.os != 'macOS'
         run: npm run check-env
       - name: Build backend
-        run: cargo build --release --manifest-path backend/Cargo.toml
+        run: cargo build --release --manifest-path legacy-backend/Cargo.toml
       - name: Ensure backend binary path exists
         if: ${{ success() }}
         run: |
-          ls backend/target/release/
-          test -e backend/target/release/backend || test -e backend/target/release/backend.exe
+          ls legacy-backend/target/release/
+          test -e legacy-backend/target/release/backend || test -e legacy-backend/target/release/backend.exe
         shell: bash
       - name: Build debug
         if: ${{ success() }}
