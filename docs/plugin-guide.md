@@ -1,34 +1,48 @@
-# Плагины визуализации
+# Руководство по созданию плагина
 
-Фронтенд поддерживает подключение плагинов, которые могут регистрировать
-дополнительные визуальные блоки или иной функционал.  Каждый плагин должен
-реализовать интерфейс `VizPlugin` с методом `register`.
+Этот пример показывает пошаговое создание плагина, добавляющего новый блок `ExampleBlock`.
 
-```ts
-export interface VizPlugin {
-  register(registry: PluginRegistry): void;
+## 1. Backend
+
+Создайте библиотеку и реализуйте трейт [`Plugin`](plugins.md#backend-api):
+
+```rust
+use backend::plugins::{BlockDescriptor, Plugin};
+
+pub struct ExamplePlugin;
+
+impl Plugin for ExamplePlugin {
+    fn name(&self) -> &'static str { "example-plugin" }
+
+    fn version(&self) -> &str { env!("CARGO_PKG_VERSION") }
+
+    fn blocks(&self) -> Vec<BlockDescriptor> {
+        vec![BlockDescriptor {
+            kind: "ExampleBlock".into(),
+            label: Some("Example block".into()),
+            version: env!("CARGO_PKG_VERSION").into(),
+        }]
+    }
 }
 ```
 
-Метод `register` получает объект `registry` с функциями, которые плагин
-может вызывать для добавления своих компонентов.  В частности, для блоков
-доступна функция `registerBlock` и базовый класс `Block`.
+Соберите библиотеку в WebAssembly:
 
-## Загрузчик
-
-Файл `frontend/src/plugins/plugin-loader.ts` автоматически ищет модули
-`index.ts` или `index.js` в каталоге `plugins/` и вызывает их метод
-`register`.
-
-```ts
-import { loadPlugins } from '../frontend/src/plugins/plugin-loader';
-loadPlugins({ Block, registerBlock });
+```toml
+# Cargo.toml
+[lib]
+crate-type = ["cdylib"]
 ```
 
-## Пример плагина
+```bash
+cargo build --release --target wasm32-unknown-unknown
+```
 
-В репозитории присутствует пример плагина в каталоге
-`plugins/example/index.ts`:
+Полученный файл можно загрузить через `WasmPlugin::from_file`.
+
+## 2. Frontend
+
+Опишите визуальный компонент для блока и зарегистрируйте его:
 
 ```ts
 export function register({ Block, registerBlock }: any) {
@@ -41,7 +55,17 @@ export function register({ Block, registerBlock }: any) {
 }
 ```
 
-Плагин регистрирует новый блок `ExampleBlock`, который сразу можно
-использовать после загрузки.
+## 3. Загрузка
 
-Дополнительные сведения о модулях см. в [modules.md](modules.md). Общие возможности описаны в [features.md](features.md), термины — в [glossary.md](glossary.md).
+Backend сообщает клиенту о новых блоках через `BlockDescriptor`, после чего
+frontend может вызвать `loadPlugins` и передать путь к модулю, описанному выше.
+
+## Отличия от старого фронтенда
+
+- Ранее плагины были чистыми JavaScript‑модулями и автоматически подхватывались
+  загрузчиком `plugin-loader.ts`.
+- Теперь основная часть плагина выполняется на backend и может быть собрана в
+  WebAssembly. Frontend лишь подключает визуальные компоненты согласно
+  описаниям от backend.
+
+Дополнительные сведения см. в [plugins.md](plugins.md).
