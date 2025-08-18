@@ -1,5 +1,7 @@
 use iced::futures::stream;
-use iced::widget::{button, column, container, row, scrollable, text, text_editor, text_input};
+use iced::widget::{
+    button, column, container, row, scrollable, text, text_editor, text_input, Space,
+};
 use iced::{
     alignment, subscription, Application, Command, Element, Length, Settings, Subscription, Theme,
 };
@@ -8,6 +10,7 @@ use tokio::sync::broadcast;
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
 use std::fs;
 use std::path::{Path, PathBuf};
 
@@ -18,7 +21,7 @@ pub fn main() -> iced::Result {
 #[derive(Debug)]
 struct MulticodeApp {
     screen: Screen,
-    files: Vec<PathBuf>,
+    files: Vec<FileEntry>,
     /// выбранный в данный момент файл
     selected_file: Option<PathBuf>,
     /// содержимое открытого файла
@@ -33,6 +36,7 @@ struct MulticodeApp {
     log: Vec<String>,
     sender: broadcast::Sender<String>,
     settings: UserSettings,
+    expanded_dirs: HashSet<PathBuf>,
 }
 
 #[derive(Debug, Clone)]
@@ -45,7 +49,7 @@ enum Screen {
 enum Message {
     PickFolder,
     FolderPicked(Option<PathBuf>),
-    FilesLoaded(Vec<PathBuf>),
+    FilesLoaded(Vec<FileEntry>),
     QueryChanged(String),
     // выбор файла и операции над ним
     SelectFile(PathBuf),
@@ -71,6 +75,20 @@ enum Message {
     ExportFinished(Result<Vec<String>, String>),
     CoreEvent(String),
     SaveSettings,
+    ToggleDir(PathBuf),
+}
+
+#[derive(Debug, Clone)]
+enum EntryType {
+    File,
+    Dir,
+}
+
+#[derive(Debug, Clone)]
+struct FileEntry {
+    path: PathBuf,
+    ty: EntryType,
+    children: Vec<FileEntry>,
 }
 
 #[derive(Debug, Default, Clone, Serialize, Deserialize)]
@@ -128,6 +146,7 @@ impl Application for MulticodeApp {
             log: Vec::new(),
             sender,
             settings,
+            expanded_dirs: HashSet::new(),
         };
 
         let cmd = match &app.screen {
@@ -333,7 +352,7 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::RunParse => {
-                let files = self.files.clone();
+                let files = self.file_paths();
                 Command::perform(
                     async move {
                         let mut lines = Vec::new();
@@ -395,7 +414,7 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::RunExport => {
-                let files = self.files.clone();
+                let files = self.file_paths();
                 Command::perform(
                     async move {
                         let mut lines = Vec::new();
@@ -422,6 +441,12 @@ impl Application for MulticodeApp {
             }
             Message::ExportFinished(Err(e)) => {
                 self.log.push(format!("ошибка экспорта: {e}"));
+                Command::none()
+            }
+            Message::ToggleDir(path) => {
+                if !self.expanded_dirs.remove(&path) {
+                    self.expanded_dirs.insert(path);
+                }
                 Command::none()
             }
             Message::CoreEvent(ev) => {
@@ -475,18 +500,7 @@ impl Application for MulticodeApp {
                 ]
                 .spacing(10);
 
-                let sidebar = container(scrollable(column(
-                    self.files
-                        .iter()
-                        .map(|p| {
-                            let name = p.file_name().unwrap().to_string_lossy().to_string();
-                            button(text(name))
-                                .on_press(Message::SelectFile(p.clone()))
-                                .into()
-                        })
-                        .collect::<Vec<Element<Message>>>(),
-                )))
-                .width(200);
+                let sidebar = container(self.file_tree()).width(200);
 
                 let rename_btn: Element<_> = if self.selected_file.is_some() {
                     button("Переименовать").on_press(Message::RenameFile).into()
@@ -570,23 +584,103 @@ impl MulticodeApp {
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default()
     }
-
     fn load_files(&self, root: PathBuf) -> Command<Message> {
         Command::perform(
             async move {
-                let mut files = Vec::new();
-                if let Ok(entries) = fs::read_dir(&root) {
-                    for entry in entries.flatten() {
-                        if let Ok(ft) = entry.file_type() {
-                            if ft.is_file() {
-                                files.push(entry.path());
+                fn visit(dir: &Path) -> Vec<FileEntry> {
+                    let mut entries = Vec::new();
+                    if let Ok(read) = fs::read_dir(dir) {
+                        let mut read: Vec<_> = read.flatten().collect();
+                        read.sort_by_key(|e| e.path());
+                        for entry in read {
+                            if let Ok(ft) = entry.file_type() {
+                                let path = entry.path();
+                                if ft.is_dir() {
+                                    let children = visit(&path);
+                                    entries.push(FileEntry {
+                                        path,
+                                        ty: EntryType::Dir,
+                                        children,
+                                    });
+                                } else if ft.is_file() {
+                                    entries.push(FileEntry {
+                                        path,
+                                        ty: EntryType::File,
+                                        children: Vec::new(),
+                                    });
+                                }
                             }
                         }
                     }
+                    entries
                 }
-                files
+
+                visit(&root)
             },
             Message::FilesLoaded,
         )
+    }
+
+    fn collect_files(entries: &[FileEntry], out: &mut Vec<PathBuf>) {
+        for entry in entries {
+            match entry.ty {
+                EntryType::File => out.push(entry.path.clone()),
+                EntryType::Dir => Self::collect_files(&entry.children, out),
+            }
+        }
+    }
+
+    fn file_paths(&self) -> Vec<PathBuf> {
+        let mut out = Vec::new();
+        Self::collect_files(&self.files, &mut out);
+        out
+    }
+
+    fn view_entries(&self, entries: &[FileEntry], depth: u16) -> Element<Message> {
+        let mut rows = Vec::new();
+        for entry in entries {
+            let indent = Space::with_width(Length::Fixed((depth * 20) as f32));
+            match &entry.ty {
+                EntryType::File => {
+                    let name = entry
+                        .path
+                        .file_name()
+                        .unwrap()
+                        .to_string_lossy()
+                        .to_string();
+                    let row = row![
+                        indent,
+                        button(text(name)).on_press(Message::SelectFile(entry.path.clone())),
+                    ]
+                    .into();
+                    rows.push(row);
+                }
+                EntryType::Dir => {
+                    let name = entry
+                        .path
+                        .file_name()
+                        .unwrap()
+                        .to_string_lossy()
+                        .to_string();
+                    let expanded = self.expanded_dirs.contains(&entry.path);
+                    let icon = if expanded { "▼" } else { "▶" };
+                    let header = row![
+                        indent,
+                        button(row![text(icon), text(name)])
+                            .on_press(Message::ToggleDir(entry.path.clone())),
+                    ]
+                    .into();
+                    rows.push(header);
+                    if expanded {
+                        rows.push(self.view_entries(&entry.children, depth + 1));
+                    }
+                }
+            }
+        }
+        column(rows).into()
+    }
+
+    fn file_tree(&self) -> Element<Message> {
+        scrollable(self.view_entries(&self.files, 0)).into()
     }
 }
