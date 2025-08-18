@@ -1,6 +1,8 @@
 #!/usr/bin/env node
 const { execSync } = require('child_process');
 
+const isLinux = process.platform === 'linux';
+
 function has(command, label) {
   try {
     execSync(command, { stdio: 'ignore' });
@@ -14,8 +16,12 @@ function has(command, label) {
 
 let ok = true;
 ok &= has('pkg-config --version', 'pkg-config');
-ok &= has('pkg-config --exists gdk-3.0', 'gdk-3.0');
-ok &= has('pkg-config --exists gtk+-3.0', 'gtk+-3.0');
+if (isLinux) {
+  ok &= has('pkg-config --exists gdk-3.0', 'gdk-3.0');
+  ok &= has('pkg-config --exists gtk+-3.0', 'gtk+-3.0');
+} else {
+  console.log('Skipped on non-Linux platforms');
+}
 
 if (!ok) {
   console.error('\nMissing required system dependencies.');
