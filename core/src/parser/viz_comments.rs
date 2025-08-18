@@ -4,27 +4,27 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::Path;
 
-/// Representation of a single `@viz` comment.
+/// Представление отдельного комментария `@viz`.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct VizEntry {
-    /// Operation type.
+    /// Тип операции.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub op: Option<String>,
-    /// Associated node identifier.
+    /// Связанный идентификатор узла.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub node: Option<String>,
-    /// Optional unique identifier.
+    /// Необязательный уникальный идентификатор.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub id: Option<String>,
-    /// Incoming connections.
+    /// Входящие связи.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub inputs: Vec<String>,
-    /// Outgoing connections.
+    /// Исходящие связи.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub outputs: Vec<String>,
 }
 
-/// Collection of parsed viz entries.
+/// Набор разобранных записей viz.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub struct VizDocument {
     #[serde(default)]
@@ -33,11 +33,12 @@ pub struct VizDocument {
 
 static VIZ_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"@viz\s+(?P<params>.*)").unwrap());
 
-/// Parse all `@viz` comments contained in `content`.
+/// Разбирает все комментарии `@viz`, содержащиеся в `content`.
 ///
-/// Each comment must follow the pattern `// @viz op=... node=... id=... in=a,b out=c,d`.
-/// Parameters are optional and may appear in any order. The `in` and `out`
-/// parameters accept comma separated values.
+/// Каждый комментарий должен соответствовать шаблону
+/// `// @viz op=... node=... id=... in=a,b out=c,d`. Параметры необязательны и
+/// могут идти в любом порядке. Параметры `in` и `out` принимают значения,
+/// разделённые запятыми.
 pub fn parse_viz_comments(content: &str) -> VizDocument {
     let mut doc = VizDocument::default();
     for line in content.lines() {
@@ -75,11 +76,11 @@ fn parse_list(value: &str) -> Vec<String> {
         .collect()
 }
 
-/// Load a [`VizDocument`] associated with the provided source file.
+/// Загружает [`VizDocument`], связанный с указанным исходным файлом.
 ///
-/// The function first looks for a sibling `*.viz.json` file. If present, it is
-/// deserialized and returned. Otherwise the source file itself is scanned for
-/// `@viz` comments and a document is constructed from them.
+/// Сначала функция ищет соседний файл `*.viz.json`. Если он существует,
+/// он десериализуется и возвращается. Иначе сам исходный файл сканируется на
+/// комментарии `@viz`, из которых формируется документ.
 pub fn load_viz_document(path: &Path) -> std::io::Result<VizDocument> {
     let viz_path = path.with_extension("viz.json");
     if viz_path.exists() {
@@ -91,7 +92,7 @@ pub fn load_viz_document(path: &Path) -> std::io::Result<VizDocument> {
     }
 }
 
-/// Save a [`VizDocument`] as a sibling `*.viz.json` file next to `source`.
+/// Сохраняет [`VizDocument`] в виде соседнего файла `*.viz.json` рядом с `source`.
 pub fn save_viz_document(path: &Path, doc: &VizDocument) -> std::io::Result<()> {
     let viz_path = path.with_extension("viz.json");
     let json = serde_json::to_string(doc)

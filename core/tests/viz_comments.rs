@@ -23,14 +23,14 @@ fn roundtrip_import_export() -> std::io::Result<()> {
         &path,
         "// @viz op=Add node=1 id=n1 in=a,b out=c\nfn main() {}\n",
     )?;
-    // Import from comment (since .viz.json doesn't exist)
+    // Импорт из комментария (так как .viz.json отсутствует)
     let doc1 = load_viz_document(&path)?;
     assert_eq!(doc1.nodes.len(), 1);
-    // Export to .viz.json
+    // Экспорт в .viz.json
     save_viz_document(&path, &doc1)?;
     let viz_path = path.with_extension("viz.json");
     assert!(viz_path.exists());
-    // Import again, now from .viz.json
+    // Снова импортируем, теперь из .viz.json
     let doc2 = load_viz_document(&path)?;
     assert_eq!(doc1, doc2);
     Ok(())

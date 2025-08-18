@@ -2,9 +2,9 @@ import { ButtonWidget, PanelWidget, TextWidget, syncWidgetsToCode } from '../../
 
 const canvas = document.getElementById('canvas');
 
-const btn = new ButtonWidget('btn1', 20, 20, 'Click');
+const btn = new ButtonWidget('btn1', 20, 20, 'Нажать');
 const panel = new PanelWidget('panel1', 100, 80, 120, 80);
-const text = new TextWidget('text1', 40, 180, 'Hello');
+const text = new TextWidget('text1', 40, 180, 'Привет');
 
 const widgets = [btn, panel, text];
 widgets.forEach(w => {

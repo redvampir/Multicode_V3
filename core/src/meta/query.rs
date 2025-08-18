@@ -1,19 +1,19 @@
 use crate::meta::VisualMeta;
 use serde_json::Value;
 
-/// Boolean query expression for filtering [`VisualMeta`] entries.
+/// Логическое выражение запроса для фильтрации записей [`VisualMeta`].
 #[derive(Debug, Clone)]
 pub enum Expr {
-    /// All sub-expressions must match.
+    /// Все подвыражения должны совпасть.
     And(Vec<Expr>),
-    /// Any sub-expression may match.
+    /// Достаточно совпадения любого подвыражения.
     Or(Vec<Expr>),
-    /// Field contains value (case sensitive).
+    /// Поле содержит значение (с учётом регистра).
     Cond { field: String, value: String },
 }
 
-/// Parse simple `AND`/`OR` expressions composed of `field:value` conditions.
-/// Examples: `id:foo AND tags:bar`, `id:foo OR id:bar`.
+/// Разбирает простые выражения `AND`/`OR`, состоящие из условий `field:value`.
+/// Примеры: `id:foo AND tags:bar`, `id:foo OR id:bar`.
 pub fn parse(input: &str) -> Expr {
     let tokens: Vec<&str> = input.split_whitespace().collect();
     parse_or(&tokens, 0).0
@@ -44,7 +44,7 @@ fn parse_and(tokens: &[&str], pos: usize) -> (Expr, usize) {
         } else if tokens[i].eq_ignore_ascii_case("OR") {
             break;
         } else {
-            // implicit AND
+            // неявное AND
             let (rhs, j) = parse_term(tokens, i);
             terms.push(rhs);
             i = j;
@@ -67,7 +67,7 @@ fn parse_term(tokens: &[&str], pos: usize) -> (Expr, usize) {
         let value = tok[idx + 1..].to_string();
         (Expr::Cond { field, value }, pos + 1)
     } else {
-        // treat bare word as value search in any field
+        // трактуем отдельное слово как поиск значения по любому полю
         (
             Expr::Cond {
                 field: String::from("*"),
@@ -78,7 +78,7 @@ fn parse_term(tokens: &[&str], pos: usize) -> (Expr, usize) {
     }
 }
 
-/// Check whether a [`VisualMeta`] satisfies the expression.
+/// Проверяет, удовлетворяет ли [`VisualMeta`] выражению.
 pub fn matches(meta: &VisualMeta, expr: &Expr) -> bool {
     match expr {
         Expr::And(list) => list.iter().all(|e| matches(meta, e)),

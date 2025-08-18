@@ -13,17 +13,16 @@ mod types;
 pub mod watch;
 pub use types::{AiNote, VisualMeta, DEFAULT_VERSION};
 
-/// Marker used to identify visual metadata comments in documents.
+/// Маркер, используемый для идентификации комментариев с визуальными метаданными в документах.
 const MARKER: &str = "@VISUAL_META";
 
-/// Mutex used to serialize access to the global [`id_registry`].
+/// Мьютекс, используемый для сериализации доступа к глобальному [`id_registry`].
 ///
-/// Functions like [`read_all`] modify the registry by clearing and
-/// repopulating it, which can race when called from multiple threads.
-/// The tests execute in parallel and previously could interleave these
-/// operations, leaving the registry in an inconsistent state and causing
-/// lookups to fail. By guarding the entire `read_all` operation we ensure
-/// that each call has exclusive access to the registry.
+/// Такие функции, как [`read_all`], модифицируют реестр, очищая и заполняя его
+/// заново, что может приводить к гонкам при вызове из нескольких потоков.
+/// Тесты выполняются параллельно и раньше могли перемешивать эти операции,
+/// оставляя реестр в неконсистентном состоянии и вызывая ошибки поиска.
+/// Блокируя весь `read_all`, мы обеспечиваем эксклюзивный доступ к реестру.
 static REGISTRY_LOCK: Lazy<Mutex<()>> = Lazy::new(|| Mutex::new(()));
 
 fn migrate(meta: &mut VisualMeta) {
@@ -32,37 +31,37 @@ fn migrate(meta: &mut VisualMeta) {
     }
 }
 
-/// Structured validation error for [`VisualMeta`].
+/// Структурированная ошибка валидации для [`VisualMeta`].
 #[derive(Debug, Serialize)]
 pub struct ValidationError {
-    /// Field where validation failed.
+    /// Поле, в котором произошла ошибка валидации.
     pub field: String,
-    /// Description of the validation issue.
+    /// Описание проблемы валидации.
     pub message: String,
 }
 
-/// Validate a [`VisualMeta`] instance.
+/// Валидирует экземпляр [`VisualMeta`].
 pub fn validate(meta: &VisualMeta) -> Result<(), Vec<ValidationError>> {
     let mut errors = Vec::new();
 
     if meta.id.trim().is_empty() {
         errors.push(ValidationError {
             field: "id".into(),
-            message: "id must not be empty".into(),
+            message: "id не должен быть пустым".into(),
         });
     }
 
     if !meta.x.is_finite() {
         errors.push(ValidationError {
             field: "x".into(),
-            message: "x must be a finite number".into(),
+            message: "x должен быть конечным числом".into(),
         });
     }
 
     if !meta.y.is_finite() {
         errors.push(ValidationError {
             field: "y".into(),
-            message: "y must be a finite number".into(),
+            message: "y должен быть конечным числом".into(),
         });
     }
 
@@ -71,7 +70,7 @@ pub fn validate(meta: &VisualMeta) -> Result<(), Vec<ValidationError>> {
         if !tag_set.insert(tag) {
             errors.push(ValidationError {
                 field: "tags".into(),
-                message: format!("duplicate tag '{tag}'"),
+                message: format!("дублирующийся тег '{tag}'"),
             });
         }
     }
@@ -81,7 +80,7 @@ pub fn validate(meta: &VisualMeta) -> Result<(), Vec<ValidationError>> {
         if !link_set.insert(link) {
             errors.push(ValidationError {
                 field: "links".into(),
-                message: format!("duplicate link '{link}'"),
+                message: format!("дублирующаяся ссылка '{link}'"),
             });
         }
     }
@@ -91,7 +90,7 @@ pub fn validate(meta: &VisualMeta) -> Result<(), Vec<ValidationError>> {
         if !anchor_set.insert(anc) {
             errors.push(ValidationError {
                 field: "anchors".into(),
-                message: format!("duplicate anchor '{anc}'"),
+                message: format!("дублирующийся anchor '{anc}'"),
             });
         }
     }
@@ -100,7 +99,7 @@ pub fn validate(meta: &VisualMeta) -> Result<(), Vec<ValidationError>> {
         if ext.trim().is_empty() {
             errors.push(ValidationError {
                 field: "extends".into(),
-                message: "extends must not be empty".into(),
+            message: "extends не должен быть пустым".into(),
             });
         }
     }
@@ -112,9 +111,9 @@ pub fn validate(meta: &VisualMeta) -> Result<(), Vec<ValidationError>> {
     }
 }
 
-/// Insert or update a visual metadata comment in `content`.
+/// Вставляет или обновляет комментарий с визуальными метаданными в `content`.
 ///
-/// The comment will be placed at the top of the document if it does not exist.
+/// Если комментария ещё нет, он будет помещён в начало документа.
 pub fn upsert(content: &str, meta: &VisualMeta) -> String {
     let marker = format!("<!-- {} ", MARKER);
     let mut meta = meta.clone();
@@ -150,13 +149,13 @@ pub fn upsert(content: &str, meta: &VisualMeta) -> String {
     out
 }
 
-/// Read all visual metadata comments from `content`.
+/// Считывает все комментарии с визуальными метаданными из `content`.
 ///
-/// Returns the parsed metadata and a list of duplicate identifiers.
+/// Возвращает разобранные метаданные и список дублирующихся идентификаторов.
 pub fn read_all_with_dups(content: &str) -> (Vec<VisualMeta>, Vec<String>) {
-    // Serialize access so that the registry isn't cleared while another
-    // thread is using it, which previously could result in missing metadata
-    // entries and test flakiness.
+    // Сериализуем доступ, чтобы реестр не очищался, пока другой поток
+    // его использует. Иначе это могло приводить к пропущенным метаданным
+    // и нестабильным тестам.
     let _guard = REGISTRY_LOCK.lock().unwrap();
     id_registry::clear();
     let mut ids = Vec::new();
@@ -176,12 +175,13 @@ pub fn read_all_with_dups(content: &str) -> (Vec<VisualMeta>, Vec<String>) {
     (metas, dups)
 }
 
-/// Read all visual metadata comments from `content`, discarding duplicate IDs.
+/// Считывает все комментарии с визуальными метаданными из `content`,
+/// отбрасывая дублирующиеся идентификаторы.
 pub fn read_all(content: &str) -> Vec<VisualMeta> {
     read_all_with_dups(content).0
 }
 
-/// Recursively merge metadata with its base entries using the `extends` chain.
+/// Рекурсивно объединяет метаданные с их базовыми записями, следуя цепочке `extends`.
 pub fn merge_base_meta(id: &str) -> Option<VisualMeta> {
     fn inner(id: &str, visited: &mut HashSet<String>) -> Option<VisualMeta> {
         if !visited.insert(id.to_string()) {
@@ -261,20 +261,20 @@ pub fn merge_base_meta(id: &str) -> Option<VisualMeta> {
     inner(id, &mut HashSet::new())
 }
 
-/// Remove all visual metadata comments from `content`.
+/// Удаляет из `content` все комментарии с визуальными метаданными.
 pub fn remove_all(content: &str) -> String {
     comment_detector::strip(content)
 }
 
-/// Convenience wrapper returning all visual metadata entries from `content`.
+/// Удобная обёртка, возвращающая все записи метаданных из `content`.
 pub fn list(content: &str) -> Vec<VisualMeta> {
     read_all(content)
 }
 
-/// Fix issues in metadata comments, such as duplicate identifiers.
+/// Исправляет проблемы в комментариях метаданных, например дублирующиеся идентификаторы.
 ///
-/// When duplicate ids are found, new unique ones are generated and the
-/// updated metadata comments are reinserted into the document.
+/// При обнаружении дубликатов генерируются новые уникальные значения, и
+/// обновлённые комментарии снова вставляются в документ.
 pub fn fix_all(content: &str) -> String {
     let mut metas = read_all(content);
     let mut seen = HashSet::new();

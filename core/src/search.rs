@@ -17,7 +17,7 @@ pub struct SearchResult {
     pub meta: VisualMeta,
 }
 
-/// Recursively search `root` for metadata containing `query` string.
+/// Рекурсивно ищет в `root` метаданные, содержащие строку `query`.
 pub fn search_metadata(root: &Path, query: &str) -> Vec<SearchResult> {
     let mut out = Vec::new();
     for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
@@ -41,7 +41,7 @@ pub fn search_metadata(root: &Path, query: &str) -> Vec<SearchResult> {
     out
 }
 
-/// Search for metadata entries linking to `target` id.
+/// Ищет записи метаданных, ссылающиеся на идентификатор `target`.
 pub fn search_links(root: &Path, target: &str) -> Vec<SearchResult> {
     let mut out = Vec::new();
     for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
@@ -65,7 +65,7 @@ pub fn search_links(root: &Path, target: &str) -> Vec<SearchResult> {
     out
 }
 
-/// Find definition of metadata with a specific `id`.
+/// Находит определение метаданных с указанным `id`.
 pub fn goto_definition(root: &Path, id: &str) -> Option<SearchResult> {
     search_metadata(root, id).into_iter().find(|r| r.meta.id == id)
 }

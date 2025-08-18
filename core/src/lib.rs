@@ -1,4 +1,4 @@
-//! Core library exposing language parsing, metadata handling and other utilities.
+//! Ядро библиотеки, предоставляющее парсинг языков, работу с метаданными и другие утилиты.
 
 pub mod blocks;
 pub mod config;
@@ -22,7 +22,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use tree_sitter::Tree;
 
-/// Parsed block information enriched with visual metadata.
+/// Информация о блоке, дополненная визуальными метаданными.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BlockInfo {
     pub visual_id: String,
@@ -40,15 +40,15 @@ pub struct BlockInfo {
     pub links: Vec<String>,
 }
 
-/// Stored parse trees for opened documents.
+/// Сохранённые деревья разбора для открытых документов.
 static DOCUMENT_TREES: Lazy<Mutex<HashMap<String, Tree>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-/// Cached parsed blocks keyed by path or content hash.
+/// Кэш разобранных блоков, индексируемый путём или хешем содержимого.
 static BLOCK_CACHE: Lazy<Mutex<HashMap<String, (String, Vec<BlockInfo>)>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
-/// Retrieve the last parsed [`Tree`] for the given document identifier.
+/// Возвращает последнее разобранное [`Tree`] для указанного идентификатора документа.
 pub fn get_document_tree(id: &str) -> Option<Tree> {
     match DOCUMENT_TREES.lock() {
         Ok(trees) => trees.get(id).cloned(),
@@ -56,14 +56,14 @@ pub fn get_document_tree(id: &str) -> Option<Tree> {
     }
 }
 
-/// Update the stored [`Tree`] for the given document identifier.
+/// Обновляет сохранённое [`Tree`] для указанного идентификатора документа.
 pub fn update_document_tree(id: String, tree: Tree) {
     if let Ok(mut trees) = DOCUMENT_TREES.lock() {
         trees.insert(id, tree);
     }
 }
 
-/// Retrieve cached blocks if the content matches.
+/// Возвращает кэшированные блоки, если содержимое совпадает.
 pub fn get_cached_blocks(key: &str, content: &str) -> Option<Vec<BlockInfo>> {
     if let Ok(cache) = BLOCK_CACHE.lock() {
         if let Some((cached_content, blocks)) = cache.get(key) {
@@ -75,7 +75,7 @@ pub fn get_cached_blocks(key: &str, content: &str) -> Option<Vec<BlockInfo>> {
     None
 }
 
-/// Update the block cache for the given key.
+/// Обновляет кэш блоков для заданного ключа.
 pub fn update_block_cache(key: String, content: String, blocks: Vec<BlockInfo>) {
     if let Ok(mut cache) = BLOCK_CACHE.lock() {
         cache.insert(key, (content, blocks));

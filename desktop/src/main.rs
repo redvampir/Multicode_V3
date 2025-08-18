@@ -149,24 +149,24 @@ impl Application for MulticodeApp {
             }
             Message::SearchFinished(Ok(list)) => {
                 for item in list {
-                    self.log.push(format!("found {item}"));
+                    self.log.push(format!("найден {item}"));
                 }
                 Command::none()
             }
             Message::SearchFinished(Err(e)) => {
-                self.log.push(format!("search error: {e}"));
+                self.log.push(format!("ошибка поиска: {e}"));
                 Command::none()
             }
             Message::RunParse => {
                 let sender = self.sender.clone();
                 Command::perform(async move {
-                    sender.send("parsing".into()).ok();
+                    sender.send("разбор".into()).ok();
                     Ok::<_, String>(())
                 }, Message::ParseFinished)
             }
             Message::ParseFinished(Ok(())) => Command::none(),
             Message::ParseFinished(Err(e)) => {
-                self.log.push(format!("parse error: {e}"));
+                self.log.push(format!("ошибка разбора: {e}"));
                 Command::none()
             }
             Message::RunGitLog => {
@@ -177,17 +177,17 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::GitFinished(Err(e)) => {
-                self.log.push(format!("git error: {e}"));
+                self.log.push(format!("ошибка git: {e}"));
                 Command::none()
             }
             Message::RunExport => {
                 Command::perform(async move {
-                    export::serialize_viz_document("{}").ok_or_else(|| "export".to_string()).map(|_| ())
+                    export::serialize_viz_document("{}").ok_or_else(|| "экспорт".to_string()).map(|_| ())
                 }, Message::ExportFinished)
             }
             Message::ExportFinished(Ok(())) => Command::none(),
             Message::ExportFinished(Err(e)) => {
-                self.log.push(format!("export error: {e}"));
+                self.log.push(format!("ошибка экспорта: {e}"));
                 Command::none()
             }
             Message::CoreEvent(ev) => {
@@ -219,8 +219,8 @@ impl Application for MulticodeApp {
         match &self.screen {
             Screen::ProjectPicker => {
                 let content = column![
-                    text("Select a project folder"),
-                    button("Pick folder").on_press(Message::PickFolder),
+                    text("Выберите папку проекта"),
+                    button("Выбрать папку").on_press(Message::PickFolder),
                 ]
                 .align_items(alignment::Alignment::Center)
                 .spacing(20);
@@ -234,10 +234,10 @@ impl Application for MulticodeApp {
             }
             Screen::Workspace { .. } => {
                 let menu = row![
-                    button("Parse").on_press(Message::RunParse),
-                    button("Search").on_press(Message::RunSearch),
-                    button("Git Log").on_press(Message::RunGitLog),
-                    button("Export").on_press(Message::RunExport),
+                    button("Разбор").on_press(Message::RunParse),
+                    button("Поиск").on_press(Message::RunSearch),
+                    button("Журнал Git").on_press(Message::RunGitLog),
+                    button("Экспорт").on_press(Message::RunExport),
                 ]
                 .spacing(10);
 
@@ -247,7 +247,7 @@ impl Application for MulticodeApp {
                             .iter()
                             .map(|p| {
                                 button(text(p.file_name().unwrap().to_string_lossy().to_string()))
-                                    .on_press(Message::CoreEvent(format!("open {:?}", p)))
+                                    .on_press(Message::CoreEvent(format!("открыть {:?}", p)))
                                     .into()
                             })
                             .collect::<Vec<Element<Message>>>()
@@ -256,7 +256,7 @@ impl Application for MulticodeApp {
                 .width(200);
 
                 let content = column![
-                    text_input("search", &self.query).on_input(Message::QueryChanged),
+                    text_input("поиск", &self.query).on_input(Message::QueryChanged),
                     scrollable(column(
                         self.log
                             .iter()
@@ -268,7 +268,7 @@ impl Application for MulticodeApp {
 
                 let body = row![sidebar, content].spacing(10);
 
-                column![menu, body, text("Ready")]
+                column![menu, body, text("Готово")]
                     .spacing(10)
                     .into()
             }

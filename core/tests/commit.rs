@@ -22,8 +22,8 @@ fn commit_creates_commit() {
     commit("initial commit").unwrap();
     env::set_current_dir(prev).unwrap();
 
-    // A new repository should have a `main` branch pointing at the initial
-    // commit and `HEAD` should reference it.
+    // Новый репозиторий должен иметь ветку `main`, указывающую на первый
+    // коммит, а `HEAD` должен ссылаться на неё.
     let head_ref = repo.head().unwrap();
     assert_eq!(head_ref.shorthand(), Some("main"));
     let commit = repo
@@ -46,6 +46,6 @@ fn commit_empty_message_error() {
     env::set_current_dir(dir.path()).unwrap();
     let err = commit("").unwrap_err();
     env::set_current_dir(prev).unwrap();
-    assert_eq!(err.message(), "commit message cannot be empty");
+    assert_eq!(err.message(), "сообщение коммита не может быть пустым");
 }
 
