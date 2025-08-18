@@ -1,5 +1,5 @@
 use iced::futures::stream;
-use iced::widget::{button, column, container, row, scrollable, text, text_input};
+use iced::widget::{button, column, container, row, scrollable, text, text_editor, text_input};
 use iced::{
     alignment, subscription, Application, Command, Element, Length, Settings, Subscription, Theme,
 };
@@ -19,6 +19,16 @@ pub fn main() -> iced::Result {
 struct MulticodeApp {
     screen: Screen,
     files: Vec<PathBuf>,
+    /// выбранный в данный момент файл
+    selected_file: Option<PathBuf>,
+    /// содержимое открытого файла
+    file_content: String,
+    /// состояние текстового редактора
+    editor: text_editor::Content,
+    /// имя для создания нового файла
+    new_file_name: String,
+    /// новое имя при переименовании
+    rename_file_name: String,
     query: String,
     log: Vec<String>,
     sender: broadcast::Sender<String>,
@@ -37,6 +47,20 @@ enum Message {
     FolderPicked(Option<PathBuf>),
     FilesLoaded(Vec<PathBuf>),
     QueryChanged(String),
+    // выбор файла и операции над ним
+    SelectFile(PathBuf),
+    FileLoaded(Result<(PathBuf, String), String>),
+    FileContentEdited(text_editor::Action),
+    SaveFile,
+    FileSaved(Result<(), String>),
+    NewFileNameChanged(String),
+    CreateFile,
+    FileCreated(Result<PathBuf, String>),
+    RenameFileNameChanged(String),
+    RenameFile,
+    FileRenamed(Result<PathBuf, String>),
+    DeleteFile,
+    FileDeleted(Result<PathBuf, String>),
     RunSearch,
     SearchFinished(Result<Vec<String>, String>),
     RunParse,
@@ -95,6 +119,11 @@ impl Application for MulticodeApp {
                 Screen::ProjectPicker
             },
             files: Vec::new(),
+            selected_file: None,
+            file_content: String::new(),
+            editor: text_editor::Content::new(),
+            new_file_name: String::new(),
+            rename_file_name: String::new(),
             query: String::new(),
             log: Vec::new(),
             sender,
@@ -134,6 +163,147 @@ impl Application for MulticodeApp {
             }
             Message::QueryChanged(q) => {
                 self.query = q;
+                Command::none()
+            }
+            Message::SelectFile(path) => {
+                return Command::perform(
+                    async move {
+                        match fs::read_to_string(&path) {
+                            Ok(c) => Ok((path, c)),
+                            Err(e) => Err(format!("{}", e)),
+                        }
+                    },
+                    Message::FileLoaded,
+                );
+            }
+            Message::FileLoaded(Ok((path, content))) => {
+                self.selected_file = Some(path);
+                self.file_content = content;
+                self.editor = text_editor::Content::with_text(&self.file_content);
+                self.rename_file_name.clear();
+                Command::none()
+            }
+            Message::FileLoaded(Err(e)) => {
+                self.log.push(format!("ошибка чтения: {e}"));
+                Command::none()
+            }
+            Message::FileContentEdited(action) => {
+                self.editor.perform(action);
+                self.file_content = self.editor.text();
+                Command::none()
+            }
+            Message::SaveFile => {
+                if let Some(path) = self.selected_file.clone() {
+                    let content = self.file_content.clone();
+                    return Command::perform(
+                        async move {
+                            fs::write(&path, content)
+                                .map(|_| ())
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileSaved,
+                    );
+                }
+                Command::none()
+            }
+            Message::FileSaved(Ok(())) => {
+                self.log.push("файл сохранен".into());
+                Command::none()
+            }
+            Message::FileSaved(Err(e)) => {
+                self.log.push(format!("ошибка сохранения: {e}"));
+                Command::none()
+            }
+            Message::NewFileNameChanged(s) => {
+                self.new_file_name = s;
+                Command::none()
+            }
+            Message::CreateFile => {
+                if let Some(root) = self.current_root_path() {
+                    let name = self.new_file_name.clone();
+                    if name.is_empty() {
+                        self.log.push("имя файла не задано".into());
+                        return Command::none();
+                    }
+                    let path = root.join(&name);
+                    return Command::perform(
+                        async move {
+                            fs::write(&path, "")
+                                .map(|_| path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileCreated,
+                    );
+                }
+                Command::none()
+            }
+            Message::FileCreated(Ok(path)) => {
+                self.log.push(format!("создан {}", path.display()));
+                self.new_file_name.clear();
+                self.selected_file = Some(path.clone());
+                self.file_content.clear();
+                self.editor = text_editor::Content::new();
+                return self.load_files(self.current_root_path().unwrap());
+            }
+            Message::FileCreated(Err(e)) => {
+                self.log.push(format!("ошибка создания: {e}"));
+                Command::none()
+            }
+            Message::RenameFileNameChanged(s) => {
+                self.rename_file_name = s;
+                Command::none()
+            }
+            Message::RenameFile => {
+                if let Some(old_path) = self.selected_file.clone() {
+                    let new_name = self.rename_file_name.clone();
+                    if new_name.is_empty() {
+                        self.log.push("новое имя пустое".into());
+                        return Command::none();
+                    }
+                    let new_path = old_path.parent().unwrap().join(new_name);
+                    return Command::perform(
+                        async move {
+                            fs::rename(&old_path, &new_path)
+                                .map(|_| new_path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileRenamed,
+                    );
+                }
+                Command::none()
+            }
+            Message::FileRenamed(Ok(path)) => {
+                self.log.push(format!("переименовано в {}", path.display()));
+                self.selected_file = Some(path);
+                self.rename_file_name.clear();
+                return self.load_files(self.current_root_path().unwrap());
+            }
+            Message::FileRenamed(Err(e)) => {
+                self.log.push(format!("ошибка переименования: {e}"));
+                Command::none()
+            }
+            Message::DeleteFile => {
+                if let Some(path) = self.selected_file.clone() {
+                    return Command::perform(
+                        async move {
+                            fs::remove_file(&path)
+                                .map(|_| path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileDeleted,
+                    );
+                }
+                Command::none()
+            }
+            Message::FileDeleted(Ok(path)) => {
+                self.log.push(format!("удален {}", path.display()));
+                self.selected_file = None;
+                self.file_content.clear();
+                self.editor = text_editor::Content::new();
+                return self.load_files(self.current_root_path().unwrap());
+            }
+            Message::FileDeleted(Err(e)) => {
+                self.log.push(format!("ошибка удаления: {e}"));
                 Command::none()
             }
             Message::RunSearch => {
@@ -309,16 +479,58 @@ impl Application for MulticodeApp {
                     self.files
                         .iter()
                         .map(|p| {
-                            button(text(p.file_name().unwrap().to_string_lossy().to_string()))
-                                .on_press(Message::CoreEvent(format!("открыть {:?}", p)))
+                            let name = p.file_name().unwrap().to_string_lossy().to_string();
+                            button(text(name))
+                                .on_press(Message::SelectFile(p.clone()))
                                 .into()
                         })
                         .collect::<Vec<Element<Message>>>(),
                 )))
                 .width(200);
 
+                let rename_btn: Element<_> = if self.selected_file.is_some() {
+                    button("Переименовать").on_press(Message::RenameFile).into()
+                } else {
+                    button("Переименовать").into()
+                };
+                let delete_btn: Element<_> = if self.selected_file.is_some() {
+                    button("Удалить").on_press(Message::DeleteFile).into()
+                } else {
+                    button("Удалить").into()
+                };
+                let save_btn: Element<_> = if self.selected_file.is_some() {
+                    button("Сохранить").on_press(Message::SaveFile).into()
+                } else {
+                    button("Сохранить").into()
+                };
+
+                let file_menu = row![
+                    text_input("новый файл", &self.new_file_name)
+                        .on_input(Message::NewFileNameChanged),
+                    button("Создать").on_press(Message::CreateFile),
+                    text_input("новое имя", &self.rename_file_name)
+                        .on_input(Message::RenameFileNameChanged),
+                    rename_btn,
+                    delete_btn,
+                    save_btn,
+                ]
+                .spacing(5);
+
+                let editor: Element<_> = if self.selected_file.is_some() {
+                    text_editor(&self.editor)
+                        .on_action(Message::FileContentEdited)
+                        .height(Length::Fill)
+                        .into()
+                } else {
+                    container(text("файл не выбран"))
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .into()
+                };
+
                 let content = column![
                     text_input("поиск", &self.query).on_input(Message::QueryChanged),
+                    editor,
                     scrollable(column(
                         self.log
                             .iter()
@@ -326,11 +538,14 @@ impl Application for MulticodeApp {
                             .map(|l| text(l).into())
                             .collect::<Vec<Element<Message>>>()
                     )),
-                ];
+                ]
+                .spacing(10);
 
                 let body = row![sidebar, content].spacing(10);
 
-                column![menu, body, text("Готово")].spacing(10).into()
+                column![menu, file_menu, body, text("Готово")]
+                    .spacing(10)
+                    .into()
             }
         }
     }
@@ -341,11 +556,19 @@ fn pick_folder() -> impl std::future::Future<Output = Option<PathBuf>> {
 }
 
 impl MulticodeApp {
-    fn current_root(&self) -> String {
+    /// Возвращает путь к корню проекта, если он выбран
+    fn current_root_path(&self) -> Option<PathBuf> {
         match &self.screen {
-            Screen::Workspace { root } => root.to_string_lossy().to_string(),
-            Screen::ProjectPicker => String::new(),
+            Screen::Workspace { root } => Some(root.clone()),
+            Screen::ProjectPicker => None,
         }
+    }
+
+    /// Строковое представление корневого каталога
+    fn current_root(&self) -> String {
+        self.current_root_path()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default()
     }
 
     fn load_files(&self, root: PathBuf) -> Command<Message> {
