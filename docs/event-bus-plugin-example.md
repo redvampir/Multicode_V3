@@ -1,21 +1,21 @@
-# Plugin reacting to events
+# Плагин, реагирующий на события
 
-Plugins can subscribe to the shared event bus (`frontend/src/shared/event-bus.js`) to react to editor actions.
+Плагины могут подписываться на общую шину событий (`frontend/src/shared/event-bus.js`), чтобы реагировать на действия редактора.
 
-See [glossary.md](glossary.md) for terminology definitions.
+Определения терминов см. в [glossary.md](glossary.md).
 
 ```js
 import { on } from '../src/shared/event-bus.js';
 
 export default function activate() {
   on('blockSelected', ({ id }) => {
-    console.log('Selected block:', id);
+    console.log('Выбран блок:', id);
   });
 
   on('metaUpdated', meta => {
-    console.log('Meta updated:', meta);
+    console.log('Метаданные обновлены:', meta);
   });
 }
 ```
 
-See [plugin-guide.md](plugin-guide.md) for general information on writing plugins.
+Общая информация по созданию плагинов: [plugin-guide.md](plugin-guide.md).
