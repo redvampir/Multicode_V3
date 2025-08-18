@@ -1,2 +1,5 @@
-/backend/target/
+/target/
+/core/target/
+/desktop/target/
+/legacy-backend/target/
 node_modules/
