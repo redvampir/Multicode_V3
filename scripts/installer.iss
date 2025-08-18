@@ -10,9 +10,10 @@ DisableProgramGroupPage=yes
 
 [Files]
 Source: "..\\target\\release\\desktop.exe"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\\desktop\\assets\\icon.png"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\\Multicode"; Filename: "{app}\\desktop.exe"
+Name: "{group}\\Multicode"; Filename: "{app}\\desktop.exe"; IconFilename: "{app}\\icon.png"
 
 ; Placeholder for future WinSparkle auto-updater integration
 ; #define EnableWinSparkle

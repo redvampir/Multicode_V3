@@ -23,8 +23,8 @@ Icon=$APP_NAME
 Categories=Utility;
 EOF2
 
-if [ -f "$ROOT_DIR/frontend/assets/icon.png" ]; then
-  cp "$ROOT_DIR/frontend/assets/icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
+if [ -f "$ROOT_DIR/desktop/assets/icon.png" ]; then
+  cp "$ROOT_DIR/desktop/assets/icon.png" "$APPDIR/usr/share/icons/hicolor/256x256/apps/$APP_NAME.png"
 fi
 
 mkdir -p "$DIST_DIR"
