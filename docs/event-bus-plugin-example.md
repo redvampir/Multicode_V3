@@ -2,6 +2,8 @@
 
 Plugins can subscribe to the shared event bus (`frontend/src/shared/event-bus.js`) to react to editor actions.
 
+See [glossary.md](glossary.md) for terminology definitions.
+
 ```js
 import { on } from '../src/shared/event-bus.js';
 

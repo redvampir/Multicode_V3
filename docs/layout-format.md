@@ -1,6 +1,8 @@
 # Layout export format
 
-The visual editor can save and restore its state through JSON. Use the **Export** and **Import** buttons in the interface or call the methods directly on `VisualCanvas`.
+The visual editor can save and restore its state through JSON.
+
+See [glossary.md](glossary.md) for terminology definitions. Use the **Export** and **Import** buttons in the interface or call the methods directly on `VisualCanvas`.
 
 ## JSON structure
 
