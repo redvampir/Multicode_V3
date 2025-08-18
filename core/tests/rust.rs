@@ -1,0 +1,9 @@
+use core::meta::read_all;
+
+#[test]
+fn detect_rust_comment() {
+    let src = "// @VISUAL_META {\"id\":\"1\",\"x\":1.0,\"y\":2.0}\nfn main() {}";
+    let metas = read_all(src);
+    assert_eq!(metas.len(), 1);
+    assert_eq!(metas[0].id, "1");
+}

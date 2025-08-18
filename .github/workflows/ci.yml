@@ -5,7 +5,7 @@ on:
   pull_request:
 
 jobs:
-  backend:
+  core-desktop:
     continue-on-error: true
     strategy:
       matrix:
@@ -25,21 +25,41 @@ jobs:
       - name: Set PKG_CONFIG_PATH
         if: runner.os == 'Linux'
         run: echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
-      - name: Install cargo-audit
-        run: cargo install cargo-audit
-      - name: Backend quality
-        run: bash scripts/ci_backend.sh
+      - name: Core and desktop quality
+        run: |
+          LOG_FILE="core-desktop-ci.log"
+          : > "$LOG_FILE"
+          run() {
+            local cmd="$1"
+            echo "+ $cmd" >> "$LOG_FILE"
+            if ! err=$(bash -c "$cmd" 2>&1); then
+              echo "$err" >> "$LOG_FILE"
+              local path=$(printf '%s\n' "$err" | grep -oE '[^ :]+\.[a-z]+:[0-9]+' | head -n1)
+              echo "::error file=${path:-core-desktop} step=$cmd::failed" >> "$LOG_FILE"
+              return 1
+            else
+              echo "$err" >> "$LOG_FILE"
+            fi
+          }
+          for crate in core desktop; do
+            pushd "$crate" >/dev/null
+            run "cargo fmt --all -- --check"
+            run "cargo clippy --all-targets -- -D warnings"
+            run "cargo test --all-features"
+            popd >/dev/null
+          done
+          cat "$LOG_FILE"
         continue-on-error: true
       - uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: backend-log-${{ matrix.os }}
-          path: backend-ci.log
+          name: core-desktop-log-${{ matrix.os }}
+          path: core-desktop-ci.log
   node-workspaces:
     continue-on-error: true
     strategy:
       matrix:
-        workdir: [frontend, plugins/lsp]
+        workdir: [plugins/lsp]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
@@ -55,48 +75,3 @@ jobs:
         with:
           name: ${{ env.SAFE_WORKDIR }}-log
           path: ${{ matrix.workdir }}-ci.log
-  desktop-build:
-    continue-on-error: true
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
-    steps:
-      - uses: actions/checkout@v3
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: actions/setup-node@v3
-        with:
-          node-version: 18
-      - name: Install Tauri CLI
-        run: npm install -g @tauri-apps/cli
-      - name: Install dependencies
-        run: npm ci
-        working-directory: frontend
-      - name: Install system dependencies
-        if: runner.os == 'Linux'
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y \
-            libglib2.0-dev libgtk-3-dev libsoup-3.0-dev libwebkit2gtk-4.1-dev pkg-config
-      - name: Set PKG_CONFIG_PATH
-        if: runner.os == 'Linux'
-        run: echo "PKG_CONFIG_PATH=/usr/lib/x86_64-linux-gnu/pkgconfig" >> $GITHUB_ENV
-      - name: Check environment
-        if: runner.os != 'macOS'
-        run: npm run check-env
-      - name: Build backend
-        run: cargo build --release --manifest-path backend/Cargo.toml
-      - name: Ensure backend binary path exists
-        if: ${{ success() }}
-        run: |
-          ls backend/target/release/
-          test -e backend/target/release/backend || test -e backend/target/release/backend.exe
-        shell: bash
-      - name: Build debug
-        if: ${{ success() }}
-        run: npm run build:debug
-        working-directory: frontend
-      - name: Build release
-        if: ${{ success() }}
-        run: npm run build:release -- --no-bundle
-        working-directory: frontend

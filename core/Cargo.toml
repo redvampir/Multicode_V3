@@ -1,0 +1,41 @@
+[package]
+name = "core"
+version = "0.1.0"
+edition = "2021"
+license = "MIT"
+
+[features]
+default = []
+git = ["git2"]
+watch = ["notify", "tokio"]
+export = []
+db = ["sqlx", "tokio"]
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+once_cell = "1"
+regex = "1"
+walkdir = "2"
+chrono = { version = "0.4", features = ["serde"] }
+tree-sitter = "0.23"
+tree-sitter-rust = "0.23"
+tree-sitter-python = "0.23"
+tree-sitter-javascript = "0.23"
+tree-sitter-css = "0.23"
+tree-sitter-html = "0.23"
+tree-sitter-go = "0.23"
+tree-sitter-typescript = "0.23"
+syn = { version = "2", features = ["full"] }
+prettyplease = "0.2"
+dirs = "5"
+git2 = { version = "0.18", optional = true }
+notify = { version = "5", optional = true }
+sqlx = { version = "0.8", default-features = false, features = ["sqlite", "runtime-tokio-rustls"], optional = true }
+tokio = { version = "1", features = ["sync", "rt-multi-thread"], optional = true }
+config = { version = "0.15", default-features = false }
+tracing = "0.1"
+schemars = { version = "0.8", features = ["derive", "chrono"] }
+
+[dev-dependencies]
+tempfile = "3"

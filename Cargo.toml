@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "core",
+    "desktop",
+    "legacy-backend",
+]
+default-members = [
+    "core",
+    "desktop",
+]
+resolver = "2"

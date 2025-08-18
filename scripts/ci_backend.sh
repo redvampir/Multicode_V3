@@ -2,10 +2,10 @@
 
 set -e
 
-LOG_FILE="backend-ci.log"
+LOG_FILE="legacy-backend-ci.log"
 : > "$LOG_FILE"
 
-pushd backend >/dev/null
+pushd legacy-backend >/dev/null
 
 run() {
   local cmd="$1"
@@ -13,7 +13,7 @@ run() {
   if ! err=$(bash -c "$cmd" 2>&1); then
     echo "$err" >> "../$LOG_FILE"
     local path=$(printf '%s\n' "$err" | grep -oE '[^ :]+\.[a-z]+:[0-9]+' | head -n1)
-    echo "::error file=${path:-backend} step=$cmd::failed" >> "../$LOG_FILE"
+    echo "::error file=${path:-legacy-backend} step=$cmd::failed" >> "../$LOG_FILE"
     return 1
   else
     echo "$err" >> "../$LOG_FILE"

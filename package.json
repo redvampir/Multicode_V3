@@ -2,15 +2,14 @@
   "name": "multicode-v3",
   "private": true,
   "workspaces": [
-    "frontend",
     "plugins/*"
   ],
   "scripts": {
     "setup": "node scripts/setup.js",
-    "dev": "node scripts/dev.js",
-    "build": "node scripts/build.js",
-    "test": "node scripts/test.js",
-    "clean": "node scripts/clean.js",
+    "dev": "cargo run",
+    "build": "cargo build",
+    "test": "cargo test",
+    "clean": "cargo clean",
     "check:scripts": "node scripts/check-scripts.js",
     "check-env": "node scripts/check-env.js"
   },

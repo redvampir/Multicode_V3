@@ -1,0 +1,38 @@
+name: desktop-build
+
+on:
+  push:
+    paths:
+      - 'desktop/**'
+      - 'scripts/**'
+      - '.github/workflows/desktop.yml'
+  workflow_dispatch:
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        os: [windows-latest, macos-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v3
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Build desktop
+        run: cargo build --release -p desktop
+      - name: Install Inno Setup
+        if: runner.os == 'Windows'
+        run: choco install innosetup -y
+      - name: Package Windows installer
+        if: runner.os == 'Windows'
+        run: iscc scripts/installer.iss
+      - name: Package macOS app
+        if: runner.os == 'macOS'
+        run: bash scripts/macos_bundle.sh
+      - name: Package AppImage
+        if: runner.os == 'Linux'
+        run: bash scripts/build_appimage.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: desktop-${{ matrix.os }}
+          path: dist
+          if-no-files-found: warn
