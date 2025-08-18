@@ -2,6 +2,8 @@
 
 Десктопная версия Multicode работает полностью автономно и не требует запуска web‑сервера на `localhost`.
 
+Основные термины описаны в [docs/glossary.md](docs/glossary.md).
+
 ## Разработка
 
 1. Установите [Rust](https://www.rust-lang.org) и [Node.js](https://nodejs.org).
