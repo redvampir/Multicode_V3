@@ -27,7 +27,6 @@ source: "https://example.org"
 
 ## Оглавление
 - [NodeTemplate](#nodetemplate)
-- [Разрешение конфликтов](#разрешение-конфликтов)
 - [1. Базовый интерфейс узла](#1-базовый-интерфейс-узла)
   - [Сериализация и версионирование](#сериализация-и-версионирование)
 - [2. Иерархия и назначение подтипов](#2-иерархия-и-назначение-подтипов)
@@ -90,35 +89,6 @@ metadata:
 ```
 
 **Проверка перед ревью:** сохраните шаблон в файл и проверьте его с помощью JSON Schema, например командой `npx ajv validate -s node-template.schema.json -d node-template.json`. Для YAML используйте `npx ajv validate -s node-template.schema.json -d node-template.yaml` или `yamllint` для проверки синтаксиса.
-
-## Разрешение конфликтов
-- **Сравнение узлов:** проверяются `id`, содержимое и связи.
-- **Варианты решений:**
-  - `merge` — объединить данные узлов;
-  - `reject` — отклонить конфликтующий узел;
-  - `create_new` — создать отдельный узел.
-
-```rust
-fn resolve_conflict(a: &AnalysisNode, b: &AnalysisNode) -> ConflictReport {
-    if a.id == b.id && a.content == b.content && a.links == b.links {
-        ConflictReport::new("Полное совпадение", Action::Merge, vec![a.id.clone(), b.id.clone()])
-    } else if a.id == b.id {
-        ConflictReport::new("Совпадают идентификаторы", Action::Reject, vec![a.id.clone(), b.id.clone()])
-    } else {
-        ConflictReport::new("Различные узлы", Action::CreateNew, vec![a.id.clone(), b.id.clone()])
-    }
-}
-```
-
-### Шаблон отчёта о конфликте
-
-```yaml
-reason: <описание причины>
-action: merge | reject | create_new
-nodes:
-  - <id первого узла>
-  - <id второго узла>
-```
 
 ## 1. Базовый интерфейс узла
 - **Интерфейс:** `AnalysisNode`
@@ -346,6 +316,34 @@ fn review_template(template: NodeTemplate) -> AnalysisNode {
 - После подтверждения запускается pipeline, и создаётся новый `AnalysisNode` с меткой происхождения (source, timestamp, reviewer).
 - Фабрика узлов автоматически выбирает или порождает нужный подтип на основании контекста и диалога.
 - Метаданные происхождения сохраняются для последующего анализа и обучения.
+- Перед добавлением черновой узел сравнивается с существующими по `id`, содержимому и связям.
+  - `merge` — все параметры совпадают, данные объединяются;
+  - `reject` — совпадает только `id`, узел отклоняется;
+  - `create_new` — различия по `id` или содержимому приводят к созданию отдельного узла.
+
+### Шаблон отчёта о конфликте
+
+```yaml
+reason: <описание причины>
+action: merge | reject | create_new
+nodes:
+  - <id первого узла>
+  - <id второго узла>
+```
+
+### Пример функции `resolve_conflict`
+
+```rust
+fn resolve_conflict(a: &AnalysisNode, b: &AnalysisNode) -> ConflictReport {
+    if a.id == b.id && a.content == b.content && a.links == b.links {
+        ConflictReport::new("Полное совпадение", Action::Merge, vec![a.id.clone(), b.id.clone()])
+    } else if a.id == b.id {
+        ConflictReport::new("Совпадают идентификаторы", Action::Reject, vec![a.id.clone(), b.id.clone()])
+    } else {
+        ConflictReport::new("Различные узлы", Action::CreateNew, vec![a.id.clone(), b.id.clone()])
+    }
+}
+```
 
 ## 8. Управление узлами через редактор
 - Редактор отображает рейтинги источников и историю изменений узла.
