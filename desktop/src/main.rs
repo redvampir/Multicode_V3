@@ -2,7 +2,7 @@ mod modal;
 
 use crate::modal::Modal;
 use iced::futures::stream;
-use iced::widget::core::text::highlighter::{self, Highlighter};
+use iced::advanced::text::highlighter::{self, Highlighter};
 #[allow(unused_imports)]
 use iced::widget::overlay::menu;
 use iced::widget::{
@@ -31,12 +31,9 @@ pub fn main() -> iced::Result {
 struct MulticodeApp {
     screen: Screen,
     files: Vec<FileEntry>,
-    /// выбранный в данный момент файл
-    selected_file: Option<PathBuf>,
-    /// содержимое открытого файла
-    file_content: String,
-    /// состояние текстового редактора
-    editor: text_editor::Content,
+    open_files: Vec<OpenFile>,
+    /// индекс активного файла во вкладках
+    active_file: Option<usize>,
     /// строка поиска
     search_term: String,
     /// строка замены
@@ -61,8 +58,6 @@ struct MulticodeApp {
     show_create_file_confirm: bool,
     /// отображать подтверждение удаления файла
     show_delete_confirm: bool,
-    /// есть ли несохранённые изменения
-    dirty: bool,
     /// ожидаемое действие при подтверждении потери изменений
     pending_action: Option<PendingAction>,
     hotkey_capture: Option<HotkeyField>,
@@ -114,6 +109,8 @@ enum Message {
     /// отмена удаления файла
     CancelDeleteFile,
     FileDeleted(Result<PathBuf, String>),
+    CloseFile(usize),
+    FileClosed(Result<usize, String>),
     RunSearch,
     SearchFinished(Result<Vec<String>, String>),
     RunParse,
@@ -159,6 +156,14 @@ struct FileEntry {
     path: PathBuf,
     ty: EntryType,
     children: Vec<FileEntry>,
+}
+
+#[derive(Debug)]
+struct OpenFile {
+    path: PathBuf,
+    content: String,
+    editor: text_editor::Content,
+    dirty: bool,
 }
 
 #[derive(Debug)]
@@ -480,9 +485,8 @@ impl Application for MulticodeApp {
                 Screen::ProjectPicker
             },
             files: Vec::new(),
-            selected_file: None,
-            file_content: String::new(),
-            editor: text_editor::Content::new(),
+            open_files: Vec::new(),
+            active_file: None,
             search_term: String::new(),
             replace_term: String::new(),
             search_results: Vec::new(),
@@ -498,7 +502,6 @@ impl Application for MulticodeApp {
             context_menu: None,
             show_create_file_confirm: false,
             show_delete_confirm: false,
-            dirty: false,
             pending_action: None,
             hotkey_capture: None,
             settings_warning: None,
@@ -661,12 +664,18 @@ impl Application for MulticodeApp {
             }
             Message::Find => {
                 self.search_results.clear();
-                if !self.search_term.is_empty() {
-                    for (i, line) in self.editor.lines().enumerate() {
+                let term = self.search_term.clone();
+                if !term.is_empty() {
+                    let lines: Vec<String> = if let Some(f) = self.current_file() {
+                        f.editor.lines().map(|l| l.to_string()).collect()
+                    } else {
+                        Vec::new()
+                    };
+                    for (i, line) in lines.iter().enumerate() {
                         let mut start = 0;
-                        while let Some(pos) = line[start..].find(&self.search_term) {
+                        while let Some(pos) = line[start..].find(&term) {
                             let s = start + pos;
-                            let e = s + self.search_term.len();
+                            let e = s + term.len();
                             self.search_results.push((i, s..e));
                             start = e;
                         }
@@ -676,38 +685,40 @@ impl Application for MulticodeApp {
             }
             Message::ReplaceAll => {
                 if !self.search_term.is_empty() {
-                    self.file_content = self
-                        .editor
-                        .text()
-                        .replace(&self.search_term, &self.replace_term);
-                    self.editor = text_editor::Content::with_text(&self.file_content);
-                    self.dirty = true;
+                    let search = self.search_term.clone();
+                    let replace = self.replace_term.clone();
+                    if let Some(f) = self.current_file_mut() {
+                        f.content = f.editor.text().replace(&search, &replace);
+                        f.editor = text_editor::Content::with_text(&f.content);
+                        f.dirty = true;
+                    }
                     self.search_results.clear();
                 }
                 Command::none()
             }
             Message::SelectFile(path) => {
                 self.context_menu = None;
-                if self.dirty && Some(path.clone()) != self.selected_file {
-                    self.pending_action = Some(PendingAction::Select(path));
-                    return Command::none();
+                if let Some(idx) = self.open_files.iter().position(|f| f.path == path) {
+                    self.active_file = Some(idx);
+                    self.search_results.clear();
+                    Command::none()
+                } else {
+                    return Command::perform(
+                        async move {
+                            match fs::read_to_string(&path).await {
+                                Ok(c) => Ok((path, c)),
+                                Err(e) => Err(format!("{}", e)),
+                            }
+                        },
+                        Message::FileLoaded,
+                    );
                 }
-                return Command::perform(
-                    async move {
-                        match fs::read_to_string(&path).await {
-                            Ok(c) => Ok((path, c)),
-                            Err(e) => Err(format!("{}", e)),
-                        }
-                    },
-                    Message::FileLoaded,
-                );
             }
             Message::FileLoaded(Ok((path, content))) => {
-                self.selected_file = Some(path);
-                self.file_content = content;
-                self.editor = text_editor::Content::with_text(&self.file_content);
+                let editor = text_editor::Content::with_text(&content);
+                self.open_files.push(OpenFile { path, content, editor, dirty: false });
+                self.active_file = Some(self.open_files.len() - 1);
                 self.rename_file_name.clear();
-                self.dirty = false;
                 Command::none()
             }
             Message::FileLoaded(Err(e)) => {
@@ -715,14 +726,17 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::FileContentEdited(action) => {
-                self.editor.perform(action);
-                self.file_content = self.editor.text();
-                self.dirty = true;
+                if let Some(f) = self.current_file_mut() {
+                    f.editor.perform(action);
+                    f.content = f.editor.text();
+                    f.dirty = true;
+                }
                 Command::none()
             }
             Message::SaveFile => {
-                if let Some(path) = self.selected_file.clone() {
-                    let content = self.file_content.clone();
+                if let Some(f) = self.current_file() {
+                    let path = f.path.clone();
+                    let content = f.content.clone();
                     return Command::perform(
                         async move {
                             fs::write(&path, content)
@@ -736,7 +750,7 @@ impl Application for MulticodeApp {
             }
             Message::FileSaved(Ok(())) => {
                 self.log.push("файл сохранен".into());
-                self.dirty = false;
+                self.set_dirty(false);
                 Command::none()
             }
             Message::FileSaved(Err(e)) => {
@@ -808,9 +822,13 @@ impl Application for MulticodeApp {
             Message::FileCreated(Ok(path)) => {
                 self.log.push(format!("создан {}", path.display()));
                 self.new_file_name.clear();
-                self.selected_file = Some(path.clone());
-                self.file_content.clear();
-                self.editor = text_editor::Content::new();
+                self.open_files.push(OpenFile {
+                    path: path.clone(),
+                    content: String::new(),
+                    editor: text_editor::Content::new(),
+                    dirty: false,
+                });
+                self.active_file = Some(self.open_files.len() - 1);
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::FileCreated(Err(e)) => {
@@ -852,7 +870,7 @@ impl Application for MulticodeApp {
             }
             Message::RenameFile => {
                 self.context_menu = None;
-                if let Some(old_path) = self.selected_file.clone() {
+                if let Some(old_path) = self.current_file().map(|f| f.path.clone()) {
                     let new_name = self.rename_file_name.clone();
                     if new_name.is_empty() {
                         self.log.push("новое имя пустое".into());
@@ -873,7 +891,9 @@ impl Application for MulticodeApp {
             }
             Message::FileRenamed(Ok(path)) => {
                 self.log.push(format!("переименовано в {}", path.display()));
-                self.selected_file = Some(path);
+                if let Some(i) = self.active_file {
+                    self.open_files[i].path = path.clone();
+                }
                 self.rename_file_name.clear();
                 return self.load_files(self.current_root_path().unwrap());
             }
@@ -882,7 +902,7 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::RequestDeleteFile => {
-                if self.selected_file.is_some() {
+                if self.active_file.is_some() {
                     self.show_delete_confirm = true;
                 }
                 Command::none()
@@ -894,8 +914,8 @@ impl Application for MulticodeApp {
             Message::DeleteFile => {
                 self.context_menu = None;
                 self.show_delete_confirm = false;
-                if let Some(path) = self.selected_file.clone() {
-                    if self.dirty {
+                if let Some(path) = self.current_file().map(|f| f.path.clone()) {
+                    if self.is_dirty() {
                         self.pending_action = Some(PendingAction::Delete(path));
                         return Command::none();
                     }
@@ -913,14 +933,71 @@ impl Application for MulticodeApp {
             }
             Message::FileDeleted(Ok(path)) => {
                 self.log.push(format!("удален {}", path.display()));
-                self.selected_file = None;
-                self.file_content.clear();
-                self.editor = text_editor::Content::new();
-                self.dirty = false;
+                if let Some(idx) = self.open_files.iter().position(|f| f.path == path) {
+                    self.open_files.remove(idx);
+                    if let Some(active) = self.active_file {
+                        if active >= idx {
+                            if self.open_files.is_empty() {
+                                self.active_file = None;
+                            } else {
+                                self.active_file = Some(active.saturating_sub(1));
+                            }
+                        }
+                    }
+                }
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::FileDeleted(Err(e)) => {
                 self.log.push(format!("ошибка удаления: {e}"));
+                Command::none()
+            }
+            Message::CloseFile(idx) => {
+                if let Some(file) = self.open_files.get(idx) {
+                    if file.dirty {
+                        let path = file.path.clone();
+                        let content = file.content.clone();
+                        return Command::perform(
+                            async move {
+                                fs::write(&path, content)
+                                    .await
+                                    .map(|_| idx)
+                                    .map_err(|e| format!("{}", e))
+                            },
+                            Message::FileClosed,
+                        );
+                    }
+                }
+                if idx < self.open_files.len() {
+                    self.open_files.remove(idx);
+                    if let Some(active) = self.active_file {
+                        if active >= idx {
+                            if self.open_files.is_empty() {
+                                self.active_file = None;
+                            } else {
+                                self.active_file = Some(active.saturating_sub(1));
+                            }
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::FileClosed(Ok(idx)) => {
+                if idx < self.open_files.len() {
+                    self.open_files.remove(idx);
+                    if let Some(active) = self.active_file {
+                        if active >= idx {
+                            if self.open_files.is_empty() {
+                                self.active_file = None;
+                            } else {
+                                self.active_file = Some(active.saturating_sub(1));
+                            }
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::FileClosed(Err(e)) => {
+                self.log.push(format!("ошибка сохранения: {e}"));
                 Command::none()
             }
             Message::RunSearch => {
@@ -1048,7 +1125,6 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::ShowContextMenu(path) => {
-                self.selected_file = Some(path.clone());
                 self.context_menu = Some(ContextMenu::new(path));
                 Command::none()
             }
@@ -1057,7 +1133,7 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::ConfirmDiscard => {
-                self.dirty = false;
+                self.set_dirty(false);
                 if let Some(action) = self.pending_action.take() {
                     match action {
                         PendingAction::Select(path) => {
@@ -1181,24 +1257,46 @@ impl Application for MulticodeApp {
 
                 let sidebar = container(self.file_tree()).width(200);
 
-                let rename_btn: Element<_> = if self.selected_file.is_some() {
+                let tabs = row(
+                    self.open_files
+                        .iter()
+                        .enumerate()
+                        .map(|(i, f)| {
+                            let name = f
+                                .path
+                                .file_name()
+                                .unwrap()
+                                .to_string_lossy()
+                                .to_string();
+                            row![
+                                button(text(name)).on_press(Message::SelectFile(f.path.clone())),
+                                button(text("x")).on_press(Message::CloseFile(i))
+                            ]
+                            .spacing(5)
+                            .into()
+                        })
+                        .collect::<Vec<Element<Message>>>(),
+                )
+                .spacing(5);
+
+                let rename_btn: Element<_> = if self.active_file.is_some() {
                     button("Переименовать").on_press(Message::RenameFile).into()
                 } else {
                     button("Переименовать").into()
                 };
-                let delete_btn: Element<_> = if self.selected_file.is_some() {
+                let delete_btn: Element<_> = if self.active_file.is_some() {
                     button("Удалить")
                         .on_press(Message::RequestDeleteFile)
                         .into()
                 } else {
                     button("Удалить").into()
                 };
-                let save_label = if self.dirty {
+                let save_label = if self.is_dirty() {
                     "Сохранить*"
                 } else {
                     "Сохранить"
                 };
-                let save_btn: Element<_> = if self.selected_file.is_some() {
+                let save_btn: Element<_> = if self.active_file.is_some() {
                     button(save_label).on_press(Message::SaveFile).into()
                 } else {
                     button(save_label).into()
@@ -1270,14 +1368,7 @@ impl Application for MulticodeApp {
                     Space::with_width(Length::Shrink).into()
                 };
 
-                let editor: Element<_> = if self.selected_file.is_some() {
-                    self.text_editor_component()
-                } else {
-                    container(text("файл не выбран"))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .into()
-                };
+                let editor: Element<_> = self.text_editor_component();
 
                 let search_bar = row![
                     text_input("найти", &self.search_term).on_input(Message::SearchTermChanged),
@@ -1305,6 +1396,7 @@ impl Application for MulticodeApp {
 
                 let page = column![
                     menu,
+                    tabs,
                     mode_bar,
                     file_menu,
                     warning,
@@ -1350,24 +1442,46 @@ impl Application for MulticodeApp {
 
                 let sidebar = container(self.file_tree()).width(200);
 
-                let rename_btn: Element<_> = if self.selected_file.is_some() {
+                let tabs = row(
+                    self.open_files
+                        .iter()
+                        .enumerate()
+                        .map(|(i, f)| {
+                            let name = f
+                                .path
+                                .file_name()
+                                .unwrap()
+                                .to_string_lossy()
+                                .to_string();
+                            row![
+                                button(text(name)).on_press(Message::SelectFile(f.path.clone())),
+                                button(text("x")).on_press(Message::CloseFile(i))
+                            ]
+                            .spacing(5)
+                            .into()
+                        })
+                        .collect::<Vec<Element<Message>>>(),
+                )
+                .spacing(5);
+
+                let rename_btn: Element<_> = if self.active_file.is_some() {
                     button("Переименовать").on_press(Message::RenameFile).into()
                 } else {
                     button("Переименовать").into()
                 };
-                let delete_btn: Element<_> = if self.selected_file.is_some() {
+                let delete_btn: Element<_> = if self.active_file.is_some() {
                     button("Удалить")
                         .on_press(Message::RequestDeleteFile)
                         .into()
                 } else {
                     button("Удалить").into()
                 };
-                let save_label = if self.dirty {
+                let save_label = if self.is_dirty() {
                     "Сохранить*"
                 } else {
                     "Сохранить"
                 };
-                let save_btn: Element<_> = if self.selected_file.is_some() {
+                let save_btn: Element<_> = if self.active_file.is_some() {
                     button(save_label).on_press(Message::SaveFile).into()
                 } else {
                     button(save_label).into()
@@ -1438,14 +1552,7 @@ impl Application for MulticodeApp {
                     Space::with_width(Length::Shrink).into()
                 };
 
-                let editor: Element<_> = if self.selected_file.is_some() {
-                    self.visual_editor_component()
-                } else {
-                    container(text("файл не выбран"))
-                        .width(Length::Fill)
-                        .height(Length::Fill)
-                        .into()
-                };
+                let editor: Element<_> = self.visual_editor_component();
 
                 let content = column![
                     text_input("поиск", &self.query).on_input(Message::QueryChanged),
@@ -1464,6 +1571,7 @@ impl Application for MulticodeApp {
 
                 let page = column![
                     menu,
+                    tabs,
                     mode_bar,
                     file_menu,
                     warning,
@@ -1594,6 +1702,27 @@ fn pick_folder() -> impl std::future::Future<Output = Option<PathBuf>> {
 }
 
 impl MulticodeApp {
+    fn current_file(&self) -> Option<&OpenFile> {
+        self.active_file.and_then(|i| self.open_files.get(i))
+    }
+
+    fn current_file_mut(&mut self) -> Option<&mut OpenFile> {
+        if let Some(i) = self.active_file {
+            self.open_files.get_mut(i)
+        } else {
+            None
+        }
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.current_file().map(|f| f.dirty).unwrap_or(false)
+    }
+
+    fn set_dirty(&mut self, value: bool) {
+        if let Some(f) = self.current_file_mut() {
+            f.dirty = value;
+        }
+    }
     /// Возвращает путь к корню проекта, если он выбран
     fn current_root_path(&self) -> Option<PathBuf> {
         match &self.screen {
@@ -1666,20 +1795,27 @@ impl MulticodeApp {
     }
 
     fn text_editor_component(&self) -> Element<Message> {
-        if self.search_results.is_empty() {
-            text_editor(&self.editor)
-                .on_action(Message::FileContentEdited)
-                .height(Length::Fill)
-                .into()
+        if let Some(file) = self.current_file() {
+            if self.search_results.is_empty() {
+                text_editor(&file.editor)
+                    .on_action(Message::FileContentEdited)
+                    .height(Length::Fill)
+                    .into()
+            } else {
+                text_editor(&file.editor)
+                    .highlight::<SearchHighlighter>(self.search_results.clone(), |_, _| {
+                        highlighter::Format {
+                            color: Some(Color::from_rgb(1.0, 1.0, 0.0)),
+                            font: None,
+                        }
+                    })
+                    .on_action(Message::FileContentEdited)
+                    .height(Length::Fill)
+                    .into()
+            }
         } else {
-            text_editor(&self.editor)
-                .highlight::<SearchHighlighter>(self.search_results.clone(), |_, _| {
-                    highlighter::Format {
-                        color: Some(Color::from_rgb(1.0, 1.0, 0.0)),
-                        font: None,
-                    }
-                })
-                .on_action(Message::FileContentEdited)
+            container(text("файл не выбран"))
+                .width(Length::Fill)
                 .height(Length::Fill)
                 .into()
         }
