@@ -2,6 +2,7 @@ mod modal;
 
 use crate::modal::Modal;
 use iced::futures::stream;
+use iced::widget::core::text::highlighter::{self, Highlighter};
 #[allow(unused_imports)]
 use iced::widget::overlay::menu;
 use iced::widget::{
@@ -9,7 +10,7 @@ use iced::widget::{
     MouseArea, Space,
 };
 use iced::{
-    alignment, event, keyboard, subscription, Application, Command, Element, Event, Length,
+    alignment, event, keyboard, subscription, Application, Color, Command, Element, Event, Length,
     Settings, Subscription, Theme,
 };
 use multicode_core::{blocks, export, git, search};
@@ -19,6 +20,7 @@ use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 
 pub fn main() -> iced::Result {
@@ -35,6 +37,12 @@ struct MulticodeApp {
     file_content: String,
     /// состояние текстового редактора
     editor: text_editor::Content,
+    /// строка поиска
+    search_term: String,
+    /// строка замены
+    replace_term: String,
+    /// найденные совпадения
+    search_results: Vec<(usize, Range<usize>)>,
     /// имя для создания нового файла
     new_file_name: String,
     /// имя для создания новой директории
@@ -79,6 +87,10 @@ enum Message {
     SelectFile(PathBuf),
     FileLoaded(Result<(PathBuf, String), String>),
     FileContentEdited(text_editor::Action),
+    SearchTermChanged(String),
+    ReplaceTermChanged(String),
+    Find,
+    ReplaceAll,
     SaveFile,
     FileSaved(Result<(), String>),
     NewFileNameChanged(String),
@@ -199,6 +211,48 @@ impl ToString for CreateTarget {
             CreateTarget::File => "Файл".into(),
             CreateTarget::Directory => "Папка".into(),
         }
+    }
+}
+
+#[derive(Debug, Clone)]
+struct SearchHighlighter {
+    matches: Vec<(usize, Range<usize>)>,
+    current_line: usize,
+}
+
+impl Highlighter for SearchHighlighter {
+    type Settings = Vec<(usize, Range<usize>)>;
+    type Highlight = ();
+    type Iterator<'a> = std::vec::IntoIter<(Range<usize>, Self::Highlight)>;
+
+    fn new(settings: &Self::Settings) -> Self {
+        Self {
+            matches: settings.clone(),
+            current_line: 0,
+        }
+    }
+
+    fn update(&mut self, new_settings: &Self::Settings) {
+        self.matches = new_settings.clone();
+    }
+
+    fn change_line(&mut self, line: usize) {
+        self.current_line = line;
+    }
+
+    fn highlight_line(&mut self, _line: &str) -> Self::Iterator<'_> {
+        let ranges = self
+            .matches
+            .iter()
+            .filter(|(l, _)| *l == self.current_line)
+            .map(|(_, range)| (range.clone(), ()))
+            .collect::<Vec<_>>();
+        self.current_line += 1;
+        ranges.into_iter()
+    }
+
+    fn current_line(&self) -> usize {
+        self.current_line
     }
 }
 
@@ -429,6 +483,9 @@ impl Application for MulticodeApp {
             selected_file: None,
             file_content: String::new(),
             editor: text_editor::Content::new(),
+            search_term: String::new(),
+            replace_term: String::new(),
+            search_results: Vec::new(),
             new_file_name: String::new(),
             new_directory_name: String::new(),
             create_target: CreateTarget::File,
@@ -592,6 +649,41 @@ impl Application for MulticodeApp {
             }
             Message::QueryChanged(q) => {
                 self.query = q;
+                Command::none()
+            }
+            Message::SearchTermChanged(s) => {
+                self.search_term = s;
+                Command::none()
+            }
+            Message::ReplaceTermChanged(s) => {
+                self.replace_term = s;
+                Command::none()
+            }
+            Message::Find => {
+                self.search_results.clear();
+                if !self.search_term.is_empty() {
+                    for (i, line) in self.editor.lines().enumerate() {
+                        let mut start = 0;
+                        while let Some(pos) = line[start..].find(&self.search_term) {
+                            let s = start + pos;
+                            let e = s + self.search_term.len();
+                            self.search_results.push((i, s..e));
+                            start = e;
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::ReplaceAll => {
+                if !self.search_term.is_empty() {
+                    self.file_content = self
+                        .editor
+                        .text()
+                        .replace(&self.search_term, &self.replace_term);
+                    self.editor = text_editor::Content::with_text(&self.file_content);
+                    self.dirty = true;
+                    self.search_results.clear();
+                }
                 Command::none()
             }
             Message::SelectFile(path) => {
@@ -1187,8 +1279,17 @@ impl Application for MulticodeApp {
                         .into()
                 };
 
+                let search_bar = row![
+                    text_input("найти", &self.search_term).on_input(Message::SearchTermChanged),
+                    button("Найти").on_press(Message::Find),
+                    text_input("заменить на", &self.replace_term)
+                        .on_input(Message::ReplaceTermChanged),
+                    button("Заменить все").on_press(Message::ReplaceAll),
+                ]
+                .spacing(5);
+
                 let content = column![
-                    text_input("поиск", &self.query).on_input(Message::QueryChanged),
+                    search_bar,
                     editor,
                     scrollable(column(
                         self.log
@@ -1565,10 +1666,23 @@ impl MulticodeApp {
     }
 
     fn text_editor_component(&self) -> Element<Message> {
-        text_editor(&self.editor)
-            .on_action(Message::FileContentEdited)
-            .height(Length::Fill)
-            .into()
+        if self.search_results.is_empty() {
+            text_editor(&self.editor)
+                .on_action(Message::FileContentEdited)
+                .height(Length::Fill)
+                .into()
+        } else {
+            text_editor(&self.editor)
+                .highlight::<SearchHighlighter>(self.search_results.clone(), |_, _| {
+                    highlighter::Format {
+                        color: Some(Color::from_rgb(1.0, 1.0, 0.0)),
+                        font: None,
+                    }
+                })
+                .on_action(Message::FileContentEdited)
+                .height(Length::Fill)
+                .into()
+        }
     }
 
     fn visual_editor_component(&self) -> Element<Message> {
