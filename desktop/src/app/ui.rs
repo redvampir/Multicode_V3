@@ -135,16 +135,34 @@ impl MulticodeApp {
                 extension: ext,
                 matches: self.search_results.clone(),
             };
-            text_editor(&file.editor)
+            let editor = text_editor(&file.editor)
                 .highlight::<SyntectHighlighter>(settings, |c, _| {
                     highlighter::Format {
                         color: Some(*c),
                         font: None,
                     }
                 })
-                .on_action(Message::FileContentEdited)
+                .on_action(Message::FileContentEdited);
+
+            if self.settings.show_line_numbers {
+                let lines = column(
+                    (1..=file.editor.line_count())
+                        .map(|i| text(i.to_string()).into())
+                        .collect::<Vec<Element<Message>>>()
+                );
+
+                scrollable(
+                    row![
+                        container(lines).width(Length::Shrink),
+                        editor.height(Length::Shrink)
+                    ]
+                    .spacing(5)
+                )
                 .height(Length::Fill)
                 .into()
+            } else {
+                editor.height(Length::Fill).into()
+            }
         } else {
             container(text("файл не выбран"))
                 .width(Length::Fill)

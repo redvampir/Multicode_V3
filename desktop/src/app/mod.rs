@@ -6,8 +6,8 @@ use crate::modal::Modal;
 use events::Message;
 use iced::futures::stream;
 use iced::widget::{
-    button, column, container, pick_list, row, scrollable, text, text_editor, text_input,
-    MouseArea, Space,
+    button, checkbox, column, container, pick_list, row, scrollable, text, text_editor,
+    text_input, Space,
 };
 use iced::{
     alignment, event, keyboard, subscription, Application, Color, Command, Element, Event, Length,
@@ -282,6 +282,8 @@ struct UserSettings {
     theme: AppTheme,
     #[serde(default)]
     language: Language,
+    #[serde(default)]
+    show_line_numbers: bool,
 }
 
 impl Default for UserSettings {
@@ -292,6 +294,7 @@ impl Default for UserSettings {
             editor_mode: EditorMode::Text,
             theme: AppTheme::default(),
             language: Language::default(),
+            show_line_numbers: true,
         }
     }
 }
@@ -848,6 +851,12 @@ impl Application for MulticodeApp {
                             Some(self.settings.language),
                             Message::LanguageSelected
                         )
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Номера строк"),
+                        checkbox("", self.settings.show_line_numbers)
+                            .on_toggle(Message::ToggleLineNumbers)
                     ]
                     .spacing(10),
                     row![

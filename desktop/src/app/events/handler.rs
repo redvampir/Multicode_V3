@@ -89,6 +89,10 @@ impl MulticodeApp {
                 self.settings.language = lang;
                 Command::none()
             }
+            Message::ToggleLineNumbers(value) => {
+                self.settings.show_line_numbers = value;
+                Command::none()
+            }
             Message::StartCaptureHotkey(field) => {
                 self.hotkey_capture = Some(field);
                 Command::none()
