@@ -64,6 +64,7 @@ pub enum Message {
     ConfirmDiscard,
     CancelDiscard,
     ThemeSelected(AppTheme),
+    SyntectThemeSelected(String),
     LanguageSelected(Language),
     ToggleLineNumbers(bool),
     ToggleStatusBar(bool),
