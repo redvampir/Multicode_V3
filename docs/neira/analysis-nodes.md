@@ -486,6 +486,14 @@ struct RevisionCandidate {
 }
 ```
 
+### Метрики качества
+
+`Revision Engine` оценивает кандидата по нескольким ключевым показателям:
+
+- **точность** — доля корректных ответов относительно эталона;
+- **скорость** — среднее время обработки запроса;
+- **пользовательские оценки** — агрегированный рейтинг, полученный от пользователей.
+
 ### Псевдокод
 
 ```pseudo
@@ -496,10 +504,17 @@ generate_candidate(node):
     candidate.updated_links = propose_links(node)
     return candidate
 
-evaluate(candidate) -> Score:
+evaluate(candidate) -> Decision:
+    thresholds = get_quality_thresholds()
     tests = run_tests(candidate)
-    score = aggregate(candidate.metrics, tests)
-    return score
+    metrics = aggregate(candidate.metrics, tests)
+    if metrics.accuracy < thresholds.accuracy:
+        return "rollback"
+    if metrics.speed > thresholds.speed:
+        return "rollback"
+    if metrics.user_rating < thresholds.user_rating:
+        return "rollback"
+    return "accept"
 ```
 
 ### Сохранение метаданных
@@ -513,5 +528,13 @@ metadata:
     unit: pass
     integration: pass
   evaluation:
-    score: 0.82
+    metrics:
+      accuracy: 0.91
+      speed_ms: 120
+      user_rating: 4.6
+    thresholds:
+      accuracy: 0.9
+      speed_ms: 150
+      user_rating: 4.0
+    decision: accept
 ```
