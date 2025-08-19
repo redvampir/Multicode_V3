@@ -26,6 +26,7 @@ source: "https://example.org"
 ````
 
 ## Оглавление
+- [NodeTemplate](#nodetemplate)
 - [1. Базовый интерфейс узла](#1-базовый-интерфейс-узла)
   - [Сериализация и версионирование](#сериализация-и-версионирование)
 - [2. Иерархия и назначение подтипов](#2-иерархия-и-назначение-подтипов)
@@ -41,6 +42,52 @@ source: "https://example.org"
 - [12. Стратегия многоязычности](#12-стратегия-многоязычности)
 - [13. Перспективные и устойчивые технологии](#13-перспективные-и-устойчивые-технологии)
 - [14. A/B‑тестирование и откат](#14-ab-тестирование-и-откат)
+
+## NodeTemplate
+
+| Поле | Описание |
+| --- | --- |
+| `id` | Уникальный идентификатор шаблона. |
+| `node_type` | Тип создаваемого узла. |
+| `links` | Список связей с другими узлами. |
+| `draft_content` | Черновое содержимое узла. |
+| `metadata` | Дополнительные метаданные в формате ключ‑значение. |
+
+```rust
+struct NodeTemplate {
+    id: String,
+    node_type: String,
+    links: Vec<String>,
+    draft_content: String,
+    metadata: HashMap<String, String>,
+}
+```
+
+```json
+{
+  "id": "example.template",
+  "node_type": "ProgrammingSyntaxNode",
+  "links": ["prog.syntax.base"],
+  "draft_content": "Initial description",
+  "metadata": {
+    "schema": "1.0",
+    "source": "https://example.org"
+  }
+}
+```
+
+```yaml
+id: example.template
+node_type: ProgrammingSyntaxNode
+links:
+  - prog.syntax.base
+draft_content: Initial description
+metadata:
+  schema: "1.0"
+  source: "https://example.org"
+```
+
+**Проверка перед ревью:** сохраните шаблон в файл и проверьте его с помощью JSON Schema, например командой `npx ajv validate -s node-template.schema.json -d node-template.json`. Для YAML используйте `npx ajv validate -s node-template.schema.json -d node-template.yaml` или `yamllint` для проверки синтаксиса.
 
 ## 1. Базовый интерфейс узла
 - **Интерфейс:** `AnalysisNode`
