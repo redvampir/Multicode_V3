@@ -227,14 +227,20 @@ cancel(task_id):
 Рейтинг источника вычисляется по формуле:
 
 ```
-rating = w_reliability * reliability + w_citations * citations - w_errors * errors
+rating = w_rel * reliability + w_cit * citations - w_err * error_count
 ```
+
+| Вес | Примерное значение | Объяснение |
+| --- | ------------------ | ---------- |
+| `w_rel` | `0.5` | Надёжность источника — основная доля рейтинга. |
+| `w_cit` | `0.3` | Цитируемость подтверждает ценность и актуальность. |
+| `w_err` | `0.2` | Штраф за обнаруженные ошибки снижает итоговую оценку. |
 
 ```rust
 fn rate_source(meta: &SourceMeta) -> f32 {
-    meta.w_reliability * meta.reliability
-        + meta.w_citations * meta.citations
-        - meta.w_errors * meta.errors
+    meta.w_rel * meta.reliability
+        + meta.w_cit * meta.citations
+        - meta.w_err * meta.error_count
 }
 ```
 
