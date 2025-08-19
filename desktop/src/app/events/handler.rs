@@ -1,0 +1,679 @@
+use crate::app::{MulticodeApp, PendingAction, Screen, EditorMode, CreateTarget, Hotkey, HotkeyField, OpenFile};
+use crate::app::ui::ContextMenu;
+use super::Message;
+use crate::app::io::pick_folder;
+use iced::{event, keyboard, Command, Event};
+use iced::widget::text_editor::Content;
+use multicode_core::{blocks, export, git, search};
+use tokio::fs;
+use std::collections::HashSet;
+use std::path::Path;
+
+impl MulticodeApp {
+    pub fn handle_message(&mut self, message: Message) -> Command<Message> {
+        match message {
+            Message::IcedEvent(Event::Keyboard(keyboard::Event::KeyPressed {
+                key,
+                modifiers,
+                ..
+            })) => {
+                if let Some(field) = self.hotkey_capture.take() {
+                    let key_str = match key {
+                        keyboard::Key::Character(c) => c.to_string().to_uppercase(),
+                        keyboard::Key::Named(named) => format!("{:?}", named),
+                        _ => return Command::none(),
+                    };
+                    let hk = Hotkey {
+                        key: key_str,
+                        ctrl: modifiers.control(),
+                        alt: modifiers.alt(),
+                        shift: modifiers.shift(),
+                    };
+                    match field {
+                        HotkeyField::CreateFile => self.settings.hotkeys.create_file = hk,
+                        HotkeyField::SaveFile => self.settings.hotkeys.save_file = hk,
+                        HotkeyField::RenameFile => self.settings.hotkeys.rename_file = hk,
+                        HotkeyField::DeleteFile => self.settings.hotkeys.delete_file = hk,
+                    }
+                    return Command::none();
+                }
+                if !matches!(
+                    self.screen,
+                    Screen::TextEditor { .. } | Screen::VisualEditor { .. }
+                ) {
+                    return Command::none();
+                }
+                if modifiers.control() && !modifiers.alt() && !modifiers.shift() {
+                    if let keyboard::Key::Character(c) = &key {
+                        match c.to_lowercase().as_str() {
+                            "n" => return self.handle_message(Message::CreateFile),
+                            "s" => return self.handle_message(Message::SaveFile),
+                            _ => {}
+                        }
+                    }
+                }
+                if !modifiers.control() && !modifiers.alt() && !modifiers.shift() {
+                    if let keyboard::Key::Named(keyboard::key::Named::F2) = key.clone() {
+                        return self.handle_message(Message::RenameFile);
+                    }
+                    if let keyboard::Key::Named(keyboard::key::Named::Delete) = key.clone() {
+                        return self.handle_message(Message::RequestDeleteFile);
+                    }
+                }
+                let hotkeys = &self.settings.hotkeys;
+                if hotkeys.create_file.matches(&key, modifiers) {
+                    return self.handle_message(Message::CreateFile);
+                }
+                if hotkeys.save_file.matches(&key, modifiers) {
+                    return self.handle_message(Message::SaveFile);
+                }
+                if hotkeys.rename_file.matches(&key, modifiers) {
+                    return self.handle_message(Message::RenameFile);
+                }
+                if hotkeys.delete_file.matches(&key, modifiers) {
+                    return self.handle_message(Message::RequestDeleteFile);
+                }
+                Command::none()
+            }
+            Message::IcedEvent(_) => Command::none(),
+            Message::ThemeSelected(theme) => {
+                self.settings.theme = theme;
+                Command::none()
+            }
+            Message::LanguageSelected(lang) => {
+                self.settings.language = lang;
+                Command::none()
+            }
+            Message::StartCaptureHotkey(field) => {
+                self.hotkey_capture = Some(field);
+                Command::none()
+            }
+            Message::OpenSettings => {
+                self.screen = Screen::Settings;
+                Command::none()
+            }
+            Message::CloseSettings => {
+                if let Some(root) = self.settings.last_folder.clone() {
+                    self.screen = match self.settings.editor_mode {
+                        EditorMode::Text => Screen::TextEditor { root },
+                        EditorMode::Visual => Screen::VisualEditor { root },
+                    };
+                } else {
+                    self.screen = Screen::ProjectPicker;
+                }
+                Command::none()
+            }
+            Message::SwitchToTextEditor => {
+                if let Some(root) = self.current_root_path() {
+                    self.screen = Screen::TextEditor { root: root.clone() };
+                    self.settings.editor_mode = EditorMode::Text;
+                    return self.handle_message(Message::SaveSettings);
+                }
+                Command::none()
+            }
+            Message::SwitchToVisualEditor => {
+                if let Some(root) = self.current_root_path() {
+                    self.screen = Screen::VisualEditor { root: root.clone() };
+                    self.settings.editor_mode = EditorMode::Visual;
+                    return self.handle_message(Message::SaveSettings);
+                }
+                Command::none()
+            }
+            Message::PickFolder => Command::perform(pick_folder(), Message::FolderPicked),
+            Message::FolderPicked(path) => {
+                if let Some(root) = path {
+                    self.settings.last_folder = Some(root.clone());
+                    self.screen = match self.settings.editor_mode {
+                        EditorMode::Text => Screen::TextEditor { root: root.clone() },
+                        EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
+                    };
+                    multicode_core::meta::watch::spawn(self.sender.clone());
+                    return Command::batch([
+                        self.load_files(root),
+                        self.handle_message(Message::SaveSettings),
+                    ]);
+                }
+                Command::none()
+            }
+            Message::FilesLoaded(list) => {
+                self.files = list;
+                Command::none()
+            }
+            Message::QueryChanged(q) => {
+                self.query = q;
+                Command::none()
+            }
+            Message::SearchTermChanged(s) => {
+                self.search_term = s;
+                Command::none()
+            }
+            Message::ReplaceTermChanged(s) => {
+                self.replace_term = s;
+                Command::none()
+            }
+            Message::Find => {
+                self.search_results.clear();
+                let term = self.search_term.clone();
+                if !term.is_empty() {
+                    let lines: Vec<String> = if let Some(f) = self.current_file() {
+                        f.editor.lines().map(|l| l.to_string()).collect()
+                    } else {
+                        Vec::new()
+                    };
+                    for (i, line) in lines.iter().enumerate() {
+                        let mut start = 0;
+                        while let Some(pos) = line[start..].find(&term) {
+                            let s = start + pos;
+                            let e = s + term.len();
+                            self.search_results.push((i, s..e));
+                            start = e;
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::ReplaceAll => {
+                if !self.search_term.is_empty() {
+                    let search = self.search_term.clone();
+                    let replace = self.replace_term.clone();
+                    if let Some(f) = self.current_file_mut() {
+                        f.content = f.editor.text().replace(&search, &replace);
+                        f.editor = Content::with_text(&f.content);
+                        f.dirty = true;
+                    }
+                    self.search_results.clear();
+                }
+                Command::none()
+            }
+            Message::SelectFile(path) => {
+                self.context_menu = None;
+                if let Some(idx) = self.open_files.iter().position(|f| f.path == path) {
+                    self.active_file = Some(idx);
+                    self.search_results.clear();
+                    Command::none()
+                } else {
+                    return Command::perform(
+                        async move {
+                            match fs::read_to_string(&path).await {
+                                Ok(c) => Ok((path, c)),
+                                Err(e) => Err(format!("{}", e)),
+                            }
+                        },
+                        Message::FileLoaded,
+                    );
+                }
+            }
+            Message::FileLoaded(Ok((path, content))) => {
+                let editor = Content::with_text(&content);
+                self.open_files.push(OpenFile { path, content, editor, dirty: false });
+                self.active_file = Some(self.open_files.len() - 1);
+                self.rename_file_name.clear();
+                Command::none()
+            }
+            Message::FileLoaded(Err(e)) => {
+                self.log.push(format!("ошибка чтения: {e}"));
+                Command::none()
+            }
+            Message::FileContentEdited(action) => {
+                if let Some(f) = self.current_file_mut() {
+                    f.editor.perform(action);
+                    f.content = f.editor.text();
+                    f.dirty = true;
+                }
+                Command::none()
+            }
+            Message::SaveFile => {
+                if let Some(f) = self.current_file() {
+                    let path = f.path.clone();
+                    let content = f.content.clone();
+                    return Command::perform(
+                        async move {
+                            fs::write(&path, content)
+                                .await
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileSaved,
+                    );
+                }
+                Command::none()
+            }
+            Message::FileSaved(Ok(())) => {
+                self.log.push("файл сохранен".into());
+                self.set_dirty(false);
+                Command::none()
+            }
+            Message::FileSaved(Err(e)) => {
+                self.log.push(format!("ошибка сохранения: {e}"));
+                Command::none()
+            }
+            Message::NewFileNameChanged(s) => {
+                self.new_file_name = s;
+                Command::none()
+            }
+            Message::NewDirectoryNameChanged(s) => {
+                self.new_directory_name = s;
+                Command::none()
+            }
+            Message::CreateTargetChanged(t) => {
+                self.create_target = t;
+                Command::none()
+            }
+            Message::CreateFile => {
+                if let Some(root) = self.current_root_path() {
+                    let name = self.new_file_name.clone();
+                    if name.is_empty() {
+                        self.log.push("имя файла не задано".into());
+                        return Command::none();
+                    }
+                    let path = root.join(&name);
+                    if path.exists() {
+                        self.log.push(format!("{} уже существует", path.display()));
+                        self.show_create_file_confirm = true;
+                        return Command::none();
+                    }
+                    return Command::perform(
+                        async move {
+                            std::fs::OpenOptions::new()
+                                .write(true)
+                                .create_new(true)
+                                .open(&path)
+                                .map(|_| path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileCreated,
+                    );
+                }
+                Command::none()
+            }
+            Message::ConfirmCreateFile => {
+                if let Some(root) = self.current_root_path() {
+                    let path = root.join(&self.new_file_name);
+                    self.show_create_file_confirm = false;
+                    return Command::perform(
+                        async move {
+                            let _ = std::fs::remove_file(&path);
+                            std::fs::OpenOptions::new()
+                                .write(true)
+                                .create_new(true)
+                                .open(&path)
+                                .map(|_| path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileCreated,
+                    );
+                }
+                Command::none()
+            }
+            Message::CancelCreateFile => {
+                self.show_create_file_confirm = false;
+                Command::none()
+            }
+            Message::FileCreated(Ok(path)) => {
+                self.log.push(format!("создан {}", path.display()));
+                self.new_file_name.clear();
+                self.open_files.push(OpenFile {
+                    path: path.clone(),
+                    content: String::new(),
+                    editor: Content::new(),
+                    dirty: false,
+                });
+                self.active_file = Some(self.open_files.len() - 1);
+                return self.load_files(self.current_root_path().unwrap());
+            }
+            Message::FileCreated(Err(e)) => {
+                self.log.push(format!("ошибка создания: {e}"));
+                Command::none()
+            }
+            Message::CreateDirectory => {
+                if let Some(root) = self.current_root_path() {
+                    let name = self.new_directory_name.clone();
+                    if name.is_empty() {
+                        self.log.push("имя каталога не задано".into());
+                        return Command::none();
+                    }
+                    let path = root.join(&name);
+                    return Command::perform(
+                        async move {
+                            fs::create_dir(&path)
+                                .await
+                                .map(|_| path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::DirectoryCreated,
+                    );
+                }
+                Command::none()
+            }
+            Message::DirectoryCreated(Ok(path)) => {
+                self.log.push(format!("создан каталог {}", path.display()));
+                self.new_directory_name.clear();
+                return self.load_files(self.current_root_path().unwrap());
+            }
+            Message::DirectoryCreated(Err(e)) => {
+                self.log.push(format!("ошибка создания каталога: {e}"));
+                Command::none()
+            }
+            Message::RenameFileNameChanged(s) => {
+                self.rename_file_name = s;
+                Command::none()
+            }
+            Message::RenameFile => {
+                self.context_menu = None;
+                if let Some(old_path) = self.current_file().map(|f| f.path.clone()) {
+                    let new_name = self.rename_file_name.clone();
+                    if new_name.is_empty() {
+                        self.log.push("новое имя пустое".into());
+                        return Command::none();
+                    }
+                    let new_path = old_path.parent().unwrap().join(new_name);
+                    return Command::perform(
+                        async move {
+                            fs::rename(&old_path, &new_path)
+                                .await
+                                .map(|_| new_path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileRenamed,
+                    );
+                }
+                Command::none()
+            }
+            Message::FileRenamed(Ok(path)) => {
+                self.log.push(format!("переименовано в {}", path.display()));
+                if let Some(i) = self.active_file {
+                    self.open_files[i].path = path.clone();
+                }
+                self.rename_file_name.clear();
+                return self.load_files(self.current_root_path().unwrap());
+            }
+            Message::FileRenamed(Err(e)) => {
+                self.log.push(format!("ошибка переименования: {e}"));
+                Command::none()
+            }
+            Message::RequestDeleteFile => {
+                if self.active_file.is_some() {
+                    self.show_delete_confirm = true;
+                }
+                Command::none()
+            }
+            Message::CancelDeleteFile => {
+                self.show_delete_confirm = false;
+                Command::none()
+            }
+            Message::DeleteFile => {
+                self.context_menu = None;
+                self.show_delete_confirm = false;
+                if let Some(path) = self.current_file().map(|f| f.path.clone()) {
+                    if self.is_dirty() {
+                        self.pending_action = Some(PendingAction::Delete(path));
+                        return Command::none();
+                    }
+                    return Command::perform(
+                        async move {
+                            fs::remove_file(&path)
+                                .await
+                                .map(|_| path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileDeleted,
+                    );
+                }
+                Command::none()
+            }
+            Message::FileDeleted(Ok(path)) => {
+                self.log.push(format!("удален {}", path.display()));
+                if let Some(idx) = self.open_files.iter().position(|f| f.path == path) {
+                    self.open_files.remove(idx);
+                    if let Some(active) = self.active_file {
+                        if active >= idx {
+                            if self.open_files.is_empty() {
+                                self.active_file = None;
+                            } else {
+                                self.active_file = Some(active.saturating_sub(1));
+                            }
+                        }
+                    }
+                }
+                return self.load_files(self.current_root_path().unwrap());
+            }
+            Message::FileDeleted(Err(e)) => {
+                self.log.push(format!("ошибка удаления: {e}"));
+                Command::none()
+            }
+            Message::CloseFile(idx) => {
+                if let Some(file) = self.open_files.get(idx) {
+                    if file.dirty {
+                        let path = file.path.clone();
+                        let content = file.content.clone();
+                        return Command::perform(
+                            async move {
+                                fs::write(&path, content)
+                                    .await
+                                    .map(|_| idx)
+                                    .map_err(|e| format!("{}", e))
+                            },
+                            Message::FileClosed,
+                        );
+                    }
+                }
+                if idx < self.open_files.len() {
+                    self.open_files.remove(idx);
+                    if let Some(active) = self.active_file {
+                        if active >= idx {
+                            if self.open_files.is_empty() {
+                                self.active_file = None;
+                            } else {
+                                self.active_file = Some(active.saturating_sub(1));
+                            }
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::FileClosed(Ok(idx)) => {
+                if idx < self.open_files.len() {
+                    self.open_files.remove(idx);
+                    if let Some(active) = self.active_file {
+                        if active >= idx {
+                            if self.open_files.is_empty() {
+                                self.active_file = None;
+                            } else {
+                                self.active_file = Some(active.saturating_sub(1));
+                            }
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::FileClosed(Err(e)) => {
+                self.log.push(format!("ошибка сохранения: {e}"));
+                Command::none()
+            }
+            Message::RunSearch => {
+                let root = self.current_root();
+                let query = self.query.clone();
+                Command::perform(
+                    async move {
+                        let results = search::search_metadata(Path::new(&root), &query);
+                        Ok::<_, String>(
+                            results
+                                .into_iter()
+                                .map(|r| r.file.display().to_string())
+                                .collect(),
+                        )
+                    },
+                    |r| Message::SearchFinished(r),
+                )
+            }
+            Message::SearchFinished(Ok(list)) => {
+                for item in list {
+                    self.log.push(format!("найден {item}"));
+                }
+                Command::none()
+            }
+            Message::SearchFinished(Err(e)) => {
+                self.log.push(format!("ошибка поиска: {e}"));
+                Command::none()
+            }
+            Message::RunParse => {
+                let files = self.file_paths();
+                Command::perform(
+                    async move {
+                        let mut lines = Vec::new();
+                        for path in files {
+                            let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("");
+                            let lang = match ext {
+                                "rs" => "rust",
+                                "py" => "python",
+                                "js" => "javascript",
+                                "css" => "css",
+                                "html" => "html",
+                                _ => {
+                                    lines.push(format!("{}: неизвестный язык", path.display()));
+                                    continue;
+                                }
+                            };
+                            match fs::read_to_string(&path).await {
+                                Ok(content) => {
+                                    match blocks::parse_blocks(content, lang.to_string()) {
+                                        Some(b) => lines.push(format!(
+                                            "{}: блоков {}",
+                                            path.display(),
+                                            b.len()
+                                        )),
+                                        None => lines.push(format!(
+                                            "{}: не удалось разобрать",
+                                            path.display()
+                                        )),
+                                    }
+                                }
+                                Err(e) => {
+                                    lines.push(format!("{}: ошибка чтения {e}", path.display()))
+                                }
+                            }
+                        }
+                        Ok::<_, String>(lines)
+                    },
+                    Message::ParseFinished,
+                )
+            }
+            Message::ParseFinished(Ok(lines)) => {
+                self.log.extend(lines);
+                Command::none()
+            }
+            Message::ParseFinished(Err(e)) => {
+                self.log.push(format!("ошибка разбора: {e}"));
+                Command::none()
+            }
+            Message::RunGitLog => Command::perform(
+                async move { git::log().map_err(|e| e.to_string()) },
+                Message::GitFinished,
+            ),
+            Message::GitFinished(Ok(lines)) => {
+                self.log.extend(lines);
+                Command::none()
+            }
+            Message::GitFinished(Err(e)) => {
+                self.log.push(format!("ошибка git: {e}"));
+                Command::none()
+            }
+            Message::RunExport => {
+                let files = self.file_paths();
+                Command::perform(
+                    async move {
+                        let mut lines = Vec::new();
+                        for path in files {
+                            match fs::read_to_string(&path).await {
+                                Ok(content) => match export::serialize_viz_document(&content) {
+                                    Some(json) => lines.push(format!("{}: {json}", path.display())),
+                                    None => lines
+                                        .push(format!("{}: метаданных не найдено", path.display())),
+                                },
+                                Err(e) => {
+                                    lines.push(format!("{}: ошибка чтения {e}", path.display()))
+                                }
+                            }
+                        }
+                        Ok::<_, String>(lines)
+                    },
+                    Message::ExportFinished,
+                )
+            }
+            Message::ExportFinished(Ok(lines)) => {
+                self.log.extend(lines);
+                Command::none()
+            }
+            Message::ExportFinished(Err(e)) => {
+                self.log.push(format!("ошибка экспорта: {e}"));
+                Command::none()
+            }
+            Message::ToggleDir(path) => {
+                if !self.expanded_dirs.remove(&path) {
+                    self.expanded_dirs.insert(path);
+                }
+                Command::none()
+            }
+            Message::ShowContextMenu(path) => {
+                self.context_menu = Some(ContextMenu::new(path));
+                Command::none()
+            }
+            Message::CloseContextMenu => {
+                self.context_menu = None;
+                Command::none()
+            }
+            Message::ConfirmDiscard => {
+                self.set_dirty(false);
+                if let Some(action) = self.pending_action.take() {
+                    match action {
+                        PendingAction::Select(path) => {
+                            return Command::perform(
+                                async move {
+                                    match fs::read_to_string(&path).await {
+                                        Ok(c) => Ok((path, c)),
+                                        Err(e) => Err(format!("{}", e)),
+                                    }
+                                },
+                                Message::FileLoaded,
+                            );
+                        }
+                        PendingAction::Delete(path) => {
+                            return Command::perform(
+                                async move {
+                                    fs::remove_file(&path)
+                                        .await
+                                        .map(|_| path)
+                                        .map_err(|e| format!("{}", e))
+                                },
+                                Message::FileDeleted,
+                            );
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::CancelDiscard => {
+                self.pending_action = None;
+                Command::none()
+            }
+            Message::CoreEvent(ev) => {
+                self.log.push(ev);
+                Command::none()
+            }
+            Message::SaveSettings => {
+                let h = &self.settings.hotkeys;
+                let mut set = HashSet::new();
+                if !set.insert(h.create_file.to_string())
+                    || !set.insert(h.save_file.to_string())
+                    || !set.insert(h.rename_file.to_string())
+                    || !set.insert(h.delete_file.to_string())
+                {
+                    self.settings_warning = Some("Сочетания клавиш должны быть уникальными".into());
+                    return Command::none();
+                }
+                self.settings_warning = None;
+                Command::perform(self.settings.clone().save(), |_| Message::SettingsSaved)
+            }
+            Message::SettingsSaved => Command::none(),
+        }
+    }
+}
