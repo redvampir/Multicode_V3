@@ -4,10 +4,15 @@ use super::Message;
 use crate::app::io::pick_folder;
 use iced::{event, keyboard, Command, Event};
 use iced::widget::text_editor::Content;
-use multicode_core::{blocks, export, git, search};
+use multicode_core::{
+    blocks, export, git, search,
+    parser::{self, Lang},
+    meta::{self, VisualMeta, DEFAULT_VERSION},
+};
 use tokio::fs;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::path::Path;
+use chrono::Utc;
 
 impl MulticodeApp {
     pub fn handle_message(&mut self, message: Message) -> Command<Message> {
@@ -185,6 +190,41 @@ impl MulticodeApp {
                 }
                 Command::none()
             }
+            Message::AutoComplete => {
+                if let Some(f) = self.current_file_mut() {
+                    if let Some(lang) = detect_lang(&f.path) {
+                        if let Some(tree) = parser::parse(&f.content, lang, None) {
+                            let blocks = parser::parse_to_blocks(&tree);
+                            if let Some(s) =
+                                blocks.iter().find(|b| b.kind.starts_with("Function/Define"))
+                            {
+                                f.content.push_str(&format!("\n{}", s.kind));
+                                f.editor = Content::with_text(&f.content);
+                                f.dirty = true;
+                            }
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::AutoFormat => {
+                if let Some(f) = self.current_file_mut() {
+                    if let Some(lang) = detect_lang(&f.path) {
+                        if parser::parse(&f.content, lang, None).is_some() {
+                            let formatted = f
+                                .content
+                                .lines()
+                                .map(|l| l.trim())
+                                .collect::<Vec<_>>()
+                                .join("\n");
+                            f.content = formatted.clone();
+                            f.editor = Content::with_text(&f.content);
+                            f.dirty = true;
+                        }
+                    }
+                }
+                Command::none()
+            }
             Message::SelectFile(path) => {
                 self.context_menu = None;
                 if let Some(idx) = self.open_files.iter().position(|f| f.path == path) {
@@ -223,9 +263,27 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::SaveFile => {
-                if let Some(f) = self.current_file() {
+                if let Some(f) = self.current_file_mut() {
                     let path = f.path.clone();
-                    let content = f.content.clone();
+                    let meta = VisualMeta {
+                        version: DEFAULT_VERSION,
+                        id: "root".into(),
+                        x: 0.0,
+                        y: 0.0,
+                        tags: Vec::new(),
+                        links: Vec::new(),
+                        anchors: Vec::new(),
+                        tests: Vec::new(),
+                        extends: None,
+                        origin: None,
+                        translations: HashMap::new(),
+                        ai: None,
+                        extras: None,
+                        updated_at: Utc::now(),
+                    };
+                    let content = meta::upsert(&f.content, &meta);
+                    f.content = content.clone();
+                    f.editor = Content::with_text(&f.content);
                     return Command::perform(
                         async move {
                             fs::write(&path, content)
@@ -675,5 +733,18 @@ impl MulticodeApp {
             }
             Message::SettingsSaved => Command::none(),
         }
+    }
+}
+
+fn detect_lang(path: &Path) -> Option<Lang> {
+    match path.extension().and_then(|e| e.to_str())? {
+        "rs" => Some(Lang::Rust),
+        "py" => Some(Lang::Python),
+        "js" => Some(Lang::JavaScript),
+        "ts" => Some(Lang::TypeScript),
+        "css" => Some(Lang::Css),
+        "html" => Some(Lang::Html),
+        "go" => Some(Lang::Go),
+        _ => None,
     }
 }

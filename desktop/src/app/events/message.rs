@@ -16,6 +16,8 @@ pub enum Message {
     ReplaceTermChanged(String),
     Find,
     ReplaceAll,
+    AutoComplete,
+    AutoFormat,
     SaveFile,
     FileSaved(Result<(), String>),
     NewFileNameChanged(String),
