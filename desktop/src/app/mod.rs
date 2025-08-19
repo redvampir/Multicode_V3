@@ -3,7 +3,6 @@ pub mod io;
 pub mod ui;
 
 use crate::modal::Modal;
-use ui::ContextMenu;
 use events::Message;
 use iced::futures::stream;
 use iced::widget::{
@@ -16,6 +15,7 @@ use iced::{
 };
 use multicode_core::{blocks, export, git, search};
 use tokio::{fs, sync::broadcast};
+use ui::ContextMenu;
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -24,8 +24,11 @@ use std::fmt;
 use std::ops::Range;
 use std::path::{Path, PathBuf};
 
-pub fn run() -> iced::Result {
-    MulticodeApp::run(Settings::default())
+pub fn run(path: Option<PathBuf>) -> iced::Result {
+    MulticodeApp::run(Settings {
+        flags: path,
+        ..Settings::default()
+    })
 }
 
 #[derive(Debug)]
@@ -73,7 +76,6 @@ pub enum Screen {
     Settings,
 }
 
-
 #[derive(Debug, Clone)]
 pub enum PendingAction {
     Select(PathBuf),
@@ -101,7 +103,6 @@ pub struct OpenFile {
     dirty: bool,
 }
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CreateTarget {
     File,
@@ -120,7 +121,6 @@ impl ToString for CreateTarget {
         }
     }
 }
-
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Hotkey {
@@ -330,10 +330,13 @@ impl Application for MulticodeApp {
     type Executor = iced::executor::Default;
     type Message = Message;
     type Theme = Theme;
-    type Flags = ();
+    type Flags = Option<PathBuf>;
 
-    fn new(_flags: ()) -> (Self, Command<Message>) {
-        let settings = UserSettings::load();
+    fn new(flags: Option<PathBuf>) -> (Self, Command<Message>) {
+        let mut settings = UserSettings::load();
+        if let Some(path) = flags {
+            settings.last_folder = Some(path);
+        }
         let (sender, _) = broadcast::channel(100);
 
         let app = MulticodeApp {
@@ -455,26 +458,20 @@ impl Application for MulticodeApp {
 
                 let sidebar = container(self.file_tree()).width(200);
 
-                let tabs = row(
-                    self.open_files
-                        .iter()
-                        .enumerate()
-                        .map(|(i, f)| {
-                            let name = f
-                                .path
-                                .file_name()
-                                .unwrap()
-                                .to_string_lossy()
-                                .to_string();
-                            row![
-                                button(text(name)).on_press(Message::SelectFile(f.path.clone())),
-                                button(text("x")).on_press(Message::CloseFile(i))
-                            ]
-                            .spacing(5)
-                            .into()
-                        })
-                        .collect::<Vec<Element<Message>>>(),
-                )
+                let tabs = row(self
+                    .open_files
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| {
+                        let name = f.path.file_name().unwrap().to_string_lossy().to_string();
+                        row![
+                            button(text(name)).on_press(Message::SelectFile(f.path.clone())),
+                            button(text("x")).on_press(Message::CloseFile(i))
+                        ]
+                        .spacing(5)
+                        .into()
+                    })
+                    .collect::<Vec<Element<Message>>>())
                 .spacing(5);
 
                 let rename_btn: Element<_> = if self.active_file.is_some() {
@@ -504,7 +501,9 @@ impl Application for MulticodeApp {
                     .on_press(Message::SwitchToVisualEditor)
                     .into();
                 let autocomplete_btn: Element<_> = if self.active_file.is_some() {
-                    button("Автодополнить").on_press(Message::AutoComplete).into()
+                    button("Автодополнить")
+                        .on_press(Message::AutoComplete)
+                        .into()
                 } else {
                     button("Автодополнить").into()
                 };
@@ -651,26 +650,20 @@ impl Application for MulticodeApp {
 
                 let sidebar = container(self.file_tree()).width(200);
 
-                let tabs = row(
-                    self.open_files
-                        .iter()
-                        .enumerate()
-                        .map(|(i, f)| {
-                            let name = f
-                                .path
-                                .file_name()
-                                .unwrap()
-                                .to_string_lossy()
-                                .to_string();
-                            row![
-                                button(text(name)).on_press(Message::SelectFile(f.path.clone())),
-                                button(text("x")).on_press(Message::CloseFile(i))
-                            ]
-                            .spacing(5)
-                            .into()
-                        })
-                        .collect::<Vec<Element<Message>>>(),
-                )
+                let tabs = row(self
+                    .open_files
+                    .iter()
+                    .enumerate()
+                    .map(|(i, f)| {
+                        let name = f.path.file_name().unwrap().to_string_lossy().to_string();
+                        row![
+                            button(text(name)).on_press(Message::SelectFile(f.path.clone())),
+                            button(text("x")).on_press(Message::CloseFile(i))
+                        ]
+                        .spacing(5)
+                        .into()
+                    })
+                    .collect::<Vec<Element<Message>>>())
                 .spacing(5);
 
                 let rename_btn: Element<_> = if self.active_file.is_some() {
