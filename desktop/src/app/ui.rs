@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use std::ops::Range;
 use std::path::PathBuf;
 
@@ -7,7 +8,7 @@ use iced::widget::svg::{Handle, Svg};
 use iced::widget::{
     button, column, container, row, scrollable, text, text_editor, text_input, MouseArea, Space,
 };
-use iced::{Color, Element, Length};
+use iced::{Alignment, Color, Element, Length};
 use once_cell::sync::Lazy;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
@@ -57,6 +58,19 @@ const OPEN_ICON: &[u8] = include_bytes!("../../assets/open.svg");
 const SAVE_ICON: &[u8] = include_bytes!("../../assets/save.svg");
 const FORMAT_ICON: &[u8] = include_bytes!("../../assets/format.svg");
 const AUTOCOMPLETE_ICON: &[u8] = include_bytes!("../../assets/autocomplete.svg");
+const FILE_ICON: &[u8] = include_bytes!("../../assets/file.svg");
+const FILE_TEXT_ICON: &[u8] = include_bytes!("../../assets/file-text.svg");
+const FILE_RUST_ICON: &[u8] = include_bytes!("../../assets/file-rust.svg");
+
+static EXT_ICON_MAP: Lazy<HashMap<&'static str, &'static [u8]>> = Lazy::new(|| {
+    let mut m = HashMap::new();
+    m.insert("rs", FILE_RUST_ICON);
+    m.insert("md", FILE_TEXT_ICON);
+    m.insert("txt", FILE_TEXT_ICON);
+    m.insert("json", FILE_TEXT_ICON);
+    m.insert("toml", FILE_TEXT_ICON);
+    m
+});
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyntaxSettings {
@@ -251,13 +265,29 @@ impl MulticodeApp {
                         .unwrap()
                         .to_string_lossy()
                         .to_string();
+                    let ext = entry
+                        .path
+                        .extension()
+                        .and_then(|e| e.to_str())
+                        .unwrap_or("");
+                    let icon = Svg::new(Handle::from_memory(
+                        EXT_ICON_MAP.get(ext).copied().unwrap_or(FILE_ICON),
+                    ))
+                    .width(Length::Fixed(16.0))
+                    .height(Length::Fixed(16.0));
+                    let content = row![icon, text(name)]
+                        .spacing(5)
+                        .align_items(Alignment::Center);
                     let row = row![
                         indent,
                         MouseArea::new(
-                            button(text(name)).on_press(Message::SelectFile(entry.path.clone())),
+                            button(content).on_press(Message::SelectFile(entry.path.clone())),
                         )
                         .on_right_press(Message::ShowContextMenu(entry.path.clone())),
                     ]
+                    .spacing(5)
+                    .align_items(Alignment::Center)
+                    .height(Length::Fixed(20.0))
                     .into();
                     rows.push(row);
                 }
@@ -270,14 +300,19 @@ impl MulticodeApp {
                         .to_string();
                     let expanded = self.expanded_dirs.contains(&entry.path);
                     let icon = if expanded { "▼" } else { "▶" };
+                    let content = row![text(icon), text(name)]
+                        .spacing(5)
+                        .align_items(Alignment::Center);
                     let header = row![
                         indent,
                         MouseArea::new(
-                            button(row![text(icon), text(name)])
-                                .on_press(Message::ToggleDir(entry.path.clone())),
+                            button(content).on_press(Message::ToggleDir(entry.path.clone())),
                         )
                         .on_right_press(Message::ShowContextMenu(entry.path.clone())),
                     ]
+                    .spacing(5)
+                    .align_items(Alignment::Center)
+                    .height(Length::Fixed(20.0))
                     .into();
                     rows.push(header);
                     if expanded {
