@@ -1,10 +1,10 @@
 # Архитектура анализа
 
-Документ описывает API узлов анализа, иерархию их подтипов и варианты расширения системы на Rust.
+Документ описывает общий API узлов анализа, базовую иерархию типов и пример расширения системы на Rust.
 
-## API
+## API узлов
 
-`AnalysisNode` определяет базовый контракт для всех узлов.
+Трейт `AnalysisNode` задаёт минимальный контракт для всех реализаций. Метод `analyze` возвращает структуру `AnalysisResult` с наборами метрик и текстовым объяснением, а `explain` выдаёт краткое описание логики узла. Регистрация конкретных реализаций производится через `NodeRegistry`.
 
 ```rust
 pub trait AnalysisNode {
@@ -24,23 +24,19 @@ pub struct AnalysisResult {
 }
 ```
 
-## Иерархия подтипов
+## Иерархия узлов
 
 ```text
 AnalysisNode
-├─ DataSourceNode
-├─ ReasoningNode
-└─ DomainNode
+├─ DataSourceNode        # интеграция с внешними источниками данных
+├─ ReasoningNode         # агрегирование и интерпретация результатов
+└─ DomainNode            # логика для конкретных областей
    ├─ ProgrammingSyntaxNode
    ├─ NaturalLanguageNode
    └─ DomainSpecificNode
 ```
 
-- **DataSourceNode** — адаптеры к внешним источникам данных.
-- **ReasoningNode** — агрегируют и интерпретируют результаты анализа.
-- **DomainNode** — специализированные подтипы для конкретных областей знаний.
-
-## Примеры расширений на Rust
+## Пример расширения на Rust
 
 ```rust
 use std::collections::HashMap;
@@ -58,7 +54,7 @@ impl AnalysisNode for ComplexityNode {
         }
     }
     fn explain(&self) -> String {
-        "Оценка цикломатической сложности".into()
+        "Оценивает цикломатическую сложность кода".into()
     }
 }
 
@@ -67,4 +63,4 @@ pub fn register(registry: &mut NodeRegistry) {
 }
 ```
 
-Пример показывает добавление нового узла и регистрацию его в `NodeRegistry`.
+Пример демонстрирует добавление нового узла и его регистрацию в `NodeRegistry`.
