@@ -31,6 +31,8 @@ struct MulticodeApp {
     editor: text_editor::Content,
     /// имя для создания нового файла
     new_file_name: String,
+    /// имя для создания нового каталога
+    new_folder_name: String,
     /// новое имя при переименовании
     rename_file_name: String,
     query: String,
@@ -62,6 +64,7 @@ enum Message {
     SaveFile,
     FileSaved(Result<(), String>),
     NewFileNameChanged(String),
+    NewFolderNameChanged(String),
     CreateFile,
     /// подтверждение создания при наличии файла
     ConfirmCreateFile,
@@ -159,6 +162,7 @@ impl Application for MulticodeApp {
             file_content: String::new(),
             editor: text_editor::Content::new(),
             new_file_name: String::new(),
+            new_folder_name: String::new(),
             rename_file_name: String::new(),
             query: String::new(),
             log: Vec::new(),
@@ -257,6 +261,10 @@ impl Application for MulticodeApp {
                 self.new_file_name = s;
                 Command::none()
             }
+            Message::NewFolderNameChanged(s) => {
+                self.new_folder_name = s;
+                Command::none()
+            }
             Message::CreateFile => {
                 if let Some(root) = self.current_root_path() {
                     let name = self.new_file_name.clone();
@@ -321,9 +329,9 @@ impl Application for MulticodeApp {
             }
             Message::CreateFolder => {
                 if let Some(root) = self.current_root_path() {
-                    let name = self.new_file_name.clone();
+                    let name = self.new_folder_name.clone();
                     if name.is_empty() {
-                        self.log.push("имя файла не задано".into());
+                        self.log.push("имя каталога не задано".into());
                         return Command::none();
                     }
                     let path = root.join(&name);
@@ -341,7 +349,7 @@ impl Application for MulticodeApp {
             }
             Message::FolderCreated(Ok(path)) => {
                 self.log.push(format!("создан каталог {}", path.display()));
-                self.new_file_name.clear();
+                self.new_folder_name.clear();
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::FolderCreated(Err(e)) => {
@@ -612,6 +620,8 @@ impl Application for MulticodeApp {
                     text_input("новый файл", &self.new_file_name)
                         .on_input(Message::NewFileNameChanged),
                     button("Создать файл").on_press(Message::CreateFile),
+                    text_input("новый каталог", &self.new_folder_name)
+                        .on_input(Message::NewFolderNameChanged),
                     button("Создать папку").on_press(Message::CreateFolder),
                     text_input("новое имя", &self.rename_file_name)
                         .on_input(Message::RenameFileNameChanged),
