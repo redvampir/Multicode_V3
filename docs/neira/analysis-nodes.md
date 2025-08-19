@@ -42,6 +42,7 @@ source: "https://example.org"
 - [12. Стратегия многоязычности](#12-стратегия-многоязычности)
 - [13. Перспективные и устойчивые технологии](#13-перспективные-и-устойчивые-технологии)
 - [14. A/B‑тестирование и откат](#14-ab-тестирование-и-откат)
+- [Revision Engine](#revision-engine)
 
 ## NodeTemplate
 
@@ -424,3 +425,44 @@ test_result:
 ### Критерий отката
 
 Возврат на стабильную версию выполняется, если `success_rate` кандидата опускается ниже `rollback_threshold.success_rate` или `performance_gain ≤ 1`. В противном случае кандидат может быть принят как новая стабильная версия.
+## Revision Engine
+
+### Структура кандидата
+
+```rust
+struct RevisionCandidate {
+    node_id: String,
+    metrics: HashMap<String, f32>,
+    updated_links: Vec<String>,
+}
+```
+
+### Псевдокод
+
+```pseudo
+generate_candidate(node):
+    candidate = RevisionCandidate()
+    candidate.node_id = node.id
+    candidate.metrics = collect_metrics(node)
+    candidate.updated_links = propose_links(node)
+    return candidate
+
+evaluate(candidate) -> Score:
+    tests = run_tests(candidate)
+    score = aggregate(candidate.metrics, tests)
+    return score
+```
+
+### Сохранение метаданных
+
+Метаданные ревизии фиксируют инициатора изменений, результаты тестов и итоговые оценки. Они сохраняются вместе с кандидатом в журнале:
+
+```yaml
+metadata:
+  initiator: user_id
+  test_results:
+    unit: pass
+    integration: pass
+  evaluation:
+    score: 0.82
+```
