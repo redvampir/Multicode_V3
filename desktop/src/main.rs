@@ -102,6 +102,7 @@ enum Message {
     CoreEvent(String),
     IcedEvent(Event),
     SaveSettings,
+    SettingsSaved,
     OpenSettings,
     CloseSettings,
     ToggleDir(PathBuf),
@@ -330,7 +331,7 @@ impl Application for MulticodeApp {
                     multicode_core::meta::watch::spawn(self.sender.clone());
                     return Command::batch([
                         self.load_files(root),
-                        Command::perform(self.settings.clone().save(), |_| Message::SaveSettings),
+                        self.update(Message::SaveSettings),
                     ]);
                 }
                 Command::none()
@@ -743,7 +744,10 @@ impl Application for MulticodeApp {
                 self.log.push(ev);
                 Command::none()
             }
-            Message::SaveSettings => Command::none(),
+            Message::SaveSettings => {
+                Command::perform(self.settings.clone().save(), |_| Message::SettingsSaved)
+            }
+            Message::SettingsSaved => Command::none(),
         }
     }
 
