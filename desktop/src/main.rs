@@ -1,20 +1,18 @@
 use iced::futures::stream;
-use iced::widget::{
-    button, column, container, row, scrollable, text, text_editor, text_input, Space,
-    MouseArea,
-};
 #[allow(unused_imports)]
 use iced::widget::overlay::menu;
+use iced::widget::{
+    button, column, container, row, scrollable, text, text_editor, text_input, MouseArea, Space,
+};
 use iced::{
     alignment, subscription, Application, Command, Element, Length, Settings, Subscription, Theme,
 };
 use multicode_core::{blocks, export, git, search};
-use tokio::sync::broadcast;
+use tokio::{fs, sync::broadcast};
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
-use std::fs;
 use std::path::{Path, PathBuf};
 
 pub fn main() -> iced::Result {
@@ -106,9 +104,15 @@ struct UserSettings {
 
 impl UserSettings {
     fn load() -> Self {
+        tokio::runtime::Runtime::new()
+            .map(|rt| rt.block_on(Self::load_async()))
+            .unwrap_or_default()
+    }
+
+    async fn load_async() -> Self {
         if let Some(proj) = ProjectDirs::from("com", "multicode", "multicode") {
             let path = proj.config_dir().join("settings.json");
-            if let Ok(data) = fs::read_to_string(path) {
+            if let Ok(data) = fs::read_to_string(path).await {
                 if let Ok(s) = serde_json::from_str(&data) {
                     return s;
                 }
@@ -120,9 +124,9 @@ impl UserSettings {
     async fn save(self) {
         if let Some(proj) = ProjectDirs::from("com", "multicode", "multicode") {
             let path = proj.config_dir().join("settings.json");
-            let _ = fs::create_dir_all(path.parent().unwrap());
+            let _ = fs::create_dir_all(path.parent().unwrap()).await;
             if let Ok(json) = serde_json::to_string_pretty(&self) {
-                let _ = fs::write(path, json);
+                let _ = fs::write(path, json).await;
             }
         }
     }
@@ -196,7 +200,7 @@ impl Application for MulticodeApp {
             Message::SelectFile(path) => {
                 return Command::perform(
                     async move {
-                        match fs::read_to_string(&path) {
+                        match fs::read_to_string(&path).await {
                             Ok(c) => Ok((path, c)),
                             Err(e) => Err(format!("{}", e)),
                         }
@@ -226,7 +230,7 @@ impl Application for MulticodeApp {
                     return Command::perform(
                         async move {
                             fs::write(&path, content)
-                                .map(|_| ())
+                                .await
                                 .map_err(|e| format!("{}", e))
                         },
                         Message::FileSaved,
@@ -257,6 +261,7 @@ impl Application for MulticodeApp {
                     return Command::perform(
                         async move {
                             fs::write(&path, "")
+                                .await
                                 .map(|_| path)
                                 .map_err(|e| format!("{}", e))
                         },
@@ -288,6 +293,7 @@ impl Application for MulticodeApp {
                     return Command::perform(
                         async move {
                             fs::create_dir(&path)
+                                .await
                                 .map(|_| path)
                                 .map_err(|e| format!("{}", e))
                         },
@@ -320,6 +326,7 @@ impl Application for MulticodeApp {
                     return Command::perform(
                         async move {
                             fs::rename(&old_path, &new_path)
+                                .await
                                 .map(|_| new_path)
                                 .map_err(|e| format!("{}", e))
                         },
@@ -343,6 +350,7 @@ impl Application for MulticodeApp {
                     return Command::perform(
                         async move {
                             fs::remove_file(&path)
+                                .await
                                 .map(|_| path)
                                 .map_err(|e| format!("{}", e))
                         },
@@ -406,7 +414,7 @@ impl Application for MulticodeApp {
                                     continue;
                                 }
                             };
-                            match fs::read_to_string(&path) {
+                            match fs::read_to_string(&path).await {
                                 Ok(content) => {
                                     match blocks::parse_blocks(content, lang.to_string()) {
                                         Some(b) => lines.push(format!(
@@ -456,7 +464,7 @@ impl Application for MulticodeApp {
                     async move {
                         let mut lines = Vec::new();
                         for path in files {
-                            match fs::read_to_string(&path) {
+                            match fs::read_to_string(&path).await {
                                 Ok(content) => match export::serialize_viz_document(&content) {
                                     Some(json) => lines.push(format!("{}: {json}", path.display())),
                                     None => lines
@@ -633,35 +641,39 @@ impl MulticodeApp {
     fn load_files(&self, root: PathBuf) -> Command<Message> {
         Command::perform(
             async move {
-                fn visit(dir: &Path) -> Vec<FileEntry> {
-                    let mut entries = Vec::new();
-                    if let Ok(read) = fs::read_dir(dir) {
-                        let mut read: Vec<_> = read.flatten().collect();
-                        read.sort_by_key(|e| e.path());
-                        for entry in read {
-                            if let Ok(ft) = entry.file_type() {
-                                let path = entry.path();
-                                if ft.is_dir() {
-                                    let children = visit(&path);
-                                    entries.push(FileEntry {
-                                        path,
-                                        ty: EntryType::Dir,
-                                        children,
-                                    });
-                                } else if ft.is_file() {
-                                    entries.push(FileEntry {
-                                        path,
-                                        ty: EntryType::File,
-                                        children: Vec::new(),
-                                    });
+                tokio::task::spawn_blocking(move || {
+                    fn visit(dir: &Path) -> Vec<FileEntry> {
+                        let mut entries = Vec::new();
+                        if let Ok(read) = std::fs::read_dir(dir) {
+                            let mut read: Vec<_> = read.flatten().collect();
+                            read.sort_by_key(|e| e.path());
+                            for entry in read {
+                                if let Ok(ft) = entry.file_type() {
+                                    let path = entry.path();
+                                    if ft.is_dir() {
+                                        let children = visit(&path);
+                                        entries.push(FileEntry {
+                                            path,
+                                            ty: EntryType::Dir,
+                                            children,
+                                        });
+                                    } else if ft.is_file() {
+                                        entries.push(FileEntry {
+                                            path,
+                                            ty: EntryType::File,
+                                            children: Vec::new(),
+                                        });
+                                    }
                                 }
                             }
                         }
+                        entries
                     }
-                    entries
-                }
 
-                visit(&root)
+                    visit(&root)
+                })
+                .await
+                .unwrap()
             },
             Message::FilesLoaded,
         )
@@ -697,8 +709,7 @@ impl MulticodeApp {
                     let row = row![
                         indent,
                         MouseArea::new(
-                            button(text(name))
-                                .on_press(Message::SelectFile(entry.path.clone())),
+                            button(text(name)).on_press(Message::SelectFile(entry.path.clone())),
                         )
                         .on_right_press(Message::ShowContextMenu(entry.path.clone())),
                     ]
