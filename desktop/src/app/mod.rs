@@ -284,6 +284,8 @@ struct UserSettings {
     language: Language,
     #[serde(default)]
     show_line_numbers: bool,
+    #[serde(default)]
+    show_status_bar: bool,
 }
 
 impl Default for UserSettings {
@@ -295,6 +297,7 @@ impl Default for UserSettings {
             theme: AppTheme::default(),
             language: Language::default(),
             show_line_numbers: true,
+            show_status_bar: true,
         }
     }
 }
@@ -614,7 +617,7 @@ impl Application for MulticodeApp {
                     warning,
                     dirty_warning,
                     body,
-                    text("Готово")
+                    self.status_bar_component()
                 ]
                 .spacing(10);
 
@@ -783,7 +786,7 @@ impl Application for MulticodeApp {
                     warning,
                     dirty_warning,
                     body,
-                    text("Готово")
+                    self.status_bar_component()
                 ]
                 .spacing(10);
 
@@ -857,6 +860,12 @@ impl Application for MulticodeApp {
                         text("Номера строк"),
                         checkbox("", self.settings.show_line_numbers)
                             .on_toggle(Message::ToggleLineNumbers)
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Статус-бар"),
+                        checkbox("", self.settings.show_status_bar)
+                            .on_toggle(Message::ToggleStatusBar),
                     ]
                     .spacing(10),
                     row![

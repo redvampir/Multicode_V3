@@ -62,6 +62,7 @@ pub enum Message {
     ThemeSelected(AppTheme),
     LanguageSelected(Language),
     ToggleLineNumbers(bool),
+    ToggleStatusBar(bool),
     StartCaptureHotkey(HotkeyField),
     SwitchToTextEditor,
     SwitchToVisualEditor,

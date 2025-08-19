@@ -233,6 +233,30 @@ impl MulticodeApp {
     pub fn file_tree(&self) -> Element<Message> {
         scrollable(self.view_entries(&self.files, 0)).into()
     }
+
+    pub fn status_bar_component(&self) -> Element<Message> {
+        if !self.settings.show_status_bar {
+            return Space::with_height(Length::Shrink).into();
+        }
+        if let Some(file) = self.current_file() {
+            let (line, column) = file.editor.cursor_position();
+            let path = file.path.to_string_lossy().to_string();
+            let dirty = if file.dirty { "*" } else { "" };
+            container(
+                row![
+                    text(path).width(Length::Fill),
+                    text(format!("{}:{}", line + 1, column + 1)),
+                    text(dirty)
+                ]
+                .spacing(10)
+            )
+            .width(Length::Fill)
+            .padding(5)
+            .into()
+        } else {
+            Space::with_height(Length::Shrink).into()
+        }
+    }
 }
 
 #[cfg(test)]
