@@ -43,6 +43,10 @@ struct MulticodeApp {
     context_menu: Option<(PathBuf, menu::State)>,
     /// отображать подтверждение перезаписи файла
     show_create_file_confirm: bool,
+    /// есть ли несохранённые изменения
+    dirty: bool,
+    /// ожидаемое действие при подтверждении потери изменений
+    pending_action: Option<PendingAction>,
 }
 
 #[derive(Debug, Clone)]
@@ -91,6 +95,16 @@ enum Message {
     ToggleDir(PathBuf),
     ShowContextMenu(PathBuf),
     CloseContextMenu,
+    /// подтверждение потери несохранённых изменений
+    ConfirmDiscard,
+    /// отмена потери несохранённых изменений
+    CancelDiscard,
+}
+
+#[derive(Debug, Clone)]
+enum PendingAction {
+    Select(PathBuf),
+    Delete(PathBuf),
 }
 
 #[derive(Debug, Clone)]
@@ -171,6 +185,8 @@ impl Application for MulticodeApp {
             expanded_dirs: HashSet::new(),
             context_menu: None,
             show_create_file_confirm: false,
+            dirty: false,
+            pending_action: None,
         };
 
         let cmd = match &app.screen {
@@ -209,6 +225,10 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::SelectFile(path) => {
+                if self.dirty && Some(path.clone()) != self.selected_file {
+                    self.pending_action = Some(PendingAction::Select(path));
+                    return Command::none();
+                }
                 return Command::perform(
                     async move {
                         match fs::read_to_string(&path).await {
@@ -224,6 +244,7 @@ impl Application for MulticodeApp {
                 self.file_content = content;
                 self.editor = text_editor::Content::with_text(&self.file_content);
                 self.rename_file_name.clear();
+                self.dirty = false;
                 Command::none()
             }
             Message::FileLoaded(Err(e)) => {
@@ -233,6 +254,7 @@ impl Application for MulticodeApp {
             Message::FileContentEdited(action) => {
                 self.editor.perform(action);
                 self.file_content = self.editor.text();
+                self.dirty = true;
                 Command::none()
             }
             Message::SaveFile => {
@@ -251,6 +273,7 @@ impl Application for MulticodeApp {
             }
             Message::FileSaved(Ok(())) => {
                 self.log.push("файл сохранен".into());
+                self.dirty = false;
                 Command::none()
             }
             Message::FileSaved(Err(e)) => {
@@ -392,6 +415,10 @@ impl Application for MulticodeApp {
             }
             Message::DeleteFile => {
                 if let Some(path) = self.selected_file.clone() {
+                    if self.dirty {
+                        self.pending_action = Some(PendingAction::Delete(path));
+                        return Command::none();
+                    }
                     return Command::perform(
                         async move {
                             fs::remove_file(&path)
@@ -409,6 +436,7 @@ impl Application for MulticodeApp {
                 self.selected_file = None;
                 self.file_content.clear();
                 self.editor = text_editor::Content::new();
+                self.dirty = false;
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::FileDeleted(Err(e)) => {
@@ -547,6 +575,40 @@ impl Application for MulticodeApp {
                 self.context_menu = None;
                 Command::none()
             }
+            Message::ConfirmDiscard => {
+                self.dirty = false;
+                if let Some(action) = self.pending_action.take() {
+                    match action {
+                        PendingAction::Select(path) => {
+                            return Command::perform(
+                                async move {
+                                    match fs::read_to_string(&path).await {
+                                        Ok(c) => Ok((path, c)),
+                                        Err(e) => Err(format!("{}", e)),
+                                    }
+                                },
+                                Message::FileLoaded,
+                            );
+                        }
+                        PendingAction::Delete(path) => {
+                            return Command::perform(
+                                async move {
+                                    fs::remove_file(&path)
+                                        .await
+                                        .map(|_| path)
+                                        .map_err(|e| format!("{}", e))
+                                },
+                                Message::FileDeleted,
+                            );
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::CancelDiscard => {
+                self.pending_action = None;
+                Command::none()
+            }
             Message::CoreEvent(ev) => {
                 self.log.push(ev);
                 Command::none()
@@ -610,10 +672,15 @@ impl Application for MulticodeApp {
                 } else {
                     button("Удалить").into()
                 };
-                let save_btn: Element<_> = if self.selected_file.is_some() {
-                    button("Сохранить").on_press(Message::SaveFile).into()
+                let save_label = if self.dirty {
+                    "Сохранить*"
                 } else {
-                    button("Сохранить").into()
+                    "Сохранить"
+                };
+                let save_btn: Element<_> = if self.selected_file.is_some() {
+                    button(save_label).on_press(Message::SaveFile).into()
+                } else {
+                    button(save_label).into()
                 };
 
                 let file_menu = row![
@@ -636,6 +703,18 @@ impl Application for MulticodeApp {
                         text("Файл уже существует. Перезаписать?"),
                         button("Да").on_press(Message::ConfirmCreateFile),
                         button("Нет").on_press(Message::CancelCreateFile)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let dirty_warning: Element<_> = if self.pending_action.is_some() {
+                    row![
+                        text("Есть несохранённые изменения. Продолжить?"),
+                        button("Да").on_press(Message::ConfirmDiscard),
+                        button("Нет").on_press(Message::CancelDiscard)
                     ]
                     .spacing(5)
                     .into()
@@ -670,9 +749,16 @@ impl Application for MulticodeApp {
 
                 let body = row![sidebar, content].spacing(10);
 
-                column![menu, file_menu, warning, body, text("Готово")]
-                    .spacing(10)
-                    .into()
+                column![
+                    menu,
+                    file_menu,
+                    warning,
+                    dirty_warning,
+                    body,
+                    text("Готово")
+                ]
+                .spacing(10)
+                .into()
             }
         }
     }
