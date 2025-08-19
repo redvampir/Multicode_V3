@@ -5,6 +5,10 @@ use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::{button, column, container, row, scrollable, text, text_editor, MouseArea, Space};
 use iced::widget::overlay::menu;
 use iced::{Color, Element, Length};
+use once_cell::sync::Lazy;
+use syntect::easy::HighlightLines;
+use syntect::highlighting::ThemeSet;
+use syntect::parsing::SyntaxSet;
 
 use crate::app::{EntryType, FileEntry, MulticodeApp};
 use crate::app::events::Message;
@@ -43,38 +47,74 @@ impl ToString for ContextMenuItem {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct SearchHighlighter {
-    matches: Vec<(usize, Range<usize>)>,
+static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
+static THEME_SET: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct SyntaxSettings {
+    pub extension: String,
+    pub matches: Vec<(usize, Range<usize>)>,
+}
+
+pub struct SyntectHighlighter {
+    settings: SyntaxSettings,
+    highlighter: HighlightLines<'static>,
     current_line: usize,
 }
 
-impl Highlighter for SearchHighlighter {
-    type Settings = Vec<(usize, Range<usize>)>;
-    type Highlight = ();
-    type Iterator<'a> = std::vec::IntoIter<(Range<usize>, Self::Highlight)>;
+impl Highlighter for SyntectHighlighter {
+    type Settings = SyntaxSettings;
+    type Highlight = Color;
+    type Iterator<'a> = std::vec::IntoIter<(Range<usize>, Color)>;
 
     fn new(settings: &Self::Settings) -> Self {
-        Self { matches: settings.clone(), current_line: 0 }
+        let syntax = SYNTAX_SET
+            .find_syntax_by_extension(&settings.extension)
+            .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
+        let theme = &THEME_SET.themes["InspiredGitHub"];
+        Self {
+            settings: settings.clone(),
+            highlighter: HighlightLines::new(syntax, theme),
+            current_line: 0,
+        }
     }
 
     fn update(&mut self, new_settings: &Self::Settings) {
-        self.matches = new_settings.clone();
+        let syntax = SYNTAX_SET
+            .find_syntax_by_extension(&new_settings.extension)
+            .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
+        let theme = &THEME_SET.themes["InspiredGitHub"];
+        self.highlighter = HighlightLines::new(syntax, theme);
+        self.settings = new_settings.clone();
+        self.current_line = 0;
     }
 
     fn change_line(&mut self, line: usize) {
         self.current_line = line;
     }
 
-    fn highlight_line(&mut self, _line: &str) -> Self::Iterator<'_> {
-        let ranges = self
-            .matches
-            .iter()
-            .filter(|(l, _)| *l == self.current_line)
-            .map(|(_, range)| (range.clone(), ()))
-            .collect::<Vec<_>>();
+    fn highlight_line(&mut self, line: &str) -> Self::Iterator<'_> {
+        let mut res = Vec::new();
+        if let Ok(ranges) = self.highlighter.highlight_line(line, &SYNTAX_SET) {
+            let mut start = 0;
+            for (style, text) in ranges {
+                let len = text.len();
+                let color = Color::from_rgb(
+                    style.foreground.r as f32 / 255.0,
+                    style.foreground.g as f32 / 255.0,
+                    style.foreground.b as f32 / 255.0,
+                );
+                res.push((start..start + len, color));
+                start += len;
+            }
+        }
+        for (line_idx, range) in &self.settings.matches {
+            if *line_idx == self.current_line {
+                res.push((range.clone(), Color::from_rgb(1.0, 1.0, 0.0)));
+            }
+        }
         self.current_line += 1;
-        ranges.into_iter()
+        res.into_iter()
     }
 
     fn current_line(&self) -> usize {
@@ -85,23 +125,26 @@ impl Highlighter for SearchHighlighter {
 impl MulticodeApp {
     pub fn text_editor_component(&self) -> Element<Message> {
         if let Some(file) = self.current_file() {
-            if self.search_results.is_empty() {
-                text_editor(&file.editor)
-                    .on_action(Message::FileContentEdited)
-                    .height(Length::Fill)
-                    .into()
-            } else {
-                text_editor(&file.editor)
-                    .highlight::<SearchHighlighter>(self.search_results.clone(), |_, _| {
-                        highlighter::Format {
-                            color: Some(Color::from_rgb(1.0, 1.0, 0.0)),
-                            font: None,
-                        }
-                    })
-                    .on_action(Message::FileContentEdited)
-                    .height(Length::Fill)
-                    .into()
-            }
+            let ext = file
+                .path
+                .extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_string();
+            let settings = SyntaxSettings {
+                extension: ext,
+                matches: self.search_results.clone(),
+            };
+            text_editor(&file.editor)
+                .highlight::<SyntectHighlighter>(settings, |c, _| {
+                    highlighter::Format {
+                        color: Some(*c),
+                        font: None,
+                    }
+                })
+                .on_action(Message::FileContentEdited)
+                .height(Length::Fill)
+                .into()
         } else {
             container(text("файл не выбран"))
                 .width(Length::Fill)

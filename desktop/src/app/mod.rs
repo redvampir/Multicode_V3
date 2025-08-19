@@ -503,7 +503,18 @@ impl Application for MulticodeApp {
                 let visual_btn: Element<_> = button("Visual")
                     .on_press(Message::SwitchToVisualEditor)
                     .into();
-                let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
+                let autocomplete_btn: Element<_> = if self.active_file.is_some() {
+                    button("Автодополнить").on_press(Message::AutoComplete).into()
+                } else {
+                    button("Автодополнить").into()
+                };
+                let format_btn: Element<_> = if self.active_file.is_some() {
+                    button("Форматировать").on_press(Message::AutoFormat).into()
+                } else {
+                    button("Форматировать").into()
+                };
+                let mode_bar =
+                    row![text_btn, visual_btn, save_btn, autocomplete_btn, format_btn].spacing(5);
 
                 let create_select = pick_list(
                     &CreateTarget::ALL[..],
