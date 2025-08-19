@@ -1,13 +1,13 @@
 mod modal;
 
+use crate::modal::Modal;
 use iced::futures::stream;
 #[allow(unused_imports)]
-use iced::widget::overlay::menu as menu;
+use iced::widget::overlay::menu;
 use iced::widget::{
     button, column, container, pick_list, row, scrollable, text, text_editor, text_input,
     MouseArea, Space,
 };
-use crate::modal::Modal;
 use iced::{
     alignment, event, keyboard, subscription, Application, Command, Element, Event, Length,
     Settings, Subscription, Theme,
@@ -37,8 +37,10 @@ struct MulticodeApp {
     editor: text_editor::Content,
     /// имя для создания нового файла
     new_file_name: String,
-    /// имя для создания нового каталога
-    new_folder_name: String,
+    /// имя для создания новой директории
+    new_directory_name: String,
+    /// что создавать: файл или директорию
+    create_target: CreateTarget,
     /// новое имя при переименовании
     rename_file_name: String,
     query: String,
@@ -80,15 +82,16 @@ enum Message {
     SaveFile,
     FileSaved(Result<(), String>),
     NewFileNameChanged(String),
-    NewFolderNameChanged(String),
+    NewDirectoryNameChanged(String),
+    CreateTargetChanged(CreateTarget),
     CreateFile,
     /// подтверждение создания при наличии файла
     ConfirmCreateFile,
     /// отмена создания при наличии файла
     CancelCreateFile,
     FileCreated(Result<PathBuf, String>),
-    CreateFolder,
-    FolderCreated(Result<PathBuf, String>),
+    CreateDirectory,
+    DirectoryCreated(Result<PathBuf, String>),
     RenameFileNameChanged(String),
     RenameFile,
     FileRenamed(Result<PathBuf, String>),
@@ -176,6 +179,25 @@ impl ToString for ContextMenuItem {
             ContextMenuItem::Open => "Открыть".into(),
             ContextMenuItem::Rename => "Переименовать".into(),
             ContextMenuItem::Delete => "Удалить".into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum CreateTarget {
+    File,
+    Directory,
+}
+
+impl CreateTarget {
+    const ALL: [CreateTarget; 2] = [CreateTarget::File, CreateTarget::Directory];
+}
+
+impl ToString for CreateTarget {
+    fn to_string(&self) -> String {
+        match self {
+            CreateTarget::File => "Файл".into(),
+            CreateTarget::Directory => "Папка".into(),
         }
     }
 }
@@ -408,7 +430,8 @@ impl Application for MulticodeApp {
             file_content: String::new(),
             editor: text_editor::Content::new(),
             new_file_name: String::new(),
-            new_folder_name: String::new(),
+            new_directory_name: String::new(),
+            create_target: CreateTarget::File,
             rename_file_name: String::new(),
             query: String::new(),
             log: Vec::new(),
@@ -632,8 +655,12 @@ impl Application for MulticodeApp {
                 self.new_file_name = s;
                 Command::none()
             }
-            Message::NewFolderNameChanged(s) => {
-                self.new_folder_name = s;
+            Message::NewDirectoryNameChanged(s) => {
+                self.new_directory_name = s;
+                Command::none()
+            }
+            Message::CreateTargetChanged(t) => {
+                self.create_target = t;
                 Command::none()
             }
             Message::CreateFile => {
@@ -698,9 +725,9 @@ impl Application for MulticodeApp {
                 self.log.push(format!("ошибка создания: {e}"));
                 Command::none()
             }
-            Message::CreateFolder => {
+            Message::CreateDirectory => {
                 if let Some(root) = self.current_root_path() {
-                    let name = self.new_folder_name.clone();
+                    let name = self.new_directory_name.clone();
                     if name.is_empty() {
                         self.log.push("имя каталога не задано".into());
                         return Command::none();
@@ -713,17 +740,17 @@ impl Application for MulticodeApp {
                                 .map(|_| path)
                                 .map_err(|e| format!("{}", e))
                         },
-                        Message::FolderCreated,
+                        Message::DirectoryCreated,
                     );
                 }
                 Command::none()
             }
-            Message::FolderCreated(Ok(path)) => {
+            Message::DirectoryCreated(Ok(path)) => {
                 self.log.push(format!("создан каталог {}", path.display()));
-                self.new_folder_name.clear();
+                self.new_directory_name.clear();
                 return self.load_files(self.current_root_path().unwrap());
             }
-            Message::FolderCreated(Err(e)) => {
+            Message::DirectoryCreated(Err(e)) => {
                 self.log.push(format!("ошибка создания каталога: {e}"));
                 Command::none()
             }
@@ -1090,13 +1117,36 @@ impl Application for MulticodeApp {
                     .into();
                 let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
 
+                let create_select = pick_list(
+                    &CreateTarget::ALL[..],
+                    Some(self.create_target),
+                    Message::CreateTargetChanged,
+                );
+                let (placeholder, value, on_input_msg, create_msg): (
+                    &str,
+                    &String,
+                    fn(String) -> Message,
+                    Message,
+                ) = match self.create_target {
+                    CreateTarget::File => (
+                        "новый файл",
+                        &self.new_file_name,
+                        Message::NewFileNameChanged as fn(String) -> Message,
+                        Message::CreateFile,
+                    ),
+                    CreateTarget::Directory => (
+                        "новый каталог",
+                        &self.new_directory_name,
+                        Message::NewDirectoryNameChanged as fn(String) -> Message,
+                        Message::CreateDirectory,
+                    ),
+                };
+                let create_input = text_input(placeholder, value).on_input(on_input_msg);
+                let create_button = button("Создать").on_press(create_msg);
                 let file_menu = row![
-                    text_input("новый файл", &self.new_file_name)
-                        .on_input(Message::NewFileNameChanged),
-                    button("Создать файл").on_press(Message::CreateFile),
-                    text_input("новый каталог", &self.new_folder_name)
-                        .on_input(Message::NewFolderNameChanged),
-                    button("Создать папку").on_press(Message::CreateFolder),
+                    create_select,
+                    create_input,
+                    create_button,
                     text_input("новое имя", &self.rename_file_name)
                         .on_input(Message::RenameFileNameChanged),
                     rename_btn,
@@ -1226,13 +1276,36 @@ impl Application for MulticodeApp {
                 let visual_btn: Element<_> = button("Visual").into();
                 let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
 
+                let create_select = pick_list(
+                    &CreateTarget::ALL[..],
+                    Some(self.create_target),
+                    Message::CreateTargetChanged,
+                );
+                let (placeholder, value, on_input_msg, create_msg): (
+                    &str,
+                    &String,
+                    fn(String) -> Message,
+                    Message,
+                ) = match self.create_target {
+                    CreateTarget::File => (
+                        "новый файл",
+                        &self.new_file_name,
+                        Message::NewFileNameChanged as fn(String) -> Message,
+                        Message::CreateFile,
+                    ),
+                    CreateTarget::Directory => (
+                        "новый каталог",
+                        &self.new_directory_name,
+                        Message::NewDirectoryNameChanged as fn(String) -> Message,
+                        Message::CreateDirectory,
+                    ),
+                };
+                let create_input = text_input(placeholder, value).on_input(on_input_msg);
+                let create_button = button("Создать").on_press(create_msg);
                 let file_menu = row![
-                    text_input("новый файл", &self.new_file_name)
-                        .on_input(Message::NewFileNameChanged),
-                    button("Создать файл").on_press(Message::CreateFile),
-                    text_input("новый каталог", &self.new_folder_name)
-                        .on_input(Message::NewFolderNameChanged),
-                    button("Создать папку").on_press(Message::CreateFolder),
+                    create_select,
+                    create_input,
+                    create_button,
                     text_input("новое имя", &self.rename_file_name)
                         .on_input(Message::RenameFileNameChanged),
                     rename_btn,
