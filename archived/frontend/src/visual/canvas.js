@@ -1,8 +1,15 @@
-import { createBlock, GroupBlock } from './blocks.js';
+import { createBlock } from './blocks.js';
 import { getTheme, onThemeChange } from './theme.ts';
-import { registerHoverHighlight, drawHoverHighlight } from './hover.ts';
+import { registerHoverHighlight } from './hover.ts';
 import { Minimap } from './minimap.ts';
 import { visualSettings as cfg, GRID_SIZE } from './settings.ts';
+import { renderCanvas } from './draw.js';
+import {
+  getGroupId as getGroupIdUtil,
+  groupSelected as groupSelectedUtil,
+  ungroupSelected as ungroupSelectedUtil
+} from './group-ops.js';
+import { VIEW_STATE_KEY, MIN_SCALE, MAX_SCALE } from './constants.js';
 import { createTwoFilesPatch } from 'diff';
 import { updateMetaComment, previewDiff, renameMetaId, getMetaById } from '../editor/visual-meta.js';
 import { emit, on } from '../shared/event-bus.js';
@@ -10,11 +17,6 @@ import { openBlockEditor } from './block-editor.ts';
 import { openInspector } from './inspector.tsx';
 import { searchBlocks, replaceBlockLabels, createReplaceDialog } from './search.ts';
 import { highlightRange } from '../code-sync.ts';
-
-export const VIEW_STATE_KEY = 'visual-view-state';
-
-const MIN_SCALE = 0.5;
-const MAX_SCALE = 4;
 
 // Utility used in tests and debug mode to analyze graph connections.
 // Accepts an array of block ids and array of edges [fromId, toId].
@@ -290,44 +292,15 @@ export class VisualCanvas {
   }
 
   getGroupId(blockId) {
-    for (const [id, group] of this.groups.entries()) {
-      if (group.blocks.has(blockId)) return id;
-    }
-    return null;
+    return getGroupIdUtil(this, blockId);
   }
 
   groupSelected() {
-    if (this.selected.size === 0) return;
-    const id = this.nextGroupId++;
-    const blocks = new Set(Array.from(this.selected).map(b => b.id));
-    const color = getTheme().blockStroke;
-    const label = 'Group ' + id;
-    this.groups.set(id, { blocks, color, label });
-    // Persist group reference on blocks for .viz.json export
-    for (const bid of blocks) {
-      const data = this.blockDataMap.get(bid);
-      if (data) data.group = id;
-    }
+    groupSelectedUtil(this);
   }
 
   ungroupSelected() {
-    const ids = new Set(Array.from(this.selected).map(b => b.id));
-    for (const [id, group] of Array.from(this.groups.entries())) {
-      let remove = false;
-      for (const bid of ids) {
-        if (group.blocks.has(bid)) {
-          remove = true;
-          break;
-        }
-      }
-      if (remove) {
-        for (const bid of group.blocks) {
-          const data = this.blockDataMap.get(bid);
-          if (data) delete data.group;
-        }
-        this.groups.delete(id);
-      }
-    }
+    ungroupSelectedUtil(this);
   }
 
   copySelected() {
@@ -1162,152 +1135,7 @@ export class VisualCanvas {
   }
 
   draw() {
-    const theme = getTheme();
-    this.ctx.save();
-    this.ctx.setTransform(this.scale, 0, 0, this.scale, this.offset.x, this.offset.y);
-    this.ctx.clearRect(-this.offset.x / this.scale, -this.offset.y / this.scale,
-      this.canvas.width / this.scale, this.canvas.height / this.scale);
-
-    if (this.gridEnabled) {
-      const size = GRID_SIZE;
-      const width = this.canvas.width / this.scale;
-      const height = this.canvas.height / this.scale;
-      const startX = Math.floor((-this.offset.x / this.scale) / size) * size;
-      const startY = Math.floor((-this.offset.y / this.scale) / size) * size;
-      const endX = startX + width + size;
-      const endY = startY + height + size;
-      this.ctx.beginPath();
-      this.ctx.strokeStyle = '#eee';
-      this.ctx.lineWidth = 1 / this.scale;
-      for (let x = startX; x <= endX; x += size) {
-        this.ctx.moveTo(x, startY);
-        this.ctx.lineTo(x, endY);
-      }
-      for (let y = startY; y <= endY; y += size) {
-        this.ctx.moveTo(startX, y);
-        this.ctx.lineTo(endX, y);
-      }
-      this.ctx.stroke();
-    }
-
-    // Draw groups
-    for (const group of this.groups.values()) {
-      const members = this.blocks.filter(b => group.blocks.has(b.id));
-      if (!members.length) continue;
-      const padding = 10;
-      const minX = Math.min(...members.map(b => b.x)) - padding;
-      const minY = Math.min(...members.map(b => b.y)) - padding;
-      const maxX = Math.max(...members.map(b => b.x + b.w)) + padding;
-      const maxY = Math.max(...members.map(b => b.y + b.h)) + padding;
-      const gb = new GroupBlock('', minX, minY, maxX - minX, maxY - minY, group.label, group.color);
-      gb.draw(this.ctx);
-    }
-
-    // Draw connections
-    this.connections.forEach(([a, b]) => {
-      const ac = a.center();
-      const bc = b.center();
-      const key = a.id + '->' + b.id;
-      this.ctx.beginPath();
-      this.ctx.moveTo(ac.x, ac.y);
-      this.ctx.lineTo(bc.x, bc.y);
-      if (this.errorEdges.has(key)) {
-        this.ctx.strokeStyle = 'red';
-        this.ctx.lineWidth = 2;
-        if (this.ctx.setLineDash) this.ctx.setLineDash([]);
-      } else if (this.missingEdge === key) {
-        this.ctx.strokeStyle = 'orange';
-        this.ctx.lineWidth = 2;
-        if (this.ctx.setLineDash) this.ctx.setLineDash([5 / this.scale, 5 / this.scale]);
-      } else {
-        this.ctx.strokeStyle = theme.connection;
-        this.ctx.lineWidth = 1;
-        if (this.ctx.setLineDash) this.ctx.setLineDash([]);
-      }
-      this.ctx.stroke();
-    });
-    // reset dash after drawing connections
-    if (this.ctx.setLineDash) this.ctx.setLineDash([]);
-
-    // Preview connection while dragging
-    if (this.draggingConnection) {
-      const ac = this.draggingConnection.from.center();
-      this.ctx.beginPath();
-      this.ctx.moveTo(ac.x, ac.y);
-      this.ctx.lineTo(this.draggingConnection.x, this.draggingConnection.y);
-      this.ctx.strokeStyle = theme.connection;
-      this.ctx.lineWidth = 1;
-      this.ctx.stroke();
-    }
-
-    // Hover highlights
-    drawHoverHighlight(this);
-
-    // Draw blocks
-    this.blocks.forEach(b => {
-      b.draw(this.ctx);
-      if (this.testResults.has(b.id)) {
-        const ok = this.testResults.get(b.id);
-        this.ctx.strokeStyle = ok ? 'green' : 'red';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(b.x, b.y, b.w, b.h);
-        if (!ok) {
-          this.ctx.fillStyle = 'red';
-          this.ctx.font = `${12 / this.scale}px sans-serif`;
-          this.ctx.fillText('!', b.x + 4 / this.scale, b.y + 14 / this.scale);
-        }
-      } else if (this.errorBlocks.has(b.id)) {
-        this.ctx.strokeStyle = 'red';
-        this.ctx.lineWidth = 2;
-        this.ctx.strokeRect(b.x, b.y, b.w, b.h);
-        this.ctx.fillStyle = 'orange';
-        this.ctx.font = `${12 / this.scale}px sans-serif`;
-        this.ctx.fillText('⚠', b.x + 4 / this.scale, b.y + 14 / this.scale);
-      }
-    });
-
-    // Selection box
-    if (this.selectionBox) {
-      const { startX, startY, x, y } = this.selectionBox;
-      const x1 = Math.min(startX, x);
-      const y1 = Math.min(startY, y);
-      const w = Math.abs(x - startX);
-      const h = Math.abs(y - startY);
-      this.ctx.fillStyle = 'rgba(0, 123, 255, 0.2)';
-      this.ctx.strokeStyle = 'rgba(0, 123, 255, 0.8)';
-      this.ctx.lineWidth = 1 / this.scale;
-      this.ctx.fillRect(x1, y1, w, h);
-      this.ctx.strokeRect(x1, y1, w, h);
-      const sel = new Set();
-      for (const b of this.blocks) {
-        if (b.x >= x1 && b.x + b.w <= x1 + w && b.y >= y1 && b.y + b.h <= y1 + h) sel.add(b);
-      }
-      this.selected = sel;
-    }
-
-    // Alignment guides
-    if (this.alignGuides.length) {
-      const width = this.canvas.width / this.scale;
-      const height = this.canvas.height / this.scale;
-      const startX = -this.offset.x / this.scale;
-      const startY = -this.offset.y / this.scale;
-      this.ctx.beginPath();
-      this.ctx.strokeStyle = theme.alignGuide;
-      this.ctx.lineWidth = 1 / this.scale;
-      for (const g of this.alignGuides) {
-        if (g.type === 'v') {
-          this.ctx.moveTo(g.x, startY);
-          this.ctx.lineTo(g.x, startY + height);
-        } else {
-          this.ctx.moveTo(startX, g.y);
-          this.ctx.lineTo(startX + width, g.y);
-        }
-      }
-      this.ctx.stroke();
-    }
-
-    this.ctx.restore();
-    if (this.minimap) this.minimap.render(this);
+    renderCanvas(this);
     requestAnimationFrame(() => this.draw());
   }
 
