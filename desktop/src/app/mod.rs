@@ -280,7 +280,8 @@ fn default_syntect_theme() -> String {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserSettings {
-    last_folder: Option<PathBuf>,
+    #[serde(default)]
+    last_folders: Vec<PathBuf>,
     #[serde(default)]
     hotkeys: Hotkeys,
     #[serde(default)]
@@ -302,7 +303,7 @@ struct UserSettings {
 impl Default for UserSettings {
     fn default() -> Self {
         Self {
-            last_folder: None,
+            last_folders: Vec::new(),
             hotkeys: Hotkeys::default(),
             editor_mode: EditorMode::Text,
             theme: AppTheme::default(),
@@ -316,6 +317,16 @@ impl Default for UserSettings {
 }
 
 impl UserSettings {
+    const MAX_RECENT: usize = 5;
+
+    fn add_recent_folder(&mut self, path: PathBuf) {
+        self.last_folders.retain(|p| p != &path);
+        self.last_folders.insert(0, path);
+        if self.last_folders.len() > Self::MAX_RECENT {
+            self.last_folders.truncate(Self::MAX_RECENT);
+        }
+    }
+
     fn load() -> Self {
         tokio::runtime::Runtime::new()
             .map(|rt| rt.block_on(Self::load_async()))
@@ -354,12 +365,12 @@ impl Application for MulticodeApp {
     fn new(flags: Option<PathBuf>) -> (Self, Command<Message>) {
         let mut settings = UserSettings::load();
         if let Some(path) = flags {
-            settings.last_folder = Some(path);
+            settings.add_recent_folder(path);
         }
         let (sender, _) = broadcast::channel(100);
 
         let app = MulticodeApp {
-            screen: if let Some(path) = settings.last_folder.clone() {
+            screen: if let Some(path) = settings.last_folders.first().cloned() {
                 match settings.editor_mode {
                     EditorMode::Text => Screen::TextEditor { root: path },
                     EditorMode::Visual => Screen::VisualEditor { root: path },
@@ -447,7 +458,7 @@ impl Application for MulticodeApp {
                 } else {
                     "Settings"
                 };
-                let content = column![
+                let mut content = column![
                     text("Выберите папку проекта"),
                     button("Выбрать").on_press(Message::PickFolder),
                     button("Выбрать файл").on_press(Message::PickFile),
@@ -455,6 +466,25 @@ impl Application for MulticodeApp {
                 ]
                 .align_items(alignment::Alignment::Center)
                 .spacing(20);
+
+                if !self.settings.last_folders.is_empty() {
+                    let open_label = if self.settings.language == Language::Russian {
+                        "Открыть"
+                    } else {
+                        "Open"
+                    };
+                    content = content.push(text("Недавние проекты:"));
+                    for path in &self.settings.last_folders {
+                        let path_str = path.to_string_lossy().to_string();
+                        content = content.push(
+                            row![
+                                text(path_str).width(Length::FillPortion(1)),
+                                button(open_label).on_press(Message::OpenRecent(path.clone())),
+                            ]
+                            .spacing(10),
+                        );
+                    }
+                }
 
                 container(content)
                     .width(Length::Fill)
@@ -963,7 +993,7 @@ impl MulticodeApp {
         match &self.screen {
             Screen::TextEditor { root } | Screen::VisualEditor { root } => Some(root.clone()),
             Screen::ProjectPicker => None,
-            Screen::Settings => self.settings.last_folder.clone(),
+            Screen::Settings => self.settings.last_folders.first().cloned(),
         }
     }
 
