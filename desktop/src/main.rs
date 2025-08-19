@@ -56,6 +56,7 @@ struct MulticodeApp {
 enum Screen {
     ProjectPicker,
     Workspace { root: PathBuf },
+    Settings,
 }
 
 #[derive(Debug, Clone)]
@@ -101,6 +102,8 @@ enum Message {
     CoreEvent(String),
     IcedEvent(Event),
     SaveSettings,
+    OpenSettings,
+    CloseSettings,
     ToggleDir(PathBuf),
     ShowContextMenu(PathBuf),
     CloseContextMenu,
@@ -238,6 +241,18 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::IcedEvent(_) => Command::none(),
+            Message::OpenSettings => {
+                self.screen = Screen::Settings;
+                Command::none()
+            }
+            Message::CloseSettings => {
+                if let Some(root) = self.settings.last_folder.clone() {
+                    self.screen = Screen::Workspace { root };
+                } else {
+                    self.screen = Screen::ProjectPicker;
+                }
+                Command::none()
+            }
             Message::PickFolder => Command::perform(pick_folder(), Message::FolderPicked),
             Message::FolderPicked(path) => {
                 if let Some(root) = path {
@@ -688,6 +703,7 @@ impl Application for MulticodeApp {
                 let content = column![
                     text("Выберите папку проекта"),
                     button("Выбрать папку").on_press(Message::PickFolder),
+                    button("Settings / Настройки").on_press(Message::OpenSettings),
                 ]
                 .align_items(alignment::Alignment::Center)
                 .spacing(20);
@@ -705,6 +721,7 @@ impl Application for MulticodeApp {
                     button("Поиск").on_press(Message::RunSearch),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
+                    button("Settings / Настройки").on_press(Message::OpenSettings),
                 ]
                 .spacing(10);
 
@@ -823,6 +840,21 @@ impl Application for MulticodeApp {
                 .spacing(10)
                 .into()
             }
+            Screen::Settings => {
+                let content = column![
+                    text("Settings / Настройки"),
+                    button("Back / Назад").on_press(Message::CloseSettings),
+                ]
+                .align_items(alignment::Alignment::Center)
+                .spacing(20);
+
+                container(content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .center_y()
+                    .into()
+            }
         }
     }
 }
@@ -842,6 +874,7 @@ impl MulticodeApp {
         match &self.screen {
             Screen::Workspace { root } => Some(root.clone()),
             Screen::ProjectPicker => None,
+            Screen::Settings => self.settings.last_folder.clone(),
         }
     }
 
