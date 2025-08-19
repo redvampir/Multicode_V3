@@ -93,6 +93,10 @@ impl MulticodeApp {
                 self.settings.show_line_numbers = value;
                 Command::none()
             }
+            Message::ToggleStatusBar(value) => {
+                self.settings.show_status_bar = value;
+                Command::none()
+            }
             Message::StartCaptureHotkey(field) => {
                 self.hotkey_capture = Some(field);
                 Command::none()
@@ -279,9 +283,12 @@ impl MulticodeApp {
             }
             Message::FileContentEdited(action) => {
                 if let Some(f) = self.current_file_mut() {
+                    let is_edit = action.is_edit();
                     f.editor.perform(action);
                     f.content = f.editor.text();
-                    f.dirty = true;
+                    if is_edit {
+                        f.dirty = true;
+                    }
                 }
                 Command::none()
             }
