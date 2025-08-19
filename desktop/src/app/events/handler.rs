@@ -1,18 +1,21 @@
-use crate::app::{MulticodeApp, PendingAction, Screen, EditorMode, CreateTarget, Hotkey, HotkeyField, OpenFile};
-use crate::app::ui::ContextMenu;
 use super::Message;
-use crate::app::io::{pick_folder, pick_file};
-use iced::{event, keyboard, Command, Event};
-use iced::widget::text_editor::Content;
-use multicode_core::{
-    blocks, export, git, search,
-    parser::{self, Lang},
-    meta::{self, VisualMeta, DEFAULT_VERSION},
+use crate::app::io::{pick_file, pick_folder};
+use crate::app::ui::ContextMenu;
+use crate::app::{
+    CreateTarget, EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen,
 };
-use tokio::fs;
+use chrono::Utc;
+use iced::widget::text_editor::Content;
+use iced::{event, keyboard, Command, Event};
+use multicode_core::{
+    blocks, export, git,
+    meta::{self, VisualMeta, DEFAULT_VERSION},
+    parser::{self, Lang},
+    search,
+};
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
-use chrono::Utc;
+use tokio::fs;
 
 impl MulticodeApp {
     pub fn handle_message(&mut self, message: Message) -> Command<Message> {
@@ -95,6 +98,10 @@ impl MulticodeApp {
             }
             Message::ToggleStatusBar(value) => {
                 self.settings.show_status_bar = value;
+                Command::none()
+            }
+            Message::ToggleToolbar(value) => {
+                self.settings.show_toolbar = value;
                 Command::none()
             }
             Message::StartCaptureHotkey(field) => {
@@ -222,8 +229,9 @@ impl MulticodeApp {
                     if let Some(lang) = detect_lang(&f.path) {
                         if let Some(tree) = parser::parse(&f.content, lang, None) {
                             let blocks = parser::parse_to_blocks(&tree);
-                            if let Some(s) =
-                                blocks.iter().find(|b| b.kind.starts_with("Function/Define"))
+                            if let Some(s) = blocks
+                                .iter()
+                                .find(|b| b.kind.starts_with("Function/Define"))
                             {
                                 f.content.push_str(&format!("\n{}", s.kind));
                                 f.editor = Content::with_text(&f.content);
@@ -272,7 +280,12 @@ impl MulticodeApp {
             }
             Message::FileLoaded(Ok((path, content))) => {
                 let editor = Content::with_text(&content);
-                self.open_files.push(OpenFile { path, content, editor, dirty: false });
+                self.open_files.push(OpenFile {
+                    path,
+                    content,
+                    editor,
+                    dirty: false,
+                });
                 self.active_file = Some(self.open_files.len() - 1);
                 self.rename_file_name.clear();
                 Command::none()

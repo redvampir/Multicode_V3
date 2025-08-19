@@ -2,16 +2,19 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 use iced::advanced::text::highlighter::{self, Highlighter};
-use iced::widget::{button, column, container, row, scrollable, text, text_editor, MouseArea, Space};
 use iced::widget::overlay::menu;
+use iced::widget::svg::{Handle, Svg};
+use iced::widget::{
+    button, column, container, row, scrollable, text, text_editor, MouseArea, Space,
+};
 use iced::{Color, Element, Length};
 use once_cell::sync::Lazy;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 
-use crate::app::{EntryType, FileEntry, MulticodeApp};
 use crate::app::events::Message;
+use crate::app::{EntryType, FileEntry, MulticodeApp};
 
 #[derive(Debug)]
 pub struct ContextMenu {
@@ -49,6 +52,11 @@ impl ToString for ContextMenuItem {
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 static THEME_SET: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
+
+const OPEN_ICON: &[u8] = include_bytes!("../../assets/open.svg");
+const SAVE_ICON: &[u8] = include_bytes!("../../assets/save.svg");
+const FORMAT_ICON: &[u8] = include_bytes!("../../assets/format.svg");
+const AUTOCOMPLETE_ICON: &[u8] = include_bytes!("../../assets/autocomplete.svg");
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyntaxSettings {
@@ -136,19 +144,17 @@ impl MulticodeApp {
                 matches: self.search_results.clone(),
             };
             let editor = text_editor(&file.editor)
-                .highlight::<SyntectHighlighter>(settings, |c, _| {
-                    highlighter::Format {
-                        color: Some(*c),
-                        font: None,
-                    }
+                .highlight::<SyntectHighlighter>(settings, |c, _| highlighter::Format {
+                    color: Some(*c),
+                    font: None,
                 })
                 .on_action(Message::FileContentEdited);
 
-            if self.settings.show_line_numbers {
+            let editor_view: Element<_> = if self.settings.show_line_numbers {
                 let lines = column(
                     (1..=file.editor.line_count())
                         .map(|i| text(i.to_string()).into())
-                        .collect::<Vec<Element<Message>>>()
+                        .collect::<Vec<Element<Message>>>(),
                 );
 
                 scrollable(
@@ -156,13 +162,40 @@ impl MulticodeApp {
                         container(lines).width(Length::Shrink),
                         editor.height(Length::Shrink)
                     ]
-                    .spacing(5)
+                    .spacing(5),
                 )
                 .height(Length::Fill)
                 .into()
             } else {
                 editor.height(Length::Fill).into()
-            }
+            };
+
+            let toolbar: Element<_> = if self.settings.show_toolbar {
+                let open_icon = Svg::new(Handle::from_memory(OPEN_ICON))
+                    .width(Length::Fixed(16.0))
+                    .height(Length::Fixed(16.0));
+                let save_icon = Svg::new(Handle::from_memory(SAVE_ICON))
+                    .width(Length::Fixed(16.0))
+                    .height(Length::Fixed(16.0));
+                let format_icon = Svg::new(Handle::from_memory(FORMAT_ICON))
+                    .width(Length::Fixed(16.0))
+                    .height(Length::Fixed(16.0));
+                let auto_icon = Svg::new(Handle::from_memory(AUTOCOMPLETE_ICON))
+                    .width(Length::Fixed(16.0))
+                    .height(Length::Fixed(16.0));
+                row![
+                    button(open_icon).on_press(Message::PickFile),
+                    button(save_icon).on_press(Message::SaveFile),
+                    button(format_icon).on_press(Message::AutoFormat),
+                    button(auto_icon).on_press(Message::AutoComplete)
+                ]
+                .spacing(5)
+                .into()
+            } else {
+                Space::with_height(Length::Shrink).into()
+            };
+
+            column![toolbar, editor_view].spacing(5).into()
         } else {
             container(text("файл не выбран"))
                 .width(Length::Fill)
@@ -248,7 +281,7 @@ impl MulticodeApp {
                     text(format!("{}:{}", line + 1, column + 1)),
                     text(dirty)
                 ]
-                .spacing(10)
+                .spacing(10),
             )
             .width(Length::Fill)
             .padding(5)

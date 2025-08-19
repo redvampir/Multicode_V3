@@ -1,7 +1,7 @@
 use iced::{widget::text_editor, Event};
 use std::path::PathBuf;
 
-use crate::app::{AppTheme, CreateTarget, HotkeyField, Language, FileEntry};
+use crate::app::{AppTheme, CreateTarget, FileEntry, HotkeyField, Language};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -63,6 +63,7 @@ pub enum Message {
     LanguageSelected(Language),
     ToggleLineNumbers(bool),
     ToggleStatusBar(bool),
+    ToggleToolbar(bool),
     StartCaptureHotkey(HotkeyField),
     SwitchToTextEditor,
     SwitchToVisualEditor,
