@@ -14,6 +14,15 @@ pub fn pick_folder() -> impl std::future::Future<Output = Option<PathBuf>> {
     }
 }
 
+pub fn pick_file() -> impl std::future::Future<Output = Option<PathBuf>> {
+    async {
+        task::spawn_blocking(|| rfd::FileDialog::new().pick_file())
+            .await
+            .ok()
+            .flatten()
+    }
+}
+
 impl MulticodeApp {
     pub fn load_files(&self, root: PathBuf) -> Command<Message> {
         Command::perform(

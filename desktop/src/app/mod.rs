@@ -429,6 +429,7 @@ impl Application for MulticodeApp {
                 let content = column![
                     text("Выберите папку проекта"),
                     button("Выбрать папку").on_press(Message::PickFolder),
+                    button("Выбрать файл").on_press(Message::PickFile),
                     button(settings_label).on_press(Message::OpenSettings),
                 ]
                 .align_items(alignment::Alignment::Center)
