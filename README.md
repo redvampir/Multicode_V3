@@ -82,7 +82,8 @@ pacman -S --noconfirm mingw-w64-x86_64-gtk3 pkg-config
 ## Быстрый старт
 
 ```bash
-cargo run -p desktop                  # запуск приложения
+npm run desktop:start                 # запуск приложения
+cargo run -p desktop                  # запуск приложения без npm
 cargo test -p core                    # тесты ядра
 cargo build --release -p desktop      # релизная сборка
 ```
