@@ -39,6 +39,8 @@ struct MulticodeApp {
     settings: UserSettings,
     expanded_dirs: HashSet<PathBuf>,
     context_menu: Option<(PathBuf, menu::State)>,
+    /// отображать подтверждение перезаписи файла
+    show_create_file_confirm: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -61,6 +63,10 @@ enum Message {
     FileSaved(Result<(), String>),
     NewFileNameChanged(String),
     CreateFile,
+    /// подтверждение создания при наличии файла
+    ConfirmCreateFile,
+    /// отмена создания при наличии файла
+    CancelCreateFile,
     FileCreated(Result<PathBuf, String>),
     CreateFolder,
     FolderCreated(Result<PathBuf, String>),
@@ -160,6 +166,7 @@ impl Application for MulticodeApp {
             settings,
             expanded_dirs: HashSet::new(),
             context_menu: None,
+            show_create_file_confirm: false,
         };
 
         let cmd = match &app.screen {
@@ -258,16 +265,46 @@ impl Application for MulticodeApp {
                         return Command::none();
                     }
                     let path = root.join(&name);
+                    if path.exists() {
+                        self.log.push(format!("{} уже существует", path.display()));
+                        self.show_create_file_confirm = true;
+                        return Command::none();
+                    }
                     return Command::perform(
                         async move {
-                            fs::write(&path, "")
-                                .await
+                            std::fs::OpenOptions::new()
+                                .write(true)
+                                .create_new(true)
+                                .open(&path)
                                 .map(|_| path)
                                 .map_err(|e| format!("{}", e))
                         },
                         Message::FileCreated,
                     );
                 }
+                Command::none()
+            }
+            Message::ConfirmCreateFile => {
+                if let Some(root) = self.current_root_path() {
+                    let path = root.join(&self.new_file_name);
+                    self.show_create_file_confirm = false;
+                    return Command::perform(
+                        async move {
+                            let _ = std::fs::remove_file(&path);
+                            std::fs::OpenOptions::new()
+                                .write(true)
+                                .create_new(true)
+                                .open(&path)
+                                .map(|_| path)
+                                .map_err(|e| format!("{}", e))
+                        },
+                        Message::FileCreated,
+                    );
+                }
+                Command::none()
+            }
+            Message::CancelCreateFile => {
+                self.show_create_file_confirm = false;
                 Command::none()
             }
             Message::FileCreated(Ok(path)) => {
@@ -584,6 +621,18 @@ impl Application for MulticodeApp {
                 ]
                 .spacing(5);
 
+                let warning: Element<_> = if self.show_create_file_confirm {
+                    row![
+                        text("Файл уже существует. Перезаписать?"),
+                        button("Да").on_press(Message::ConfirmCreateFile),
+                        button("Нет").on_press(Message::CancelCreateFile)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
                 let editor: Element<_> = if self.selected_file.is_some() {
                     text_editor(&self.editor)
                         .on_action(Message::FileContentEdited)
@@ -611,7 +660,7 @@ impl Application for MulticodeApp {
 
                 let body = row![sidebar, content].spacing(10);
 
-                column![menu, file_menu, body, text("Готово")]
+                column![menu, file_menu, warning, body, text("Готово")]
                     .spacing(10)
                     .into()
             }
