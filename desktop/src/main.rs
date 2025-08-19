@@ -1,6 +1,6 @@
 use iced::futures::stream;
 #[allow(unused_imports)]
-use iced::widget::overlay::menu;
+use iced::widget::overlay::menu as menu;
 use iced::widget::{
     button, column, container, pick_list, row, scrollable, text, text_editor, text_input,
     MouseArea, Space,
@@ -43,7 +43,7 @@ struct MulticodeApp {
     sender: broadcast::Sender<String>,
     settings: UserSettings,
     expanded_dirs: HashSet<PathBuf>,
-    context_menu: Option<(PathBuf, menu::State)>,
+    context_menu: Option<ContextMenu>,
     /// отображать подтверждение перезаписи файла
     show_create_file_confirm: bool,
     /// отображать подтверждение удаления файла
@@ -141,6 +141,40 @@ struct FileEntry {
     path: PathBuf,
     ty: EntryType,
     children: Vec<FileEntry>,
+}
+
+#[derive(Debug)]
+struct ContextMenu {
+    path: PathBuf,
+    state: std::cell::RefCell<menu::State>,
+    hovered: std::cell::RefCell<Option<usize>>,
+}
+
+impl ContextMenu {
+    fn new(path: PathBuf) -> Self {
+        Self {
+            path,
+            state: std::cell::RefCell::new(menu::State::new()),
+            hovered: std::cell::RefCell::new(None),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+enum ContextMenuItem {
+    Open,
+    Rename,
+    Delete,
+}
+
+impl ToString for ContextMenuItem {
+    fn to_string(&self) -> String {
+        match self {
+            ContextMenuItem::Open => "Открыть".into(),
+            ContextMenuItem::Rename => "Переименовать".into(),
+            ContextMenuItem::Delete => "Удалить".into(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -518,6 +552,7 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::SelectFile(path) => {
+                self.context_menu = None;
                 if self.dirty && Some(path.clone()) != self.selected_file {
                     self.pending_action = Some(PendingAction::Select(path));
                     return Command::none();
@@ -677,6 +712,7 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::RenameFile => {
+                self.context_menu = None;
                 if let Some(old_path) = self.selected_file.clone() {
                     let new_name = self.rename_file_name.clone();
                     if new_name.is_empty() {
@@ -717,6 +753,7 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::DeleteFile => {
+                self.context_menu = None;
                 self.show_delete_confirm = false;
                 if let Some(path) = self.selected_file.clone() {
                     if self.dirty {
@@ -872,7 +909,8 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::ShowContextMenu(path) => {
-                self.context_menu = Some((path, menu::State::new()));
+                self.selected_file = Some(path.clone());
+                self.context_menu = Some(ContextMenu::new(path));
                 Command::none()
             }
             Message::CloseContextMenu => {
