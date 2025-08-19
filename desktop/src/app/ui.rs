@@ -351,6 +351,32 @@ impl MulticodeApp {
             Space::with_height(Length::Shrink).into()
         }
     }
+
+    pub fn terminal_component(&self) -> Element<Message> {
+        if !self.show_terminal {
+            return Space::with_height(Length::Shrink).into();
+        }
+        let output = scrollable(column(
+            self.log
+                .iter()
+                .cloned()
+                .map(|l| text(l).into())
+                .collect::<Vec<Element<Message>>>(),
+        ))
+        .height(Length::Fixed(150.0));
+        let input = text_input("cmd", &self.terminal_cmd)
+            .on_input(Message::TerminalCmdChanged)
+            .on_submit(Message::RunTerminalCmd(self.terminal_cmd.clone()));
+        let clear_btn = button("Очистить").on_press(Message::RunTerminalCmd(":clear".into()));
+        let stop_btn = button("Stop").on_press(Message::RunTerminalCmd(":stop".into()));
+        let help_btn = button("Справка").on_press(Message::ShowTerminalHelp);
+        column![
+            output,
+            row![input, clear_btn, stop_btn, help_btn].spacing(5)
+        ]
+        .spacing(5)
+        .into()
+    }
 }
 
 #[cfg(test)]

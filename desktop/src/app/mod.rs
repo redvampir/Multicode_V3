@@ -13,8 +13,10 @@ use iced::{
     alignment, event, keyboard, subscription, Application, Command, Element, Length, Settings,
     Subscription, Theme,
 };
-use tokio::{fs, sync::broadcast};
+use tokio::{fs, process::Child, sync::broadcast};
 use ui::{ContextMenu, THEME_SET};
+
+const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -57,6 +59,10 @@ pub struct MulticodeApp {
     rename_file_name: String,
     query: String,
     log: Vec<String>,
+    show_terminal: bool,
+    terminal_cmd: String,
+    terminal_child: Option<Child>,
+    show_terminal_help: bool,
     sender: broadcast::Sender<String>,
     settings: UserSettings,
     expanded_dirs: HashSet<PathBuf>,
@@ -392,6 +398,10 @@ impl Application for MulticodeApp {
             rename_file_name: String::new(),
             query: String::new(),
             log: Vec::new(),
+            show_terminal: false,
+            terminal_cmd: String::new(),
+            terminal_child: None,
+            show_terminal_help: false,
             sender,
             settings,
             expanded_dirs: HashSet::new(),
@@ -504,6 +514,7 @@ impl Application for MulticodeApp {
                     button("Поиск").on_press(Message::RunSearch),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
+                    button("Терминал").on_press(Message::ToggleTerminal),
                     button(settings_label).on_press(Message::OpenSettings),
                 ]
                 .spacing(10);
@@ -635,13 +646,7 @@ impl Application for MulticodeApp {
                 let content = column![
                     search_panel,
                     editor,
-                    scrollable(column(
-                        self.log
-                            .iter()
-                            .cloned()
-                            .map(|l| text(l).into())
-                            .collect::<Vec<Element<Message>>>()
-                    )),
+                    self.terminal_component(),
                 ]
                 .spacing(10);
 
@@ -659,6 +664,7 @@ impl Application for MulticodeApp {
                 ]
                 .spacing(10);
 
+                let mut content: Element<_> = page.into();
                 if self.show_delete_confirm {
                     let modal_content = container(
                         column![
@@ -671,12 +677,19 @@ impl Application for MulticodeApp {
                         ]
                         .spacing(10),
                     );
-                    Modal::new(page, modal_content)
+                    content = Modal::new(content, modal_content)
                         .on_blur(Message::CancelDeleteFile)
-                        .into()
-                } else {
-                    page.into()
+                        .into();
                 }
+                if self.show_terminal_help {
+                    let help = container(scrollable(text(TERMINAL_HELP)))
+                        .width(Length::Fixed(400.0))
+                        .padding(10);
+                    content = Modal::new(content, help)
+                        .on_blur(Message::ShowTerminalHelp)
+                        .into();
+                }
+                content
             }
             Screen::VisualEditor { .. } => {
                 let settings_label = if self.settings.language == Language::Russian {
@@ -689,6 +702,7 @@ impl Application for MulticodeApp {
                     button("Поиск").on_press(Message::RunSearch),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
+                    button("Терминал").on_press(Message::ToggleTerminal),
                     button(settings_label).on_press(Message::OpenSettings),
                 ]
                 .spacing(10);
@@ -804,13 +818,7 @@ impl Application for MulticodeApp {
                 let content = column![
                     text_input("поиск", &self.query).on_input(Message::QueryChanged),
                     editor,
-                    scrollable(column(
-                        self.log
-                            .iter()
-                            .cloned()
-                            .map(|l| text(l).into())
-                            .collect::<Vec<Element<Message>>>()
-                    )),
+                    self.terminal_component(),
                 ]
                 .spacing(10);
 
@@ -828,6 +836,7 @@ impl Application for MulticodeApp {
                 ]
                 .spacing(10);
 
+                let mut content: Element<_> = page.into();
                 if self.show_delete_confirm {
                     let modal_content = container(
                         column![
@@ -840,12 +849,19 @@ impl Application for MulticodeApp {
                         ]
                         .spacing(10),
                     );
-                    Modal::new(page, modal_content)
+                    content = Modal::new(content, modal_content)
                         .on_blur(Message::CancelDeleteFile)
-                        .into()
-                } else {
-                    page.into()
+                        .into();
                 }
+                if self.show_terminal_help {
+                    let help = container(scrollable(text(TERMINAL_HELP)))
+                        .width(Length::Fixed(400.0))
+                        .padding(10);
+                    content = Modal::new(content, help)
+                        .on_blur(Message::ShowTerminalHelp)
+                        .into();
+                }
+                content
             }
             Screen::Settings => {
                 let hotkeys = &self.settings.hotkeys;
