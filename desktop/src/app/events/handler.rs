@@ -90,6 +90,10 @@ impl MulticodeApp {
                 self.settings.theme = theme;
                 Command::none()
             }
+            Message::SyntectThemeSelected(theme) => {
+                self.settings.syntect_theme = theme;
+                Command::none()
+            }
             Message::LanguageSelected(lang) => {
                 self.settings.language = lang;
                 Command::none()

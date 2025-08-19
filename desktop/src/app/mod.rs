@@ -14,7 +14,7 @@ use iced::{
     Subscription, Theme,
 };
 use tokio::{fs, sync::broadcast};
-use ui::ContextMenu;
+use ui::{ContextMenu, THEME_SET};
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
@@ -274,6 +274,10 @@ impl fmt::Display for Language {
     }
 }
 
+fn default_syntect_theme() -> String {
+    "InspiredGitHub".into()
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserSettings {
     last_folder: Option<PathBuf>,
@@ -283,6 +287,8 @@ struct UserSettings {
     editor_mode: EditorMode,
     #[serde(default)]
     theme: AppTheme,
+    #[serde(default = "default_syntect_theme")]
+    syntect_theme: String,
     #[serde(default)]
     language: Language,
     #[serde(default)]
@@ -300,6 +306,7 @@ impl Default for UserSettings {
             hotkeys: Hotkeys::default(),
             editor_mode: EditorMode::Text,
             theme: AppTheme::default(),
+            syntect_theme: default_syntect_theme(),
             language: Language::default(),
             show_line_numbers: true,
             show_status_bar: true,
@@ -832,6 +839,8 @@ impl Application for MulticodeApp {
                 } else {
                     hotkeys.delete_file.to_string()
                 };
+                let syntect_themes: Vec<String> =
+                    THEME_SET.themes.keys().cloned().collect();
                 let warning: Element<_> = if let Some(w) = &self.settings_warning {
                     text(w.clone()).into()
                 } else {
@@ -845,6 +854,15 @@ impl Application for MulticodeApp {
                             &AppTheme::ALL[..],
                             Some(self.settings.theme),
                             Message::ThemeSelected
+                        )
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Тема подсветки"),
+                        pick_list(
+                            syntect_themes.clone(),
+                            Some(self.settings.syntect_theme.clone()),
+                            Message::SyntectThemeSelected
                         )
                     ]
                     .spacing(10),

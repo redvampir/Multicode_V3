@@ -51,7 +51,7 @@ impl ToString for ContextMenuItem {
 }
 
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
-static THEME_SET: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
+pub static THEME_SET: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
 
 const OPEN_ICON: &[u8] = include_bytes!("../../assets/open.svg");
 const SAVE_ICON: &[u8] = include_bytes!("../../assets/save.svg");
@@ -62,6 +62,7 @@ const AUTOCOMPLETE_ICON: &[u8] = include_bytes!("../../assets/autocomplete.svg")
 pub struct SyntaxSettings {
     pub extension: String,
     pub matches: Vec<(usize, Range<usize>)>,
+    pub theme: String,
 }
 
 pub struct SyntectHighlighter {
@@ -79,7 +80,10 @@ impl Highlighter for SyntectHighlighter {
         let syntax = SYNTAX_SET
             .find_syntax_by_extension(&settings.extension)
             .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
-        let theme = &THEME_SET.themes["InspiredGitHub"];
+        let theme = THEME_SET
+            .themes
+            .get(&settings.theme)
+            .unwrap_or(&THEME_SET.themes["InspiredGitHub"]);
         Self {
             settings: settings.clone(),
             highlighter: HighlightLines::new(syntax, theme),
@@ -91,7 +95,10 @@ impl Highlighter for SyntectHighlighter {
         let syntax = SYNTAX_SET
             .find_syntax_by_extension(&new_settings.extension)
             .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
-        let theme = &THEME_SET.themes["InspiredGitHub"];
+        let theme = THEME_SET
+            .themes
+            .get(&new_settings.theme)
+            .unwrap_or(&THEME_SET.themes["InspiredGitHub"]);
         self.highlighter = HighlightLines::new(syntax, theme);
         self.settings = new_settings.clone();
         self.current_line = 0;
@@ -160,6 +167,7 @@ impl MulticodeApp {
             let settings = SyntaxSettings {
                 extension: ext,
                 matches: self.search_results.clone(),
+                theme: self.settings.syntect_theme.clone(),
             };
             let editor = text_editor(&file.editor)
                 .highlight::<SyntectHighlighter>(settings, |c, _| highlighter::Format {
