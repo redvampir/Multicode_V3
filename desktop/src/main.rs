@@ -132,9 +132,82 @@ struct FileEntry {
     children: Vec<FileEntry>,
 }
 
-#[derive(Debug, Default, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Hotkey {
+    key: String,
+    ctrl: bool,
+    alt: bool,
+    shift: bool,
+}
+
+impl Hotkey {
+    fn matches(&self, key: &keyboard::Key, modifiers: keyboard::Modifiers) -> bool {
+        self.ctrl == modifiers.control()
+            && self.alt == modifiers.alt()
+            && self.shift == modifiers.shift()
+            && match key {
+                keyboard::Key::Character(c) => c.eq_ignore_ascii_case(&self.key),
+                keyboard::Key::Named(named) => {
+                    self.key.eq_ignore_ascii_case(&format!("{:?}", named))
+                }
+                _ => false,
+            }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct Hotkeys {
+    create_file: Hotkey,
+    save_file: Hotkey,
+    rename_file: Hotkey,
+    delete_file: Hotkey,
+}
+
+impl Default for Hotkeys {
+    fn default() -> Self {
+        Self {
+            create_file: Hotkey {
+                key: "N".into(),
+                ctrl: true,
+                alt: false,
+                shift: false,
+            },
+            save_file: Hotkey {
+                key: "S".into(),
+                ctrl: true,
+                alt: false,
+                shift: false,
+            },
+            rename_file: Hotkey {
+                key: "F2".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
+            delete_file: Hotkey {
+                key: "Delete".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserSettings {
     last_folder: Option<PathBuf>,
+    #[serde(default)]
+    hotkeys: Hotkeys,
+}
+
+impl Default for UserSettings {
+    fn default() -> Self {
+        Self {
+            last_folder: None,
+            hotkeys: Hotkeys::default(),
+        }
+    }
 }
 
 impl UserSettings {
@@ -221,22 +294,18 @@ impl Application for MulticodeApp {
                 modifiers,
                 ..
             })) => {
-                if modifiers.control() {
-                    match key.as_ref() {
-                        keyboard::Key::Character("n") => return self.update(Message::CreateFile),
-                        keyboard::Key::Character("s") => return self.update(Message::SaveFile),
-                        _ => {}
-                    }
-                } else if modifiers.is_empty() {
-                    match key.as_ref() {
-                        keyboard::Key::Named(keyboard::key::Named::F2) => {
-                            return self.update(Message::RenameFile)
-                        }
-                        keyboard::Key::Named(keyboard::key::Named::Delete) => {
-                            return self.update(Message::DeleteFile)
-                        }
-                        _ => {}
-                    }
+                let hotkeys = &self.settings.hotkeys;
+                if hotkeys.create_file.matches(&key, modifiers) {
+                    return self.update(Message::CreateFile);
+                }
+                if hotkeys.save_file.matches(&key, modifiers) {
+                    return self.update(Message::SaveFile);
+                }
+                if hotkeys.rename_file.matches(&key, modifiers) {
+                    return self.update(Message::RenameFile);
+                }
+                if hotkeys.delete_file.matches(&key, modifiers) {
+                    return self.update(Message::DeleteFile);
                 }
                 Command::none()
             }
