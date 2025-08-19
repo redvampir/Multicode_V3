@@ -1,3 +1,5 @@
+mod modal;
+
 use iced::futures::stream;
 #[allow(unused_imports)]
 use iced::widget::overlay::menu as menu;
@@ -5,6 +7,7 @@ use iced::widget::{
     button, column, container, pick_list, row, scrollable, text, text_editor, text_input,
     MouseArea, Space,
 };
+use crate::modal::Modal;
 use iced::{
     alignment, event, keyboard, subscription, Application, Command, Element, Event, Length,
     Settings, Subscription, Theme,
@@ -479,7 +482,7 @@ impl Application for MulticodeApp {
                     return self.update(Message::RenameFile);
                 }
                 if hotkeys.delete_file.matches(&key, modifiers) {
-                    return self.update(Message::DeleteFile);
+                    return self.update(Message::RequestDeleteFile);
                 }
                 Command::none()
             }
@@ -1132,30 +1135,35 @@ impl Application for MulticodeApp {
 
                 let body = row![sidebar, content].spacing(10);
 
-                let delete_warning: Element<_> = if self.show_delete_confirm {
-                    row![
-                        text("Удалить выбранный файл?"),
-                        button("Да").on_press(Message::DeleteFile),
-                        button("Нет").on_press(Message::CancelDeleteFile)
-                    ]
-                    .spacing(5)
-                    .into()
-                } else {
-                    Space::with_width(Length::Shrink).into()
-                };
-
-                column![
+                let page = column![
                     menu,
                     mode_bar,
                     file_menu,
-                    delete_warning,
                     warning,
                     dirty_warning,
                     body,
                     text("Готово")
                 ]
-                .spacing(10)
-                .into()
+                .spacing(10);
+
+                if self.show_delete_confirm {
+                    let modal_content = container(
+                        column![
+                            text("Удалить выбранный файл?"),
+                            row![
+                                button("Да").on_press(Message::DeleteFile),
+                                button("Нет").on_press(Message::CancelDeleteFile)
+                            ]
+                            .spacing(5)
+                        ]
+                        .spacing(10),
+                    );
+                    Modal::new(page, modal_content)
+                        .on_blur(Message::CancelDeleteFile)
+                        .into()
+                } else {
+                    page.into()
+                }
             }
             Screen::VisualEditor { .. } => {
                 let settings_label = if self.settings.language == Language::Russian {
@@ -1263,30 +1271,35 @@ impl Application for MulticodeApp {
 
                 let body = row![sidebar, content].spacing(10);
 
-                let delete_warning: Element<_> = if self.show_delete_confirm {
-                    row![
-                        text("Удалить выбранный файл?"),
-                        button("Да").on_press(Message::DeleteFile),
-                        button("Нет").on_press(Message::CancelDeleteFile)
-                    ]
-                    .spacing(5)
-                    .into()
-                } else {
-                    Space::with_width(Length::Shrink).into()
-                };
-
-                column![
+                let page = column![
                     menu,
                     mode_bar,
                     file_menu,
-                    delete_warning,
                     warning,
                     dirty_warning,
                     body,
                     text("Готово")
                 ]
-                .spacing(10)
-                .into()
+                .spacing(10);
+
+                if self.show_delete_confirm {
+                    let modal_content = container(
+                        column![
+                            text("Удалить выбранный файл?"),
+                            row![
+                                button("Да").on_press(Message::DeleteFile),
+                                button("Нет").on_press(Message::CancelDeleteFile)
+                            ]
+                            .spacing(5)
+                        ]
+                        .spacing(10),
+                    );
+                    Modal::new(page, modal_content)
+                        .on_blur(Message::CancelDeleteFile)
+                        .into()
+                } else {
+                    page.into()
+                }
             }
             Screen::Settings => {
                 let hotkeys = &self.settings.hotkeys;
