@@ -37,7 +37,8 @@
     import { autocompletion as autocomplete } from "https://cdn.jsdelivr.net/npm/@codemirror/autocomplete@6.18.6/dist/index.js";
     import { invoke } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/tauri.js";
     import { save as saveDialog } from "https://cdn.jsdelivr.net/npm/@tauri-apps/api@1.5.0/dialog.js";
-    import { VisualCanvas, VIEW_STATE_KEY } from "./visual/canvas.js";
+    import { VisualCanvas } from "./visual/canvas.js";
+    import { VIEW_STATE_KEY } from "./visual/constants.js";
     import { languageFromFilename, loadLanguage, mimeFromFilename } from "./shared/mime-map.js";
     import { loadBlockPlugins } from "./visual/blocks.js";
     import { insertVisualMeta, visualMetaHighlighter, visualMetaTooltip, foldMetaBlock, visualMetaMessenger, scrollToMeta, addBlockToolbar, refreshBlockCount, listMetaIds } from "./editor/visual-meta.js";
