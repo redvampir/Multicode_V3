@@ -1,0 +1,930 @@
+pub mod events;
+pub mod io;
+pub mod ui;
+
+use crate::modal::Modal;
+use ui::ContextMenu;
+use events::Message;
+use iced::futures::stream;
+use iced::widget::{
+    button, column, container, pick_list, row, scrollable, text, text_editor, text_input,
+    MouseArea, Space,
+};
+use iced::{
+    alignment, event, keyboard, subscription, Application, Color, Command, Element, Event, Length,
+    Settings, Subscription, Theme,
+};
+use multicode_core::{blocks, export, git, search};
+use tokio::{fs, sync::broadcast};
+
+use directories::ProjectDirs;
+use serde::{Deserialize, Serialize};
+use std::collections::HashSet;
+use std::fmt;
+use std::ops::Range;
+use std::path::{Path, PathBuf};
+
+pub fn run() -> iced::Result {
+    MulticodeApp::run(Settings::default())
+}
+
+#[derive(Debug)]
+pub struct MulticodeApp {
+    screen: Screen,
+    files: Vec<FileEntry>,
+    open_files: Vec<OpenFile>,
+    /// индекс активного файла во вкладках
+    active_file: Option<usize>,
+    /// строка поиска
+    search_term: String,
+    /// строка замены
+    replace_term: String,
+    /// найденные совпадения
+    search_results: Vec<(usize, Range<usize>)>,
+    /// имя для создания нового файла
+    new_file_name: String,
+    /// имя для создания новой директории
+    new_directory_name: String,
+    /// что создавать: файл или директорию
+    create_target: CreateTarget,
+    /// новое имя при переименовании
+    rename_file_name: String,
+    query: String,
+    log: Vec<String>,
+    sender: broadcast::Sender<String>,
+    settings: UserSettings,
+    expanded_dirs: HashSet<PathBuf>,
+    context_menu: Option<ContextMenu>,
+    /// отображать подтверждение перезаписи файла
+    show_create_file_confirm: bool,
+    /// отображать подтверждение удаления файла
+    show_delete_confirm: bool,
+    /// ожидаемое действие при подтверждении потери изменений
+    pending_action: Option<PendingAction>,
+    hotkey_capture: Option<HotkeyField>,
+    settings_warning: Option<String>,
+}
+
+#[derive(Debug, Clone)]
+pub enum Screen {
+    ProjectPicker,
+    TextEditor { root: PathBuf },
+    VisualEditor { root: PathBuf },
+    Settings,
+}
+
+
+#[derive(Debug, Clone)]
+pub enum PendingAction {
+    Select(PathBuf),
+    Delete(PathBuf),
+}
+
+#[derive(Debug, Clone)]
+pub enum EntryType {
+    File,
+    Dir,
+}
+
+#[derive(Debug, Clone)]
+pub struct FileEntry {
+    path: PathBuf,
+    ty: EntryType,
+    children: Vec<FileEntry>,
+}
+
+#[derive(Debug)]
+pub struct OpenFile {
+    path: PathBuf,
+    content: String,
+    editor: text_editor::Content,
+    dirty: bool,
+}
+
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CreateTarget {
+    File,
+    Directory,
+}
+
+impl CreateTarget {
+    const ALL: [CreateTarget; 2] = [CreateTarget::File, CreateTarget::Directory];
+}
+
+impl ToString for CreateTarget {
+    fn to_string(&self) -> String {
+        match self {
+            CreateTarget::File => "Файл".into(),
+            CreateTarget::Directory => "Папка".into(),
+        }
+    }
+}
+
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Hotkey {
+    key: String,
+    ctrl: bool,
+    alt: bool,
+    shift: bool,
+}
+
+impl Hotkey {
+    fn matches(&self, key: &keyboard::Key, modifiers: keyboard::Modifiers) -> bool {
+        self.ctrl == modifiers.control()
+            && self.alt == modifiers.alt()
+            && self.shift == modifiers.shift()
+            && match key {
+                keyboard::Key::Character(c) => c.eq_ignore_ascii_case(&self.key),
+                keyboard::Key::Named(named) => {
+                    self.key.eq_ignore_ascii_case(&format!("{:?}", named))
+                }
+                _ => false,
+            }
+    }
+}
+
+impl fmt::Display for Hotkey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut parts = Vec::new();
+        if self.ctrl {
+            parts.push("Ctrl".to_string());
+        }
+        if self.alt {
+            parts.push("Alt".to_string());
+        }
+        if self.shift {
+            parts.push("Shift".to_string());
+        }
+        parts.push(self.key.clone());
+        write!(f, "{}", parts.join("+"))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Hotkeys {
+    create_file: Hotkey,
+    save_file: Hotkey,
+    rename_file: Hotkey,
+    delete_file: Hotkey,
+}
+
+impl Default for Hotkeys {
+    fn default() -> Self {
+        Self {
+            create_file: Hotkey {
+                key: "N".into(),
+                ctrl: true,
+                alt: false,
+                shift: false,
+            },
+            save_file: Hotkey {
+                key: "S".into(),
+                ctrl: true,
+                alt: false,
+                shift: false,
+            },
+            rename_file: Hotkey {
+                key: "F2".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
+            delete_file: Hotkey {
+                key: "Delete".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum HotkeyField {
+    CreateFile,
+    SaveFile,
+    RenameFile,
+    DeleteFile,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum EditorMode {
+    Text,
+    Visual,
+}
+
+impl Default for EditorMode {
+    fn default() -> Self {
+        EditorMode::Text
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum AppTheme {
+    Light,
+    Dark,
+}
+
+impl AppTheme {
+    const ALL: [AppTheme; 2] = [AppTheme::Light, AppTheme::Dark];
+}
+
+impl Default for AppTheme {
+    fn default() -> Self {
+        AppTheme::Light
+    }
+}
+
+impl fmt::Display for AppTheme {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppTheme::Light => write!(f, "Light"),
+            AppTheme::Dark => write!(f, "Dark"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Language {
+    English,
+    Russian,
+}
+
+impl Language {
+    const ALL: [Language; 2] = [Language::English, Language::Russian];
+}
+
+impl Default for Language {
+    fn default() -> Self {
+        Language::English
+    }
+}
+
+impl fmt::Display for Language {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Language::English => write!(f, "English"),
+            Language::Russian => write!(f, "Русский"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct UserSettings {
+    last_folder: Option<PathBuf>,
+    #[serde(default)]
+    hotkeys: Hotkeys,
+    #[serde(default)]
+    editor_mode: EditorMode,
+    #[serde(default)]
+    theme: AppTheme,
+    #[serde(default)]
+    language: Language,
+}
+
+impl Default for UserSettings {
+    fn default() -> Self {
+        Self {
+            last_folder: None,
+            hotkeys: Hotkeys::default(),
+            editor_mode: EditorMode::Text,
+            theme: AppTheme::default(),
+            language: Language::default(),
+        }
+    }
+}
+
+impl UserSettings {
+    fn load() -> Self {
+        tokio::runtime::Runtime::new()
+            .map(|rt| rt.block_on(Self::load_async()))
+            .unwrap_or_default()
+    }
+
+    async fn load_async() -> Self {
+        if let Some(proj) = ProjectDirs::from("com", "multicode", "multicode") {
+            let path = proj.config_dir().join("settings.json");
+            if let Ok(data) = fs::read_to_string(path).await {
+                if let Ok(s) = serde_json::from_str(&data) {
+                    return s;
+                }
+            }
+        }
+        Self::default()
+    }
+
+    async fn save(self) {
+        if let Some(proj) = ProjectDirs::from("com", "multicode", "multicode") {
+            let path = proj.config_dir().join("settings.json");
+            let _ = fs::create_dir_all(path.parent().unwrap()).await;
+            if let Ok(json) = serde_json::to_string_pretty(&self) {
+                let _ = fs::write(path, json).await;
+            }
+        }
+    }
+}
+
+impl Application for MulticodeApp {
+    type Executor = iced::executor::Default;
+    type Message = Message;
+    type Theme = Theme;
+    type Flags = ();
+
+    fn new(_flags: ()) -> (Self, Command<Message>) {
+        let settings = UserSettings::load();
+        let (sender, _) = broadcast::channel(100);
+
+        let app = MulticodeApp {
+            screen: if let Some(path) = settings.last_folder.clone() {
+                match settings.editor_mode {
+                    EditorMode::Text => Screen::TextEditor { root: path },
+                    EditorMode::Visual => Screen::VisualEditor { root: path },
+                }
+            } else {
+                Screen::ProjectPicker
+            },
+            files: Vec::new(),
+            open_files: Vec::new(),
+            active_file: None,
+            search_term: String::new(),
+            replace_term: String::new(),
+            search_results: Vec::new(),
+            new_file_name: String::new(),
+            new_directory_name: String::new(),
+            create_target: CreateTarget::File,
+            rename_file_name: String::new(),
+            query: String::new(),
+            log: Vec::new(),
+            sender,
+            settings,
+            expanded_dirs: HashSet::new(),
+            context_menu: None,
+            show_create_file_confirm: false,
+            show_delete_confirm: false,
+            pending_action: None,
+            hotkey_capture: None,
+            settings_warning: None,
+        };
+
+        let cmd = match &app.screen {
+            Screen::TextEditor { root } | Screen::VisualEditor { root } => {
+                app.load_files(root.clone())
+            }
+            _ => Command::none(),
+        };
+
+        (app, cmd)
+    }
+
+    fn title(&self) -> String {
+        String::from("Multicode Desktop")
+    }
+
+    fn update(&mut self, message: Message) -> Command<Message> {
+        self.handle_message(message)
+    }
+
+    fn subscription(&self) -> Subscription<Message> {
+        if matches!(
+            self.screen,
+            Screen::TextEditor { .. } | Screen::VisualEditor { .. }
+        ) {
+            let rx = self.sender.subscribe();
+            let core = subscription::run_with_id(
+                "core-events",
+                stream::unfold(rx, |mut rx| async {
+                    match rx.recv().await {
+                        Ok(ev) => Some((Message::CoreEvent(ev), rx)),
+                        Err(_) => None,
+                    }
+                }),
+            );
+            let events = event::listen().map(Message::IcedEvent);
+            Subscription::batch([core, events])
+        } else {
+            Subscription::none()
+        }
+    }
+
+    fn theme(&self) -> Theme {
+        match self.settings.theme {
+            AppTheme::Light => Theme::Light,
+            AppTheme::Dark => Theme::Dark,
+        }
+    }
+
+    fn view(&self) -> Element<Message> {
+        match &self.screen {
+            Screen::ProjectPicker => {
+                let settings_label = if self.settings.language == Language::Russian {
+                    "Настройки"
+                } else {
+                    "Settings"
+                };
+                let content = column![
+                    text("Выберите папку проекта"),
+                    button("Выбрать папку").on_press(Message::PickFolder),
+                    button(settings_label).on_press(Message::OpenSettings),
+                ]
+                .align_items(alignment::Alignment::Center)
+                .spacing(20);
+
+                container(content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .center_y()
+                    .into()
+            }
+            Screen::TextEditor { .. } => {
+                let settings_label = if self.settings.language == Language::Russian {
+                    "Настройки"
+                } else {
+                    "Settings"
+                };
+                let menu = row![
+                    button("Разбор").on_press(Message::RunParse),
+                    button("Поиск").on_press(Message::RunSearch),
+                    button("Журнал Git").on_press(Message::RunGitLog),
+                    button("Экспорт").on_press(Message::RunExport),
+                    button(settings_label).on_press(Message::OpenSettings),
+                ]
+                .spacing(10);
+
+                let sidebar = container(self.file_tree()).width(200);
+
+                let tabs = row(
+                    self.open_files
+                        .iter()
+                        .enumerate()
+                        .map(|(i, f)| {
+                            let name = f
+                                .path
+                                .file_name()
+                                .unwrap()
+                                .to_string_lossy()
+                                .to_string();
+                            row![
+                                button(text(name)).on_press(Message::SelectFile(f.path.clone())),
+                                button(text("x")).on_press(Message::CloseFile(i))
+                            ]
+                            .spacing(5)
+                            .into()
+                        })
+                        .collect::<Vec<Element<Message>>>(),
+                )
+                .spacing(5);
+
+                let rename_btn: Element<_> = if self.active_file.is_some() {
+                    button("Переименовать").on_press(Message::RenameFile).into()
+                } else {
+                    button("Переименовать").into()
+                };
+                let delete_btn: Element<_> = if self.active_file.is_some() {
+                    button("Удалить")
+                        .on_press(Message::RequestDeleteFile)
+                        .into()
+                } else {
+                    button("Удалить").into()
+                };
+                let save_label = if self.is_dirty() {
+                    "Сохранить*"
+                } else {
+                    "Сохранить"
+                };
+                let save_btn: Element<_> = if self.active_file.is_some() {
+                    button(save_label).on_press(Message::SaveFile).into()
+                } else {
+                    button(save_label).into()
+                };
+                let text_btn: Element<_> = button("Text").into();
+                let visual_btn: Element<_> = button("Visual")
+                    .on_press(Message::SwitchToVisualEditor)
+                    .into();
+                let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
+
+                let create_select = pick_list(
+                    &CreateTarget::ALL[..],
+                    Some(self.create_target),
+                    Message::CreateTargetChanged,
+                );
+                let (placeholder, value, on_input_msg, create_msg): (
+                    &str,
+                    &String,
+                    fn(String) -> Message,
+                    Message,
+                ) = match self.create_target {
+                    CreateTarget::File => (
+                        "новый файл",
+                        &self.new_file_name,
+                        Message::NewFileNameChanged as fn(String) -> Message,
+                        Message::CreateFile,
+                    ),
+                    CreateTarget::Directory => (
+                        "новый каталог",
+                        &self.new_directory_name,
+                        Message::NewDirectoryNameChanged as fn(String) -> Message,
+                        Message::CreateDirectory,
+                    ),
+                };
+                let create_input = text_input(placeholder, value).on_input(on_input_msg);
+                let create_button = button("Создать").on_press(create_msg);
+                let file_menu = row![
+                    create_select,
+                    create_input,
+                    create_button,
+                    text_input("новое имя", &self.rename_file_name)
+                        .on_input(Message::RenameFileNameChanged),
+                    rename_btn,
+                    delete_btn,
+                ]
+                .spacing(5);
+
+                let warning: Element<_> = if self.show_create_file_confirm {
+                    row![
+                        text("Файл уже существует. Перезаписать?"),
+                        button("Да").on_press(Message::ConfirmCreateFile),
+                        button("Нет").on_press(Message::CancelCreateFile)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let dirty_warning: Element<_> = if self.pending_action.is_some() {
+                    row![
+                        text("Есть несохранённые изменения. Продолжить?"),
+                        button("Да").on_press(Message::ConfirmDiscard),
+                        button("Нет").on_press(Message::CancelDiscard)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let editor: Element<_> = self.text_editor_component();
+
+                let search_bar = row![
+                    text_input("найти", &self.search_term).on_input(Message::SearchTermChanged),
+                    button("Найти").on_press(Message::Find),
+                    text_input("заменить на", &self.replace_term)
+                        .on_input(Message::ReplaceTermChanged),
+                    button("Заменить все").on_press(Message::ReplaceAll),
+                ]
+                .spacing(5);
+
+                let content = column![
+                    search_bar,
+                    editor,
+                    scrollable(column(
+                        self.log
+                            .iter()
+                            .cloned()
+                            .map(|l| text(l).into())
+                            .collect::<Vec<Element<Message>>>()
+                    )),
+                ]
+                .spacing(10);
+
+                let body = row![sidebar, content].spacing(10);
+
+                let page = column![
+                    menu,
+                    tabs,
+                    mode_bar,
+                    file_menu,
+                    warning,
+                    dirty_warning,
+                    body,
+                    text("Готово")
+                ]
+                .spacing(10);
+
+                if self.show_delete_confirm {
+                    let modal_content = container(
+                        column![
+                            text("Удалить выбранный файл?"),
+                            row![
+                                button("Да").on_press(Message::DeleteFile),
+                                button("Нет").on_press(Message::CancelDeleteFile)
+                            ]
+                            .spacing(5)
+                        ]
+                        .spacing(10),
+                    );
+                    Modal::new(page, modal_content)
+                        .on_blur(Message::CancelDeleteFile)
+                        .into()
+                } else {
+                    page.into()
+                }
+            }
+            Screen::VisualEditor { .. } => {
+                let settings_label = if self.settings.language == Language::Russian {
+                    "Настройки"
+                } else {
+                    "Settings"
+                };
+                let menu = row![
+                    button("Разбор").on_press(Message::RunParse),
+                    button("Поиск").on_press(Message::RunSearch),
+                    button("Журнал Git").on_press(Message::RunGitLog),
+                    button("Экспорт").on_press(Message::RunExport),
+                    button(settings_label).on_press(Message::OpenSettings),
+                ]
+                .spacing(10);
+
+                let sidebar = container(self.file_tree()).width(200);
+
+                let tabs = row(
+                    self.open_files
+                        .iter()
+                        .enumerate()
+                        .map(|(i, f)| {
+                            let name = f
+                                .path
+                                .file_name()
+                                .unwrap()
+                                .to_string_lossy()
+                                .to_string();
+                            row![
+                                button(text(name)).on_press(Message::SelectFile(f.path.clone())),
+                                button(text("x")).on_press(Message::CloseFile(i))
+                            ]
+                            .spacing(5)
+                            .into()
+                        })
+                        .collect::<Vec<Element<Message>>>(),
+                )
+                .spacing(5);
+
+                let rename_btn: Element<_> = if self.active_file.is_some() {
+                    button("Переименовать").on_press(Message::RenameFile).into()
+                } else {
+                    button("Переименовать").into()
+                };
+                let delete_btn: Element<_> = if self.active_file.is_some() {
+                    button("Удалить")
+                        .on_press(Message::RequestDeleteFile)
+                        .into()
+                } else {
+                    button("Удалить").into()
+                };
+                let save_label = if self.is_dirty() {
+                    "Сохранить*"
+                } else {
+                    "Сохранить"
+                };
+                let save_btn: Element<_> = if self.active_file.is_some() {
+                    button(save_label).on_press(Message::SaveFile).into()
+                } else {
+                    button(save_label).into()
+                };
+                let text_btn: Element<_> =
+                    button("Text").on_press(Message::SwitchToTextEditor).into();
+                let visual_btn: Element<_> = button("Visual").into();
+                let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
+
+                let create_select = pick_list(
+                    &CreateTarget::ALL[..],
+                    Some(self.create_target),
+                    Message::CreateTargetChanged,
+                );
+                let (placeholder, value, on_input_msg, create_msg): (
+                    &str,
+                    &String,
+                    fn(String) -> Message,
+                    Message,
+                ) = match self.create_target {
+                    CreateTarget::File => (
+                        "новый файл",
+                        &self.new_file_name,
+                        Message::NewFileNameChanged as fn(String) -> Message,
+                        Message::CreateFile,
+                    ),
+                    CreateTarget::Directory => (
+                        "новый каталог",
+                        &self.new_directory_name,
+                        Message::NewDirectoryNameChanged as fn(String) -> Message,
+                        Message::CreateDirectory,
+                    ),
+                };
+                let create_input = text_input(placeholder, value).on_input(on_input_msg);
+                let create_button = button("Создать").on_press(create_msg);
+                let file_menu = row![
+                    create_select,
+                    create_input,
+                    create_button,
+                    text_input("новое имя", &self.rename_file_name)
+                        .on_input(Message::RenameFileNameChanged),
+                    rename_btn,
+                    delete_btn,
+                ]
+                .spacing(5);
+
+                let warning: Element<_> = if self.show_create_file_confirm {
+                    row![
+                        text("Файл уже существует. Перезаписать?"),
+                        button("Да").on_press(Message::ConfirmCreateFile),
+                        button("Нет").on_press(Message::CancelCreateFile)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let dirty_warning: Element<_> = if self.pending_action.is_some() {
+                    row![
+                        text("Есть несохранённые изменения. Продолжить?"),
+                        button("Да").on_press(Message::ConfirmDiscard),
+                        button("Нет").on_press(Message::CancelDiscard)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let editor: Element<_> = self.visual_editor_component();
+
+                let content = column![
+                    text_input("поиск", &self.query).on_input(Message::QueryChanged),
+                    editor,
+                    scrollable(column(
+                        self.log
+                            .iter()
+                            .cloned()
+                            .map(|l| text(l).into())
+                            .collect::<Vec<Element<Message>>>()
+                    )),
+                ]
+                .spacing(10);
+
+                let body = row![sidebar, content].spacing(10);
+
+                let page = column![
+                    menu,
+                    tabs,
+                    mode_bar,
+                    file_menu,
+                    warning,
+                    dirty_warning,
+                    body,
+                    text("Готово")
+                ]
+                .spacing(10);
+
+                if self.show_delete_confirm {
+                    let modal_content = container(
+                        column![
+                            text("Удалить выбранный файл?"),
+                            row![
+                                button("Да").on_press(Message::DeleteFile),
+                                button("Нет").on_press(Message::CancelDeleteFile)
+                            ]
+                            .spacing(5)
+                        ]
+                        .spacing(10),
+                    );
+                    Modal::new(page, modal_content)
+                        .on_blur(Message::CancelDeleteFile)
+                        .into()
+                } else {
+                    page.into()
+                }
+            }
+            Screen::Settings => {
+                let hotkeys = &self.settings.hotkeys;
+                let create_label = if self.hotkey_capture == Some(HotkeyField::CreateFile) {
+                    String::from("...")
+                } else {
+                    hotkeys.create_file.to_string()
+                };
+                let save_label = if self.hotkey_capture == Some(HotkeyField::SaveFile) {
+                    String::from("...")
+                } else {
+                    hotkeys.save_file.to_string()
+                };
+                let rename_label = if self.hotkey_capture == Some(HotkeyField::RenameFile) {
+                    String::from("...")
+                } else {
+                    hotkeys.rename_file.to_string()
+                };
+                let delete_label = if self.hotkey_capture == Some(HotkeyField::DeleteFile) {
+                    String::from("...")
+                } else {
+                    hotkeys.delete_file.to_string()
+                };
+                let warning: Element<_> = if let Some(w) = &self.settings_warning {
+                    text(w.clone()).into()
+                } else {
+                    Space::with_height(Length::Shrink).into()
+                };
+                let content = column![
+                    text("Settings / Настройки"),
+                    row![
+                        text("Тема"),
+                        pick_list(
+                            &AppTheme::ALL[..],
+                            Some(self.settings.theme),
+                            Message::ThemeSelected
+                        )
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Язык"),
+                        pick_list(
+                            &Language::ALL[..],
+                            Some(self.settings.language),
+                            Message::LanguageSelected
+                        )
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Создать файл"),
+                        button(text(create_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::CreateFile))
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Сохранить файл"),
+                        button(text(save_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::SaveFile))
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Переименовать файл"),
+                        button(text(rename_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::RenameFile))
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Удалить файл"),
+                        button(text(delete_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::DeleteFile))
+                    ]
+                    .spacing(10),
+                    warning,
+                    row![
+                        button("Save / Сохранить").on_press(Message::SaveSettings),
+                        button("Back / Назад").on_press(Message::CloseSettings)
+                    ]
+                    .spacing(10)
+                ]
+                .align_items(alignment::Alignment::Center)
+                .spacing(20);
+
+                container(content)
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .center_x()
+                    .center_y()
+                    .into()
+            }
+        }
+    }
+}
+
+impl MulticodeApp {
+    fn current_file(&self) -> Option<&OpenFile> {
+        self.active_file.and_then(|i| self.open_files.get(i))
+    }
+
+    fn current_file_mut(&mut self) -> Option<&mut OpenFile> {
+        if let Some(i) = self.active_file {
+            self.open_files.get_mut(i)
+        } else {
+            None
+        }
+    }
+
+    fn is_dirty(&self) -> bool {
+        self.current_file().map(|f| f.dirty).unwrap_or(false)
+    }
+
+    fn set_dirty(&mut self, value: bool) {
+        if let Some(f) = self.current_file_mut() {
+            f.dirty = value;
+        }
+    }
+    /// Возвращает путь к корню проекта, если он выбран
+    fn current_root_path(&self) -> Option<PathBuf> {
+        match &self.screen {
+            Screen::TextEditor { root } | Screen::VisualEditor { root } => Some(root.clone()),
+            Screen::ProjectPicker => None,
+            Screen::Settings => self.settings.last_folder.clone(),
+        }
+    }
+
+    /// Строковое представление корневого каталога
+    fn current_root(&self) -> String {
+        self.current_root_path()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_default()
+    }
+}
