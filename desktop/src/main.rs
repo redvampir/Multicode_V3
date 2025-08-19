@@ -14,6 +14,7 @@ use tokio::{fs, sync::broadcast};
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
+use std::fmt;
 use std::path::{Path, PathBuf};
 
 pub fn main() -> iced::Result {
@@ -50,6 +51,8 @@ struct MulticodeApp {
     dirty: bool,
     /// ожидаемое действие при подтверждении потери изменений
     pending_action: Option<PendingAction>,
+    hotkey_capture: Option<HotkeyField>,
+    settings_warning: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -112,6 +115,7 @@ enum Message {
     ConfirmDiscard,
     /// отмена потери несохранённых изменений
     CancelDiscard,
+    StartCaptureHotkey(HotkeyField),
 }
 
 #[derive(Debug, Clone)]
@@ -156,6 +160,23 @@ impl Hotkey {
     }
 }
 
+impl fmt::Display for Hotkey {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let mut parts = Vec::new();
+        if self.ctrl {
+            parts.push("Ctrl".to_string());
+        }
+        if self.alt {
+            parts.push("Alt".to_string());
+        }
+        if self.shift {
+            parts.push("Shift".to_string());
+        }
+        parts.push(self.key.clone());
+        write!(f, "{}", parts.join("+"))
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct Hotkeys {
     create_file: Hotkey,
@@ -193,6 +214,14 @@ impl Default for Hotkeys {
             },
         }
     }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HotkeyField {
+    CreateFile,
+    SaveFile,
+    RenameFile,
+    DeleteFile,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -274,6 +303,8 @@ impl Application for MulticodeApp {
             show_delete_confirm: false,
             dirty: false,
             pending_action: None,
+            hotkey_capture: None,
+            settings_warning: None,
         };
 
         let cmd = match &app.screen {
@@ -295,6 +326,29 @@ impl Application for MulticodeApp {
                 modifiers,
                 ..
             })) => {
+                if let Some(field) = self.hotkey_capture.take() {
+                    let key_str = match key {
+                        keyboard::Key::Character(c) => c.to_string().to_uppercase(),
+                        keyboard::Key::Named(named) => format!("{:?}", named),
+                        _ => return Command::none(),
+                    };
+                    let hk = Hotkey {
+                        key: key_str,
+                        ctrl: modifiers.control(),
+                        alt: modifiers.alt(),
+                        shift: modifiers.shift(),
+                    };
+                    match field {
+                        HotkeyField::CreateFile => self.settings.hotkeys.create_file = hk,
+                        HotkeyField::SaveFile => self.settings.hotkeys.save_file = hk,
+                        HotkeyField::RenameFile => self.settings.hotkeys.rename_file = hk,
+                        HotkeyField::DeleteFile => self.settings.hotkeys.delete_file = hk,
+                    }
+                    return Command::none();
+                }
+                if !matches!(self.screen, Screen::Workspace { .. }) {
+                    return Command::none();
+                }
                 let hotkeys = &self.settings.hotkeys;
                 if hotkeys.create_file.matches(&key, modifiers) {
                     return self.update(Message::CreateFile);
@@ -311,6 +365,10 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::IcedEvent(_) => Command::none(),
+            Message::StartCaptureHotkey(field) => {
+                self.hotkey_capture = Some(field);
+                Command::none()
+            }
             Message::OpenSettings => {
                 self.screen = Screen::Settings;
                 Command::none()
@@ -745,6 +803,17 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::SaveSettings => {
+                let h = &self.settings.hotkeys;
+                let mut set = HashSet::new();
+                if !set.insert(h.create_file.to_string())
+                    || !set.insert(h.save_file.to_string())
+                    || !set.insert(h.rename_file.to_string())
+                    || !set.insert(h.delete_file.to_string())
+                {
+                    self.settings_warning = Some("Сочетания клавиш должны быть уникальными".into());
+                    return Command::none();
+                }
+                self.settings_warning = None;
                 Command::perform(self.settings.clone().save(), |_| Message::SettingsSaved)
             }
             Message::SettingsSaved => Command::none(),
@@ -914,9 +983,64 @@ impl Application for MulticodeApp {
                 .into()
             }
             Screen::Settings => {
+                let hotkeys = &self.settings.hotkeys;
+                let create_label = if self.hotkey_capture == Some(HotkeyField::CreateFile) {
+                    String::from("...")
+                } else {
+                    hotkeys.create_file.to_string()
+                };
+                let save_label = if self.hotkey_capture == Some(HotkeyField::SaveFile) {
+                    String::from("...")
+                } else {
+                    hotkeys.save_file.to_string()
+                };
+                let rename_label = if self.hotkey_capture == Some(HotkeyField::RenameFile) {
+                    String::from("...")
+                } else {
+                    hotkeys.rename_file.to_string()
+                };
+                let delete_label = if self.hotkey_capture == Some(HotkeyField::DeleteFile) {
+                    String::from("...")
+                } else {
+                    hotkeys.delete_file.to_string()
+                };
+                let warning: Element<_> = if let Some(w) = &self.settings_warning {
+                    text(w.clone()).into()
+                } else {
+                    Space::with_height(Length::Shrink).into()
+                };
                 let content = column![
                     text("Settings / Настройки"),
-                    button("Back / Назад").on_press(Message::CloseSettings),
+                    row![
+                        text("Создать файл"),
+                        button(text(create_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::CreateFile))
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Сохранить файл"),
+                        button(text(save_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::SaveFile))
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Переименовать файл"),
+                        button(text(rename_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::RenameFile))
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Удалить файл"),
+                        button(text(delete_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::DeleteFile))
+                    ]
+                    .spacing(10),
+                    warning,
+                    row![
+                        button("Save / Сохранить").on_press(Message::SaveSettings),
+                        button("Back / Назад").on_press(Message::CloseSettings)
+                    ]
+                    .spacing(10)
                 ]
                 .align_items(alignment::Alignment::Center)
                 .spacing(20);
