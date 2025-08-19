@@ -2,11 +2,11 @@ use super::Message;
 use crate::app::io::{pick_file, pick_folder};
 use crate::app::ui::ContextMenu;
 use crate::app::{
-    CreateTarget, EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen,
+    EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen,
 };
 use chrono::Utc;
-use iced::widget::text_editor::Content;
-use iced::{event, keyboard, Command, Event};
+use iced::widget::text_editor::{self, Content};
+use iced::{keyboard, Command, Event};
 use multicode_core::{
     blocks, export, git,
     meta::{self, VisualMeta, DEFAULT_VERSION},
@@ -14,7 +14,8 @@ use multicode_core::{
     search,
 };
 use std::collections::{HashMap, HashSet};
-use std::path::{Path, PathBuf};
+use std::path::Path;
+use std::sync::Arc;
 use tokio::fs;
 
 impl MulticodeApp {
@@ -56,6 +57,7 @@ impl MulticodeApp {
                         match c.to_lowercase().as_str() {
                             "n" => return self.handle_message(Message::CreateFile),
                             "s" => return self.handle_message(Message::SaveFile),
+                            "f" => return self.handle_message(Message::ToggleSearchPanel),
                             _ => {}
                         }
                     }
@@ -191,22 +193,41 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::Find => {
-                self.search_results.clear();
-                let term = self.search_term.clone();
-                if !term.is_empty() {
-                    let lines: Vec<String> = if let Some(f) = self.current_file() {
-                        f.editor.lines().map(|l| l.to_string()).collect()
-                    } else {
-                        Vec::new()
-                    };
-                    for (i, line) in lines.iter().enumerate() {
-                        let mut start = 0;
-                        while let Some(pos) = line[start..].find(&term) {
-                            let s = start + pos;
-                            let e = s + term.len();
-                            self.search_results.push((i, s..e));
-                            start = e;
+                self.perform_search();
+                Command::none()
+            }
+            Message::FindNext => {
+                if self.search_results.is_empty() {
+                    self.perform_search();
+                } else if let Some(idx) = self.current_match {
+                    let len = self.search_results.len();
+                    self.current_match = Some((idx + 1) % len);
+                    self.focus_current_match();
+                }
+                Command::none()
+            }
+            Message::FindPrev => {
+                if self.search_results.is_empty() {
+                    self.perform_search();
+                } else if let Some(idx) = self.current_match {
+                    let len = self.search_results.len();
+                    self.current_match = Some((idx + len - 1) % len);
+                    self.focus_current_match();
+                }
+                Command::none()
+            }
+            Message::Replace => {
+                if let Some(idx) = self.current_match {
+                    if let Some((line, range)) = self.search_results.get(idx).cloned() {
+                        self.move_cursor_to(line, range.start);
+                        self.select_range(range.end - range.start);
+                        let replacement = Arc::new(self.replace_term.clone());
+                        if let Some(f) = self.current_file_mut() {
+                            f.editor.perform(text_editor::Action::Edit(text_editor::Edit::Paste(replacement)));
+                            f.content = f.editor.text();
+                            f.dirty = true;
                         }
+                        self.perform_search();
                     }
                 }
                 Command::none()
@@ -220,8 +241,12 @@ impl MulticodeApp {
                         f.editor = Content::with_text(&f.content);
                         f.dirty = true;
                     }
-                    self.search_results.clear();
+                    self.perform_search();
                 }
+                Command::none()
+            }
+            Message::ToggleSearchPanel => {
+                self.show_search_panel = !self.show_search_panel;
                 Command::none()
             }
             Message::AutoComplete => {
@@ -265,8 +290,11 @@ impl MulticodeApp {
                 if let Some(idx) = self.open_files.iter().position(|f| f.path == path) {
                     self.active_file = Some(idx);
                     self.search_results.clear();
+                    self.current_match = None;
                     Command::none()
                 } else {
+                    self.search_results.clear();
+                    self.current_match = None;
                     return Command::perform(
                         async move {
                             match fs::read_to_string(&path).await {
@@ -288,6 +316,8 @@ impl MulticodeApp {
                 });
                 self.active_file = Some(self.open_files.len() - 1);
                 self.rename_file_name.clear();
+                self.search_results.clear();
+                self.current_match = None;
                 Command::none()
             }
             Message::FileLoaded(Err(e)) => {
@@ -775,6 +805,71 @@ impl MulticodeApp {
                 Command::perform(self.settings.clone().save(), |_| Message::SettingsSaved)
             }
             Message::SettingsSaved => Command::none(),
+        }
+    }
+}
+
+impl MulticodeApp {
+    fn perform_search(&mut self) {
+        self.search_results.clear();
+        let term = self.search_term.clone();
+        if !term.is_empty() {
+            let lines: Vec<String> = if let Some(f) = self.current_file() {
+                f.editor.lines().map(|l| l.to_string()).collect()
+            } else {
+                Vec::new()
+            };
+            for (i, line) in lines.iter().enumerate() {
+                let mut start = 0;
+                while let Some(pos) = line[start..].find(&term) {
+                    let s = start + pos;
+                    let e = s + term.len();
+                    self.search_results.push((i, s..e));
+                    start = e;
+                }
+            }
+        }
+        self.current_match = if self.search_results.is_empty() {
+            None
+        } else {
+            Some(0)
+        };
+        self.focus_current_match();
+    }
+
+    fn focus_current_match(&mut self) {
+        if let Some(idx) = self.current_match {
+            if let Some((line, range)) = self.search_results.get(idx).cloned() {
+                self.move_cursor_to(line, range.start);
+                self.select_range(range.end - range.start);
+            }
+        }
+    }
+
+    fn move_cursor_to(&mut self, line: usize, column: usize) {
+        if let Some(f) = self.current_file_mut() {
+            f.editor.perform(text_editor::Action::Move(
+                text_editor::Motion::DocumentStart,
+            ));
+            for _ in 0..line {
+                f.editor
+                    .perform(text_editor::Action::Move(text_editor::Motion::Down));
+            }
+            f.editor
+                .perform(text_editor::Action::Move(text_editor::Motion::Home));
+            for _ in 0..column {
+                f.editor
+                    .perform(text_editor::Action::Move(text_editor::Motion::Right));
+            }
+        }
+    }
+
+    fn select_range(&mut self, len: usize) {
+        if let Some(f) = self.current_file_mut() {
+            for _ in 0..len {
+                f.editor
+                    .perform(text_editor::Action::Select(text_editor::Motion::Right));
+            }
         }
     }
 }
