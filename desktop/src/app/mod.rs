@@ -6,8 +6,8 @@ use crate::modal::Modal;
 use events::Message;
 use iced::futures::stream;
 use iced::widget::{
-    button, checkbox, column, container, pick_list, row, scrollable, text, text_editor,
-    text_input, Space,
+    button, checkbox, column, container, pick_list, row, scrollable, text, text_editor, text_input,
+    Space,
 };
 use iced::{
     alignment, event, keyboard, subscription, Application, Color, Command, Element, Event, Length,
@@ -286,6 +286,8 @@ struct UserSettings {
     show_line_numbers: bool,
     #[serde(default)]
     show_status_bar: bool,
+    #[serde(default)]
+    show_toolbar: bool,
 }
 
 impl Default for UserSettings {
@@ -298,6 +300,7 @@ impl Default for UserSettings {
             language: Language::default(),
             show_line_numbers: true,
             show_status_bar: true,
+            show_toolbar: true,
         }
     }
 }
@@ -866,6 +869,11 @@ impl Application for MulticodeApp {
                         text("Статус-бар"),
                         checkbox("", self.settings.show_status_bar)
                             .on_toggle(Message::ToggleStatusBar),
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Панель инструментов"),
+                        checkbox("", self.settings.show_toolbar).on_toggle(Message::ToggleToolbar),
                     ]
                     .spacing(10),
                     row![
