@@ -1,6 +1,7 @@
 use iced::futures::stream;
 use iced::widget::{
     button, column, container, row, scrollable, text, text_editor, text_input, Space,
+    MouseArea,
 };
 #[allow(unused_imports)]
 use iced::widget::overlay::menu;
@@ -39,6 +40,7 @@ struct MulticodeApp {
     sender: broadcast::Sender<String>,
     settings: UserSettings,
     expanded_dirs: HashSet<PathBuf>,
+    context_menu: Option<(PathBuf, menu::State)>,
 }
 
 #[derive(Debug, Clone)]
@@ -80,6 +82,8 @@ enum Message {
     CoreEvent(String),
     SaveSettings,
     ToggleDir(PathBuf),
+    ShowContextMenu(PathBuf),
+    CloseContextMenu,
 }
 
 #[derive(Debug, Clone)]
@@ -151,6 +155,7 @@ impl Application for MulticodeApp {
             sender,
             settings,
             expanded_dirs: HashSet::new(),
+            context_menu: None,
         };
 
         let cmd = match &app.screen {
@@ -481,6 +486,14 @@ impl Application for MulticodeApp {
                 }
                 Command::none()
             }
+            Message::ShowContextMenu(path) => {
+                self.context_menu = Some((path, menu::State::new()));
+                Command::none()
+            }
+            Message::CloseContextMenu => {
+                self.context_menu = None;
+                Command::none()
+            }
             Message::CoreEvent(ev) => {
                 self.log.push(ev);
                 Command::none()
@@ -683,7 +696,11 @@ impl MulticodeApp {
                         .to_string();
                     let row = row![
                         indent,
-                        button(text(name)).on_press(Message::SelectFile(entry.path.clone())),
+                        MouseArea::new(
+                            button(text(name))
+                                .on_press(Message::SelectFile(entry.path.clone())),
+                        )
+                        .on_right_press(Message::ShowContextMenu(entry.path.clone())),
                     ]
                     .into();
                     rows.push(row);
@@ -699,8 +716,11 @@ impl MulticodeApp {
                     let icon = if expanded { "▼" } else { "▶" };
                     let header = row![
                         indent,
-                        button(row![text(icon), text(name)])
-                            .on_press(Message::ToggleDir(entry.path.clone())),
+                        MouseArea::new(
+                            button(row![text(icon), text(name)])
+                                .on_press(Message::ToggleDir(entry.path.clone())),
+                        )
+                        .on_right_press(Message::ShowContextMenu(entry.path.clone())),
                     ]
                     .into();
                     rows.push(header);
