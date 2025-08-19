@@ -10,10 +10,9 @@ use iced::widget::{
     Space,
 };
 use iced::{
-    alignment, event, keyboard, subscription, Application, Color, Command, Element, Event, Length,
-    Settings, Subscription, Theme,
+    alignment, event, keyboard, subscription, Application, Command, Element, Length, Settings,
+    Subscription, Theme,
 };
-use multicode_core::{blocks, export, git, search};
 use tokio::{fs, sync::broadcast};
 use ui::ContextMenu;
 
@@ -22,7 +21,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 use std::fmt;
 use std::ops::Range;
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 pub fn run(path: Option<PathBuf>) -> iced::Result {
     MulticodeApp::run(Settings {
@@ -44,6 +43,10 @@ pub struct MulticodeApp {
     replace_term: String,
     /// найденные совпадения
     search_results: Vec<(usize, Range<usize>)>,
+    /// отображать панель поиска
+    show_search_panel: bool,
+    /// текущий индекс совпадения
+    current_match: Option<usize>,
     /// имя для создания нового файла
     new_file_name: String,
     /// имя для создания новой директории
@@ -363,6 +366,8 @@ impl Application for MulticodeApp {
             search_term: String::new(),
             replace_term: String::new(),
             search_results: Vec::new(),
+            show_search_panel: false,
+            current_match: None,
             new_file_name: String::new(),
             new_directory_name: String::new(),
             create_target: CreateTarget::File,
@@ -588,17 +593,10 @@ impl Application for MulticodeApp {
 
                 let editor: Element<_> = self.text_editor_component();
 
-                let search_bar = row![
-                    text_input("найти", &self.search_term).on_input(Message::SearchTermChanged),
-                    button("Найти").on_press(Message::Find),
-                    text_input("заменить на", &self.replace_term)
-                        .on_input(Message::ReplaceTermChanged),
-                    button("Заменить все").on_press(Message::ReplaceAll),
-                ]
-                .spacing(5);
+                let search_panel = self.search_panel_component();
 
                 let content = column![
-                    search_bar,
+                    search_panel,
                     editor,
                     scrollable(column(
                         self.log

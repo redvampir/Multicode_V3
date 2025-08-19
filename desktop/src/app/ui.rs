@@ -5,7 +5,7 @@ use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::overlay::menu;
 use iced::widget::svg::{Handle, Svg};
 use iced::widget::{
-    button, column, container, row, scrollable, text, text_editor, MouseArea, Space,
+    button, column, container, row, scrollable, text, text_editor, text_input, MouseArea, Space,
 };
 use iced::{Color, Element, Length};
 use once_cell::sync::Lazy;
@@ -131,6 +131,24 @@ impl Highlighter for SyntectHighlighter {
 }
 
 impl MulticodeApp {
+    pub fn search_panel_component(&self) -> Element<Message> {
+        if !self.show_search_panel {
+            return Space::with_height(Length::Shrink).into();
+        }
+        row![
+            text_input("найти", &self.search_term).on_input(Message::SearchTermChanged),
+            button("Найти").on_press(Message::Find),
+            button("←").on_press(Message::FindPrev),
+            button("→").on_press(Message::FindNext),
+            text_input("заменить на", &self.replace_term).on_input(Message::ReplaceTermChanged),
+            button("Заменить").on_press(Message::Replace),
+            button("Заменить все").on_press(Message::ReplaceAll),
+            button("×").on_press(Message::ToggleSearchPanel),
+        ]
+        .spacing(5)
+        .into()
+    }
+
     pub fn text_editor_component(&self) -> Element<Message> {
         if let Some(file) = self.current_file() {
             let ext = file
