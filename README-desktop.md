@@ -25,6 +25,8 @@
 3. Запустите приложение:
 
    ```sh
+   npm run desktop:start
+   # или напрямую через Cargo
    cargo run -p desktop
    ```
 
