@@ -254,15 +254,21 @@ cancel(task_id):
 - **Система весов:** каждому источнику назначается рейтинг надёжности на основе факта публикации, цитируемости и согласованности с уже проверенными знаниями.
 - **Квота на «воду»:** фиксируется доля описательных блоков и формализованных правил; узлы отклоняют материал, где структурированных знаний недостаточно.
 
+Рейтинг источника вычисляется по формуле:
+
 ```
-rating = w_quality * quality + w_citations * citations - w_errors * errors
+rating = w_reliability * reliability + w_citations * citations - w_errors * errors
 ```
 
 ```rust
 fn rate_source(meta: &SourceMeta) -> f32 {
-    meta.w_quality * meta.quality + meta.w_citations * meta.citations - meta.w_errors * meta.errors
+    meta.w_reliability * meta.reliability
+        + meta.w_citations * meta.citations
+        - meta.w_errors * meta.errors
 }
 ```
+
+Шаблон таблицы для хранения результатов:
 
 | id | rating | last_review | error_history |
 |----|--------|-------------|---------------|
