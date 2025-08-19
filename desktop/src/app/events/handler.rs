@@ -1,7 +1,7 @@
 use crate::app::{MulticodeApp, PendingAction, Screen, EditorMode, CreateTarget, Hotkey, HotkeyField, OpenFile};
 use crate::app::ui::ContextMenu;
 use super::Message;
-use crate::app::io::pick_folder;
+use crate::app::io::{pick_folder, pick_file};
 use iced::{event, keyboard, Command, Event};
 use iced::widget::text_editor::Content;
 use multicode_core::{
@@ -11,7 +11,7 @@ use multicode_core::{
 };
 use tokio::fs;
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use chrono::Utc;
 
 impl MulticodeApp {
@@ -137,6 +137,25 @@ impl MulticodeApp {
                         self.load_files(root),
                         self.handle_message(Message::SaveSettings),
                     ]);
+                }
+                Command::none()
+            }
+            Message::PickFile => Command::perform(pick_file(), Message::FilePicked),
+            Message::FilePicked(path) => {
+                if let Some(file_path) = path {
+                    if let Some(root) = file_path.parent().map(|p| p.to_path_buf()) {
+                        self.settings.last_folder = Some(root.clone());
+                        self.screen = match self.settings.editor_mode {
+                            EditorMode::Text => Screen::TextEditor { root: root.clone() },
+                            EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
+                        };
+                        multicode_core::meta::watch::spawn(self.sender.clone());
+                        return Command::batch([
+                            self.load_files(root),
+                            self.handle_message(Message::SaveSettings),
+                            self.handle_message(Message::SelectFile(file_path)),
+                        ]);
+                    }
                 }
                 Command::none()
             }

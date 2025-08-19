@@ -7,6 +7,8 @@ use crate::app::{AppTheme, CreateTarget, HotkeyField, Language, FileEntry};
 pub enum Message {
     PickFolder,
     FolderPicked(Option<PathBuf>),
+    PickFile,
+    FilePicked(Option<PathBuf>),
     FilesLoaded(Vec<FileEntry>),
     QueryChanged(String),
     SelectFile(PathBuf),
