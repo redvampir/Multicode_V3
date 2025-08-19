@@ -9,6 +9,7 @@
     "dev": "cargo run",
     "build": "cargo build",
     "test": "cargo test",
+    "test:canvas": "node --test archived/frontend/src/visual/canvas/canvas.test.js",
     "clean": "cargo clean",
     "check:scripts": "node scripts/check-scripts.js",
     "check-env": "node scripts/check-env.js"
