@@ -58,7 +58,8 @@ struct MulticodeApp {
 #[derive(Debug, Clone)]
 enum Screen {
     ProjectPicker,
-    Workspace { root: PathBuf },
+    TextEditor { root: PathBuf },
+    VisualEditor { root: PathBuf },
     Settings,
 }
 
@@ -116,6 +117,8 @@ enum Message {
     /// отмена потери несохранённых изменений
     CancelDiscard,
     StartCaptureHotkey(HotkeyField),
+    SwitchToTextEditor,
+    SwitchToVisualEditor,
 }
 
 #[derive(Debug, Clone)]
@@ -224,11 +227,25 @@ enum HotkeyField {
     DeleteFile,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum EditorMode {
+    Text,
+    Visual,
+}
+
+impl Default for EditorMode {
+    fn default() -> Self {
+        EditorMode::Text
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserSettings {
     last_folder: Option<PathBuf>,
     #[serde(default)]
     hotkeys: Hotkeys,
+    #[serde(default)]
+    editor_mode: EditorMode,
 }
 
 impl Default for UserSettings {
@@ -236,6 +253,7 @@ impl Default for UserSettings {
         Self {
             last_folder: None,
             hotkeys: Hotkeys::default(),
+            editor_mode: EditorMode::Text,
         }
     }
 }
@@ -282,7 +300,10 @@ impl Application for MulticodeApp {
 
         let app = MulticodeApp {
             screen: if let Some(path) = settings.last_folder.clone() {
-                Screen::Workspace { root: path }
+                match settings.editor_mode {
+                    EditorMode::Text => Screen::TextEditor { root: path },
+                    EditorMode::Visual => Screen::VisualEditor { root: path },
+                }
             } else {
                 Screen::ProjectPicker
             },
@@ -308,7 +329,9 @@ impl Application for MulticodeApp {
         };
 
         let cmd = match &app.screen {
-            Screen::Workspace { root } => app.load_files(root.clone()),
+            Screen::TextEditor { root } | Screen::VisualEditor { root } => {
+                app.load_files(root.clone())
+            }
             _ => Command::none(),
         };
 
@@ -346,7 +369,10 @@ impl Application for MulticodeApp {
                     }
                     return Command::none();
                 }
-                if !matches!(self.screen, Screen::Workspace { .. }) {
+                if !matches!(
+                    self.screen,
+                    Screen::TextEditor { .. } | Screen::VisualEditor { .. }
+                ) {
                     return Command::none();
                 }
                 let hotkeys = &self.settings.hotkeys;
@@ -375,9 +401,28 @@ impl Application for MulticodeApp {
             }
             Message::CloseSettings => {
                 if let Some(root) = self.settings.last_folder.clone() {
-                    self.screen = Screen::Workspace { root };
+                    self.screen = match self.settings.editor_mode {
+                        EditorMode::Text => Screen::TextEditor { root },
+                        EditorMode::Visual => Screen::VisualEditor { root },
+                    };
                 } else {
                     self.screen = Screen::ProjectPicker;
+                }
+                Command::none()
+            }
+            Message::SwitchToTextEditor => {
+                if let Some(root) = self.current_root_path() {
+                    self.screen = Screen::TextEditor { root: root.clone() };
+                    self.settings.editor_mode = EditorMode::Text;
+                    return self.update(Message::SaveSettings);
+                }
+                Command::none()
+            }
+            Message::SwitchToVisualEditor => {
+                if let Some(root) = self.current_root_path() {
+                    self.screen = Screen::VisualEditor { root: root.clone() };
+                    self.settings.editor_mode = EditorMode::Visual;
+                    return self.update(Message::SaveSettings);
                 }
                 Command::none()
             }
@@ -385,7 +430,10 @@ impl Application for MulticodeApp {
             Message::FolderPicked(path) => {
                 if let Some(root) = path {
                     self.settings.last_folder = Some(root.clone());
-                    self.screen = Screen::Workspace { root: root.clone() };
+                    self.screen = match self.settings.editor_mode {
+                        EditorMode::Text => Screen::TextEditor { root: root.clone() },
+                        EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
+                    };
                     multicode_core::meta::watch::spawn(self.sender.clone());
                     return Command::batch([
                         self.load_files(root),
@@ -821,7 +869,10 @@ impl Application for MulticodeApp {
     }
 
     fn subscription(&self) -> Subscription<Message> {
-        if matches!(self.screen, Screen::Workspace { .. }) {
+        if matches!(
+            self.screen,
+            Screen::TextEditor { .. } | Screen::VisualEditor { .. }
+        ) {
             let rx = self.sender.subscribe();
             let core = subscription::run_with_id(
                 "core-events",
@@ -857,7 +908,7 @@ impl Application for MulticodeApp {
                     .center_y()
                     .into()
             }
-            Screen::Workspace { .. } => {
+            Screen::TextEditor { .. } => {
                 let menu = row![
                     button("Разбор").on_press(Message::RunParse),
                     button("Поиск").on_press(Message::RunSearch),
@@ -891,6 +942,10 @@ impl Application for MulticodeApp {
                 } else {
                     button(save_label).into()
                 };
+                let text_btn: Element<_> = button("Text").into();
+                let visual_btn: Element<_> =
+                    button("Visual").on_press(Message::SwitchToVisualEditor).into();
+                let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
 
                 let file_menu = row![
                     text_input("новый файл", &self.new_file_name)
@@ -903,7 +958,6 @@ impl Application for MulticodeApp {
                         .on_input(Message::RenameFileNameChanged),
                     rename_btn,
                     delete_btn,
-                    save_btn,
                 ]
                 .spacing(5);
 
@@ -932,10 +986,7 @@ impl Application for MulticodeApp {
                 };
 
                 let editor: Element<_> = if self.selected_file.is_some() {
-                    text_editor(&self.editor)
-                        .on_action(Message::FileContentEdited)
-                        .height(Length::Fill)
-                        .into()
+                    self.text_editor_component()
                 } else {
                     container(text("файл не выбран"))
                         .width(Length::Fill)
@@ -972,6 +1023,133 @@ impl Application for MulticodeApp {
 
                 column![
                     menu,
+                    mode_bar,
+                    file_menu,
+                    delete_warning,
+                    warning,
+                    dirty_warning,
+                    body,
+                    text("Готово")
+                ]
+                .spacing(10)
+                .into()
+            }
+            Screen::VisualEditor { .. } => {
+                let menu = row![
+                    button("Разбор").on_press(Message::RunParse),
+                    button("Поиск").on_press(Message::RunSearch),
+                    button("Журнал Git").on_press(Message::RunGitLog),
+                    button("Экспорт").on_press(Message::RunExport),
+                    button("Settings / Настройки").on_press(Message::OpenSettings),
+                ]
+                .spacing(10);
+
+                let sidebar = container(self.file_tree()).width(200);
+
+                let rename_btn: Element<_> = if self.selected_file.is_some() {
+                    button("Переименовать").on_press(Message::RenameFile).into()
+                } else {
+                    button("Переименовать").into()
+                };
+                let delete_btn: Element<_> = if self.selected_file.is_some() {
+                    button("Удалить")
+                        .on_press(Message::RequestDeleteFile)
+                        .into()
+                } else {
+                    button("Удалить").into()
+                };
+                let save_label = if self.dirty {
+                    "Сохранить*"
+                } else {
+                    "Сохранить"
+                };
+                let save_btn: Element<_> = if self.selected_file.is_some() {
+                    button(save_label).on_press(Message::SaveFile).into()
+                } else {
+                    button(save_label).into()
+                };
+                let text_btn: Element<_> =
+                    button("Text").on_press(Message::SwitchToTextEditor).into();
+                let visual_btn: Element<_> = button("Visual").into();
+                let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
+
+                let file_menu = row![
+                    text_input("новый файл", &self.new_file_name)
+                        .on_input(Message::NewFileNameChanged),
+                    button("Создать файл").on_press(Message::CreateFile),
+                    text_input("новый каталог", &self.new_folder_name)
+                        .on_input(Message::NewFolderNameChanged),
+                    button("Создать папку").on_press(Message::CreateFolder),
+                    text_input("новое имя", &self.rename_file_name)
+                        .on_input(Message::RenameFileNameChanged),
+                    rename_btn,
+                    delete_btn,
+                ]
+                .spacing(5);
+
+                let warning: Element<_> = if self.show_create_file_confirm {
+                    row![
+                        text("Файл уже существует. Перезаписать?"),
+                        button("Да").on_press(Message::ConfirmCreateFile),
+                        button("Нет").on_press(Message::CancelCreateFile)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let dirty_warning: Element<_> = if self.pending_action.is_some() {
+                    row![
+                        text("Есть несохранённые изменения. Продолжить?"),
+                        button("Да").on_press(Message::ConfirmDiscard),
+                        button("Нет").on_press(Message::CancelDiscard)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let editor: Element<_> = if self.selected_file.is_some() {
+                    self.visual_editor_component()
+                } else {
+                    container(text("файл не выбран"))
+                        .width(Length::Fill)
+                        .height(Length::Fill)
+                        .into()
+                };
+
+                let content = column![
+                    text_input("поиск", &self.query).on_input(Message::QueryChanged),
+                    editor,
+                    scrollable(column(
+                        self.log
+                            .iter()
+                            .cloned()
+                            .map(|l| text(l).into())
+                            .collect::<Vec<Element<Message>>>()
+                    )),
+                ]
+                .spacing(10);
+
+                let body = row![sidebar, content].spacing(10);
+
+                let delete_warning: Element<_> = if self.show_delete_confirm {
+                    row![
+                        text("Удалить выбранный файл?"),
+                        button("Да").on_press(Message::DeleteFile),
+                        button("Нет").on_press(Message::CancelDeleteFile)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                column![
+                    menu,
+                    mode_bar,
                     file_menu,
                     delete_warning,
                     warning,
@@ -1069,7 +1247,9 @@ impl MulticodeApp {
     /// Возвращает путь к корню проекта, если он выбран
     fn current_root_path(&self) -> Option<PathBuf> {
         match &self.screen {
-            Screen::Workspace { root } => Some(root.clone()),
+            Screen::TextEditor { root } | Screen::VisualEditor { root } => {
+                Some(root.clone())
+            }
             Screen::ProjectPicker => None,
             Screen::Settings => self.settings.last_folder.clone(),
         }
@@ -1135,6 +1315,22 @@ impl MulticodeApp {
         let mut out = Vec::new();
         Self::collect_files(&self.files, &mut out);
         out
+    }
+
+    fn text_editor_component(&self) -> Element<Message> {
+        text_editor(&self.editor)
+            .on_action(Message::FileContentEdited)
+            .height(Length::Fill)
+            .into()
+    }
+
+    fn visual_editor_component(&self) -> Element<Message> {
+        container(text("visual editor stub"))
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x()
+            .center_y()
+            .into()
     }
 
     fn view_entries(&self, entries: &[FileEntry], depth: u16) -> Element<Message> {
