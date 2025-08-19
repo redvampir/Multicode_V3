@@ -2,7 +2,8 @@ use iced::futures::stream;
 #[allow(unused_imports)]
 use iced::widget::overlay::menu;
 use iced::widget::{
-    button, column, container, row, scrollable, text, text_editor, text_input, MouseArea, Space,
+    button, column, container, pick_list, row, scrollable, text, text_editor, text_input,
+    MouseArea, Space,
 };
 use iced::{
     alignment, event, keyboard, subscription, Application, Command, Element, Event, Length,
@@ -116,6 +117,8 @@ enum Message {
     ConfirmDiscard,
     /// отмена потери несохранённых изменений
     CancelDiscard,
+    ThemeSelected(AppTheme),
+    LanguageSelected(Language),
     StartCaptureHotkey(HotkeyField),
     SwitchToTextEditor,
     SwitchToVisualEditor,
@@ -239,6 +242,56 @@ impl Default for EditorMode {
     }
 }
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum AppTheme {
+    Light,
+    Dark,
+}
+
+impl AppTheme {
+    const ALL: [AppTheme; 2] = [AppTheme::Light, AppTheme::Dark];
+}
+
+impl Default for AppTheme {
+    fn default() -> Self {
+        AppTheme::Light
+    }
+}
+
+impl fmt::Display for AppTheme {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AppTheme::Light => write!(f, "Light"),
+            AppTheme::Dark => write!(f, "Dark"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+enum Language {
+    English,
+    Russian,
+}
+
+impl Language {
+    const ALL: [Language; 2] = [Language::English, Language::Russian];
+}
+
+impl Default for Language {
+    fn default() -> Self {
+        Language::English
+    }
+}
+
+impl fmt::Display for Language {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Language::English => write!(f, "English"),
+            Language::Russian => write!(f, "Русский"),
+        }
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserSettings {
     last_folder: Option<PathBuf>,
@@ -246,6 +299,10 @@ struct UserSettings {
     hotkeys: Hotkeys,
     #[serde(default)]
     editor_mode: EditorMode,
+    #[serde(default)]
+    theme: AppTheme,
+    #[serde(default)]
+    language: Language,
 }
 
 impl Default for UserSettings {
@@ -254,6 +311,8 @@ impl Default for UserSettings {
             last_folder: None,
             hotkeys: Hotkeys::default(),
             editor_mode: EditorMode::Text,
+            theme: AppTheme::default(),
+            language: Language::default(),
         }
     }
 }
@@ -391,6 +450,14 @@ impl Application for MulticodeApp {
                 Command::none()
             }
             Message::IcedEvent(_) => Command::none(),
+            Message::ThemeSelected(theme) => {
+                self.settings.theme = theme;
+                Command::none()
+            }
+            Message::LanguageSelected(lang) => {
+                self.settings.language = lang;
+                Command::none()
+            }
             Message::StartCaptureHotkey(field) => {
                 self.hotkey_capture = Some(field);
                 Command::none()
@@ -890,13 +957,25 @@ impl Application for MulticodeApp {
         }
     }
 
+    fn theme(&self) -> Theme {
+        match self.settings.theme {
+            AppTheme::Light => Theme::Light,
+            AppTheme::Dark => Theme::Dark,
+        }
+    }
+
     fn view(&self) -> Element<Message> {
         match &self.screen {
             Screen::ProjectPicker => {
+                let settings_label = if self.settings.language == Language::Russian {
+                    "Настройки"
+                } else {
+                    "Settings"
+                };
                 let content = column![
                     text("Выберите папку проекта"),
                     button("Выбрать папку").on_press(Message::PickFolder),
-                    button("Settings / Настройки").on_press(Message::OpenSettings),
+                    button(settings_label).on_press(Message::OpenSettings),
                 ]
                 .align_items(alignment::Alignment::Center)
                 .spacing(20);
@@ -909,12 +988,17 @@ impl Application for MulticodeApp {
                     .into()
             }
             Screen::TextEditor { .. } => {
+                let settings_label = if self.settings.language == Language::Russian {
+                    "Настройки"
+                } else {
+                    "Settings"
+                };
                 let menu = row![
                     button("Разбор").on_press(Message::RunParse),
                     button("Поиск").on_press(Message::RunSearch),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
-                    button("Settings / Настройки").on_press(Message::OpenSettings),
+                    button(settings_label).on_press(Message::OpenSettings),
                 ]
                 .spacing(10);
 
@@ -943,8 +1027,9 @@ impl Application for MulticodeApp {
                     button(save_label).into()
                 };
                 let text_btn: Element<_> = button("Text").into();
-                let visual_btn: Element<_> =
-                    button("Visual").on_press(Message::SwitchToVisualEditor).into();
+                let visual_btn: Element<_> = button("Visual")
+                    .on_press(Message::SwitchToVisualEditor)
+                    .into();
                 let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
 
                 let file_menu = row![
@@ -1035,12 +1120,17 @@ impl Application for MulticodeApp {
                 .into()
             }
             Screen::VisualEditor { .. } => {
+                let settings_label = if self.settings.language == Language::Russian {
+                    "Настройки"
+                } else {
+                    "Settings"
+                };
                 let menu = row![
                     button("Разбор").on_press(Message::RunParse),
                     button("Поиск").on_press(Message::RunSearch),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
-                    button("Settings / Настройки").on_press(Message::OpenSettings),
+                    button(settings_label).on_press(Message::OpenSettings),
                 ]
                 .spacing(10);
 
@@ -1190,6 +1280,24 @@ impl Application for MulticodeApp {
                 let content = column![
                     text("Settings / Настройки"),
                     row![
+                        text("Тема"),
+                        pick_list(
+                            &AppTheme::ALL[..],
+                            Some(self.settings.theme),
+                            Message::ThemeSelected
+                        )
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Язык"),
+                        pick_list(
+                            &Language::ALL[..],
+                            Some(self.settings.language),
+                            Message::LanguageSelected
+                        )
+                    ]
+                    .spacing(10),
+                    row![
                         text("Создать файл"),
                         button(text(create_label))
                             .on_press(Message::StartCaptureHotkey(HotkeyField::CreateFile))
@@ -1247,9 +1355,7 @@ impl MulticodeApp {
     /// Возвращает путь к корню проекта, если он выбран
     fn current_root_path(&self) -> Option<PathBuf> {
         match &self.screen {
-            Screen::TextEditor { root } | Screen::VisualEditor { root } => {
-                Some(root.clone())
-            }
+            Screen::TextEditor { root } | Screen::VisualEditor { root } => Some(root.clone()),
             Screen::ProjectPicker => None,
             Screen::Settings => self.settings.last_folder.clone(),
         }
