@@ -43,6 +43,8 @@ struct MulticodeApp {
     context_menu: Option<(PathBuf, menu::State)>,
     /// отображать подтверждение перезаписи файла
     show_create_file_confirm: bool,
+    /// отображать подтверждение удаления файла
+    show_delete_confirm: bool,
     /// есть ли несохранённые изменения
     dirty: bool,
     /// ожидаемое действие при подтверждении потери изменений
@@ -80,7 +82,12 @@ enum Message {
     RenameFileNameChanged(String),
     RenameFile,
     FileRenamed(Result<PathBuf, String>),
+    /// запрос на удаление выбранного файла
+    RequestDeleteFile,
+    /// подтверждение удаления файла
     DeleteFile,
+    /// отмена удаления файла
+    CancelDeleteFile,
     FileDeleted(Result<PathBuf, String>),
     RunSearch,
     SearchFinished(Result<Vec<String>, String>),
@@ -185,6 +192,7 @@ impl Application for MulticodeApp {
             expanded_dirs: HashSet::new(),
             context_menu: None,
             show_create_file_confirm: false,
+            show_delete_confirm: false,
             dirty: false,
             pending_action: None,
         };
@@ -413,7 +421,18 @@ impl Application for MulticodeApp {
                 self.log.push(format!("ошибка переименования: {e}"));
                 Command::none()
             }
+            Message::RequestDeleteFile => {
+                if self.selected_file.is_some() {
+                    self.show_delete_confirm = true;
+                }
+                Command::none()
+            }
+            Message::CancelDeleteFile => {
+                self.show_delete_confirm = false;
+                Command::none()
+            }
             Message::DeleteFile => {
+                self.show_delete_confirm = false;
                 if let Some(path) = self.selected_file.clone() {
                     if self.dirty {
                         self.pending_action = Some(PendingAction::Delete(path));
@@ -668,7 +687,7 @@ impl Application for MulticodeApp {
                     button("Переименовать").into()
                 };
                 let delete_btn: Element<_> = if self.selected_file.is_some() {
-                    button("Удалить").on_press(Message::DeleteFile).into()
+                    button("Удалить").on_press(Message::RequestDeleteFile).into()
                 } else {
                     button("Удалить").into()
                 };
@@ -749,9 +768,22 @@ impl Application for MulticodeApp {
 
                 let body = row![sidebar, content].spacing(10);
 
+                let delete_warning: Element<_> = if self.show_delete_confirm {
+                    row![
+                        text("Удалить выбранный файл?"),
+                        button("Да").on_press(Message::DeleteFile),
+                        button("Нет").on_press(Message::CancelDeleteFile)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
                 column![
                     menu,
                     file_menu,
+                    delete_warning,
                     warning,
                     dirty_warning,
                     body,
