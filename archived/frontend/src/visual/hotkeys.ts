@@ -1,63 +1,55 @@
-import settings from '../../settings.json' assert { type: 'json' };
 import { GRID_SIZE } from './settings.ts';
-import { createBlock } from './blocks.js';
-import { getTheme } from './theme.ts';
-import { createHotkeyDialog } from './hotkey-dialog.ts';
-import type { VisualCanvas } from './canvas.js';
-import { gotoRelated } from '../editor/navigation.js';
-import { gotoLine } from '../editor/goto-line.js';
-import { formatCurrentFile } from '../../scripts/format.js';
 import { EditorSelection } from '@codemirror/state';
 import * as commands from '@codemirror/commands';
-import { openCommandPalette } from '../editor/command-palette.ts';
-import { exportPNG } from './export.ts';
-import { push as pushUndo, undo as undoAction, redo as redoAction } from './undo.ts';
+import { hotkeys } from './hotkey-map.ts';
+import {
+  setCanvas,
+  editing,
+  navigation,
+  system,
+  insertKeywordBlock,
+  insertOperatorBlock,
+  insertOpBlock,
+  insertTernaryBlock,
+  insertLogicOperatorBlock,
+  insertComparisonOperatorBlock
+} from './hotkey-handlers.ts';
 
-export interface HotkeyMap {
-  copyBlock: string;
-  pasteBlock: string;
-  selectConnections: string;
-  focusSearch: string;
-  showHelp: string;
-  openPalette: string;
-  zoomToFit: string;
-  undo: string;
-  redo: string;
-  gotoRelated: string;
-  gotoLine: string;
-  groupBlocks: string;
-  ungroupBlocks: string;
-  formatCurrentFile: string;
-  insertForLoop: string;
-  insertWhileLoop: string;
-  insertForEachLoop: string;
-  insertLogBlock: string;
-  exportPNG: string;
-}
+export { setCanvas, hotkeys };
 
-const cfg: { hotkeys?: Partial<HotkeyMap> } = settings as any;
 const MOVE_STEP = GRID_SIZE;
 
-export const hotkeys: HotkeyMap = {
-  copyBlock: cfg.hotkeys?.copyBlock || 'Ctrl+C',
-  pasteBlock: cfg.hotkeys?.pasteBlock || 'Ctrl+V',
-  selectConnections: cfg.hotkeys?.selectConnections || 'Ctrl+Shift+A',
-  focusSearch: cfg.hotkeys?.focusSearch || 'Ctrl+F',
-  showHelp: cfg.hotkeys?.showHelp || 'Ctrl+?',
-  openPalette: cfg.hotkeys?.openPalette || 'Ctrl+P or Space Space',
-  zoomToFit: cfg.hotkeys?.zoomToFit || 'Ctrl+0',
-  undo: cfg.hotkeys?.undo || 'Ctrl+Z',
-  redo: cfg.hotkeys?.redo || 'Ctrl+Shift+Z',
-  gotoRelated: cfg.hotkeys?.gotoRelated || 'Ctrl+Alt+O',
-  gotoLine: cfg.hotkeys?.gotoLine || 'Ctrl+Alt+G',
-  groupBlocks: cfg.hotkeys?.groupBlocks || 'Ctrl+G',
-  ungroupBlocks: cfg.hotkeys?.ungroupBlocks || 'Ctrl+Shift+G',
-  formatCurrentFile: cfg.hotkeys?.formatCurrentFile || 'Shift+Alt+F',
-  insertForLoop: cfg.hotkeys?.insertForLoop || 'Ctrl+Alt+F',
-  insertWhileLoop: cfg.hotkeys?.insertWhileLoop || 'Ctrl+Alt+W',
-  insertForEachLoop: cfg.hotkeys?.insertForEachLoop || 'Ctrl+Alt+E',
-  insertLogBlock: cfg.hotkeys?.insertLogBlock || 'Ctrl+L',
-  exportPNG: cfg.hotkeys?.exportPNG || 'Ctrl+Shift+E'
+let keywordBuffer = '';
+let symbolBuffer = '';
+let pendingSymbol = '';
+let lastSpaceTime = 0;
+
+const comboMap: Record<string, () => void> = {
+  [hotkeys.copyBlock]: editing.copyBlock,
+  [hotkeys.pasteBlock]: editing.pasteBlock,
+  [hotkeys.selectConnections]: editing.selectConnections,
+  [hotkeys.focusSearch]: navigation.focusSearch,
+  [hotkeys.showHelp]: navigation.showHotkeyHelp,
+  'Ctrl+P': navigation.openCommandPalette,
+  [hotkeys.zoomToFit]: navigation.zoomToFit,
+  '0': navigation.zoomToFit,
+  [hotkeys.undo]: system.undo,
+  [hotkeys.redo]: system.redo,
+  [hotkeys.groupBlocks]: editing.groupBlocks,
+  'Meta+G': editing.groupBlocks,
+  [hotkeys.ungroupBlocks]: editing.ungroupBlocks,
+  'Meta+Shift+G': editing.ungroupBlocks,
+  [hotkeys.gotoRelated]: () => navigation.gotoRelated((globalThis as any).view),
+  [hotkeys.gotoLine]: () => navigation.gotoLine((globalThis as any).view),
+  [hotkeys.formatCurrentFile]: system.formatCurrentFile,
+  [hotkeys.exportPNG]: system.exportPNG,
+  [hotkeys.insertForLoop]: editing.insertForLoop,
+  [hotkeys.insertWhileLoop]: editing.insertWhileLoop,
+  [hotkeys.insertForEachLoop]: editing.insertForEachLoop,
+  [hotkeys.insertLogBlock]: editing.insertLogBlock,
+  'Ctrl+D': editing.duplicateSelected,
+  Delete: editing.deleteSelected,
+  F2: editing.renameSelected
 };
 
 function buildCombo(e: KeyboardEvent) {
@@ -82,146 +74,39 @@ export function unregisterHotkeys(target: Document = document) {
 
 function handleKey(e: KeyboardEvent) {
   const combo = buildCombo(e);
-  switch (combo) {
-    case hotkeys.copyBlock:
-      e.preventDefault();
-      copyBlock();
-      break;
-    case hotkeys.pasteBlock:
-      e.preventDefault();
-      pasteBlock();
-      break;
-    case hotkeys.selectConnections:
-      e.preventDefault();
-      selectConnections();
-      break;
-    case hotkeys.focusSearch:
-    case 'F':
-      e.preventDefault();
-      focusSearch();
-      break;
-    case hotkeys.showHelp:
-      e.preventDefault();
-      showHotkeyHelp();
-      break;
-    case 'Ctrl+P':
-      e.preventDefault();
-      openCommandPalette();
-      break;
-    case hotkeys.zoomToFit:
-    case '0':
-      e.preventDefault();
-      zoomToFit();
-      break;
-    case hotkeys.undo:
-      e.preventDefault();
-      undoAction();
-      break;
-    case hotkeys.redo:
-      e.preventDefault();
-      redoAction();
-      break;
-    case hotkeys.groupBlocks:
-    case 'Meta+G':
-      e.preventDefault();
-      canvasRef?.groupSelected?.();
-      break;
-    case hotkeys.ungroupBlocks:
-    case 'Meta+Shift+G':
-      e.preventDefault();
-      canvasRef?.ungroupSelected?.();
-      break;
-    case hotkeys.gotoRelated:
-      e.preventDefault();
-      gotoRelated((globalThis as any).view);
-      break;
-    case hotkeys.gotoLine:
-      e.preventDefault();
-      gotoLine((globalThis as any).view);
-      break;
-    case hotkeys.formatCurrentFile:
-      e.preventDefault();
-      formatCurrentFile();
-      break;
-    case hotkeys.exportPNG:
-      e.preventDefault();
-      exportPNG();
-      break;
-    case hotkeys.insertForLoop:
-      e.preventDefault();
-      insertKeywordBlock('for');
-      break;
-    case hotkeys.insertWhileLoop:
-      e.preventDefault();
-      insertKeywordBlock('while');
-      break;
-    case hotkeys.insertForEachLoop:
-      e.preventDefault();
-      insertKeywordBlock('foreach');
-      break;
-    case hotkeys.insertLogBlock:
-      e.preventDefault();
-      insertLogBlock();
-      break;
-    case 'Ctrl+D':
-      e.preventDefault();
-      canvasRef?.copySelected?.();
-      break;
-    case 'Delete':
-      e.preventDefault();
-      canvasRef?.deleteSelected?.();
-      break;
-    case 'F2':
-      e.preventDefault();
-      canvasRef?.renameSelectedBlock?.();
-      break;
-    case 'ArrowUp':
-    case 'ArrowDown':
-    case 'ArrowLeft':
-    case 'ArrowRight':
-      if (canvasRef?.selected?.size === 1) {
-        e.preventDefault();
-        const block = Array.from(canvasRef.selected)[0];
-        const before = { x: block.x, y: block.y };
-        switch (combo) {
-          case 'ArrowUp':
-            block.y -= MOVE_STEP;
-            break;
-          case 'ArrowDown':
-            block.y += MOVE_STEP;
-            break;
-          case 'ArrowLeft':
-            block.x -= MOVE_STEP;
-            break;
-          case 'ArrowRight':
-            block.x += MOVE_STEP;
-            break;
-        }
-        canvasRef.moveCallback?.(block);
-        const after = { x: block.x, y: block.y };
-        pushUndo({
-          undo: async () => {
-            block.x = before.x;
-            block.y = before.y;
-            canvasRef.moveCallback?.(block);
-            canvasRef.draw?.();
-          },
-          redo: async () => {
-            block.x = after.x;
-            block.y = after.y;
-            canvasRef.moveCallback?.(block);
-            canvasRef.draw?.();
-          }
-        });
-      }
-      break;
+  const action = comboMap[combo];
+  if (action) {
+    e.preventDefault();
+    action();
+    return;
+  }
+
+  if (combo === 'ArrowUp') {
+    e.preventDefault();
+    editing.moveSelected(0, -MOVE_STEP);
+    return;
+  }
+  if (combo === 'ArrowDown') {
+    e.preventDefault();
+    editing.moveSelected(0, MOVE_STEP);
+    return;
+  }
+  if (combo === 'ArrowLeft') {
+    e.preventDefault();
+    editing.moveSelected(-MOVE_STEP, 0);
+    return;
+  }
+  if (combo === 'ArrowRight') {
+    e.preventDefault();
+    editing.moveSelected(MOVE_STEP, 0);
+    return;
   }
 
   if (!e.ctrlKey && !e.altKey && !e.metaKey && e.key === ' ') {
     const now = Date.now();
     if (now - lastSpaceTime < 400) {
       e.preventDefault();
-      openCommandPalette();
+      navigation.openCommandPalette();
       lastSpaceTime = 0;
     } else {
       lastSpaceTime = now;
@@ -267,7 +152,7 @@ function handleKey(e: KeyboardEvent) {
       symbolBuffer = '';
     } else if ('*/%'.includes(e.key)) {
       e.preventDefault();
-      insertOperatorBlock(e.key as OperatorSymbol);
+      insertOperatorBlock(e.key as '+' | '-' | '*' | '/' | '%');
       keywordBuffer = '';
       symbolBuffer = '';
       pendingSymbol = '';
@@ -406,477 +291,3 @@ function handleClick(e: MouseEvent) {
   const addSel = (commands as any).addSelection;
   if (typeof addSel === 'function') addSel(view);
 }
-
-export function copyBlock() {
-  if (!canvasRef || !canvasRef.selected || canvasRef.selected.size !== 1) return;
-  const block = Array.from(canvasRef.selected)[0];
-  const data = canvasRef.blockDataMap?.get(block.id);
-  if (!data) return;
-  clipboard = JSON.parse(JSON.stringify(data));
-}
-
-export function pasteBlock() {
-  if (!canvasRef || !clipboard) return;
-  const data = JSON.parse(JSON.stringify(clipboard));
-  const theme = getTheme();
-  data.visual_id =
-    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  data.x = (data.x || 0) + MOVE_STEP;
-  data.y = (data.y || 0) + MOVE_STEP;
-  const label = (data.translations && data.translations[canvasRef.locale]) || data.kind;
-  const color = theme.blockKinds[data.kind] || theme.blockFill;
-  const block = createBlock(data.kind, data.visual_id, data.x, data.y, label, color, data.data);
-  canvasRef.blocks.push(block);
-  canvasRef.blocksData.push(data);
-  canvasRef.blockDataMap.set(data.visual_id, data);
-  canvasRef.selected = new Set([block]);
-  canvasRef.moveCallback?.(block);
-  canvasRef.draw?.();
-}
-
-export function selectConnections() {
-  console.log('select connections');
-}
-
-export function focusSearch() {
-  const el = document.querySelector('input[type="search"]') as HTMLElement | null;
-  el?.focus();
-}
-
-export function showHotkeyHelp() {
-  if (!hotkeyDialog) hotkeyDialog = createHotkeyDialog(hotkeys);
-  hotkeyDialog.showModal();
-}
-
-let canvasRef: VisualCanvas | null = null;
-let clipboard: any = null;
-
-let hotkeyDialog: HTMLDialogElement | null = null;
-
-let keywordBuffer = '';
-let symbolBuffer = '';
-let pendingSymbol = '';
-let lastSpaceTime = 0;
-
-export function setCanvas(vc: VisualCanvas) {
-  canvasRef = vc;
-}
-
-export function zoomToFit() {
-  canvasRef?.zoomToFit();
-}
-
-function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'if' | 'switch' | 'return' | 'foreach' | 'await' | 'delay' | 'on') {
-  if (!canvasRef) return;
-  const theme = getTheme();
-  let kind: string;
-  let label: string;
-  let color: string;
-  switch (keyword) {
-    case 'var':
-      kind = 'Variable/Get';
-      label = 'Variable Get';
-      color = theme.blockKinds.Variable || theme.blockFill;
-      break;
-    case 'let':
-      kind = 'Variable/Set';
-      label = 'Variable Set';
-      color = theme.blockKinds.Variable || theme.blockFill;
-      break;
-    case 'for':
-      kind = 'Loop/For';
-      label = 'For';
-      color = theme.blockKinds.Loop || theme.blockFill;
-      break;
-    case 'while':
-      kind = 'Loop/While';
-      label = 'While';
-      color = theme.blockKinds.Loop || theme.blockFill;
-      break;
-    case 'if':
-      kind = 'If';
-      label = 'If';
-      color = theme.blockKinds.If || theme.blockFill;
-      break;
-    case 'switch':
-      kind = 'Switch';
-      label = 'Switch';
-      color = theme.blockKinds.Switch || theme.blockFill;
-      break;
-    case 'return':
-      kind = 'Return';
-      label = 'Return';
-      color = theme.blockKinds.Function || theme.blockFill;
-      break;
-    case 'foreach':
-      kind = 'Loop/ForEach';
-      label = 'For Each';
-      color = theme.blockKinds.Loop || theme.blockFill;
-      break;
-    case 'await':
-      kind = 'Async/Await';
-      label = 'Await';
-      color = theme.blockKinds.Async || theme.blockFill;
-      break;
-    case 'delay':
-      kind = 'Async/Delay';
-      label = 'Delay';
-      color = theme.blockKinds.Async || theme.blockFill;
-      break;
-    case 'on':
-      kind = 'Async/EventOn';
-      label = 'Event On';
-      color = theme.blockKinds.Async || theme.blockFill;
-      break;
-    default:
-      return;
-  }
-  const id =
-    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
-  const block = createBlock(kind, id, pos.x, pos.y, label, color);
-  canvasRef.blocks.push(block);
-  const data: any = { kind, visual_id: id, x: pos.x, y: pos.y, translations: { en: label } };
-  canvasRef.blocksData.push(data);
-  canvasRef.blockDataMap.set(id, data);
-  canvasRef.selected = new Set([block]);
-  canvasRef.moveCallback?.(block);
-  canvasRef.draw?.();
-  pushUndo({
-    undo: () => {
-      const idx = canvasRef.blocks.indexOf(block);
-      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
-      const dataIdx = canvasRef.blocksData.indexOf(data);
-      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
-      canvasRef.blockDataMap.delete(id);
-      canvasRef.selected?.delete(block);
-      canvasRef.draw?.();
-    },
-    redo: () => {
-      canvasRef.blocks.push(block);
-      canvasRef.blocksData.push(data);
-      canvasRef.blockDataMap.set(id, data);
-      canvasRef.selected = new Set([block]);
-      canvasRef.draw?.();
-    }
-  });
-}
-
-type OperatorSymbol = '+' | '-' | '*' | '/' | '%' | '++';
-
-function insertOperatorBlock(op: OperatorSymbol) {
-  if (!canvasRef) return;
-  const theme = getTheme();
-  const mapping: Record<OperatorSymbol, { kind: string; label: string }> = {
-    '+': { kind: 'Operator/Add', label: '+' },
-    '-': { kind: 'Operator/Subtract', label: '-' },
-    '*': { kind: 'Operator/Multiply', label: '*' },
-    '/': { kind: 'Operator/Divide', label: '/' },
-    '%': { kind: 'Operator/Modulo', label: '%' },
-    '++': { kind: 'Operator/Concat', label: '++' }
-  };
-  const conf = mapping[op];
-  const id =
-    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
-  const color = theme.blockKinds.Operator || theme.blockFill;
-  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
-  canvasRef.blocks.push(block);
-  const data: any = {
-    kind: conf.kind,
-    visual_id: id,
-    x: pos.x,
-    y: pos.y,
-    translations: { en: conf.label }
-  };
-  canvasRef.blocksData.push(data);
-  canvasRef.blockDataMap.set(id, data);
-  canvasRef.selected = new Set([block]);
-  canvasRef.moveCallback?.(block);
-  canvasRef.draw?.();
-  pushUndo({
-    undo: () => {
-      const idx = canvasRef.blocks.indexOf(block);
-      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
-      const dataIdx = canvasRef.blocksData.indexOf(data);
-      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
-      canvasRef.blockDataMap.delete(id);
-      canvasRef.selected?.delete(block);
-      canvasRef.draw?.();
-    },
-    redo: () => {
-      canvasRef.blocks.push(block);
-      canvasRef.blocksData.push(data);
-      canvasRef.blockDataMap.set(id, data);
-      canvasRef.selected = new Set([block]);
-      canvasRef.draw?.();
-    }
-  });
-}
-
-type OpSymbol = '++' | '--';
-
-function insertOpBlock(op: OpSymbol) {
-  if (!canvasRef) return;
-  const theme = getTheme();
-  const mapping: Record<OpSymbol, { kind: string; label: string }> = {
-    '++': { kind: 'Op/Inc', label: '++' },
-    '--': { kind: 'Op/Dec', label: '--' }
-  };
-  const conf = mapping[op];
-  const id =
-    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
-  const color = theme.blockKinds.Operator || theme.blockFill;
-  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
-  canvasRef.blocks.push(block);
-  const data: any = {
-    kind: conf.kind,
-    visual_id: id,
-    x: pos.x,
-    y: pos.y,
-    translations: { en: conf.label }
-  };
-  canvasRef.blocksData.push(data);
-  canvasRef.blockDataMap.set(id, data);
-  canvasRef.selected = new Set([block]);
-  canvasRef.moveCallback?.(block);
-  canvasRef.draw?.();
-  pushUndo({
-    undo: () => {
-      const idx = canvasRef.blocks.indexOf(block);
-      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
-      const dataIdx = canvasRef.blocksData.indexOf(data);
-      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
-      canvasRef.blockDataMap.delete(id);
-      canvasRef.selected?.delete(block);
-      canvasRef.draw?.();
-    },
-    redo: () => {
-      canvasRef.blocks.push(block);
-      canvasRef.blocksData.push(data);
-      canvasRef.blockDataMap.set(id, data);
-      canvasRef.selected = new Set([block]);
-      canvasRef.draw?.();
-    }
-  });
-}
-
-function insertTernaryBlock() {
-  if (!canvasRef) return;
-  const theme = getTheme();
-  const kind = 'Op/Ternary';
-  const label = '?:';
-  const id =
-    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
-  const color = theme.blockKinds.Operator || theme.blockFill;
-  const block = createBlock(kind, id, pos.x, pos.y, label, color);
-  canvasRef.blocks.push(block);
-  const data: any = {
-    kind,
-    visual_id: id,
-    x: pos.x,
-    y: pos.y,
-    translations: { en: label }
-  };
-  canvasRef.blocksData.push(data);
-  canvasRef.blockDataMap.set(id, data);
-  canvasRef.selected = new Set([block]);
-  canvasRef.moveCallback?.(block);
-  canvasRef.draw?.();
-  pushUndo({
-    undo: () => {
-      const idx = canvasRef.blocks.indexOf(block);
-      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
-      const dataIdx = canvasRef.blocksData.indexOf(data);
-      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
-      canvasRef.blockDataMap.delete(id);
-      canvasRef.selected?.delete(block);
-      canvasRef.draw?.();
-    },
-    redo: () => {
-      canvasRef.blocks.push(block);
-      canvasRef.blocksData.push(data);
-      canvasRef.blockDataMap.set(id, data);
-      canvasRef.selected = new Set([block]);
-      canvasRef.draw?.();
-    }
-  });
-}
-
-type LogicOperatorSymbol = '&&' | '||' | '!';
-
-function insertLogicOperatorBlock(op: LogicOperatorSymbol) {
-  if (!canvasRef) return;
-  const theme = getTheme();
-  const mapping: Record<LogicOperatorSymbol, { kind: string; label: string }> = {
-    '&&': { kind: 'OpLogic/And', label: '&&' },
-    '||': { kind: 'OpLogic/Or', label: '||' },
-    '!': { kind: 'OpLogic/Not', label: '!' }
-  };
-  const conf = mapping[op];
-  const id =
-    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
-  const color = theme.blockKinds.OpLogic || theme.blockFill;
-  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
-  canvasRef.blocks.push(block);
-  const data: any = {
-    kind: conf.kind,
-    visual_id: id,
-    x: pos.x,
-    y: pos.y,
-    translations: { en: conf.label }
-  };
-  canvasRef.blocksData.push(data);
-  canvasRef.blockDataMap.set(id, data);
-  canvasRef.selected = new Set([block]);
-  canvasRef.moveCallback?.(block);
-  canvasRef.draw?.();
-  pushUndo({
-    undo: () => {
-      const idx = canvasRef.blocks.indexOf(block);
-      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
-      const dataIdx = canvasRef.blocksData.indexOf(data);
-      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
-      canvasRef.blockDataMap.delete(id);
-      canvasRef.selected?.delete(block);
-      canvasRef.draw?.();
-    },
-    redo: () => {
-      canvasRef.blocks.push(block);
-      canvasRef.blocksData.push(data);
-      canvasRef.blockDataMap.set(id, data);
-      canvasRef.selected = new Set([block]);
-      canvasRef.draw?.();
-    }
-  });
-}
-
-type ComparisonOperatorSymbol = '==' | '!=' | '>' | '>=' | '<' | '<=';
-
-function insertComparisonOperatorBlock(op: ComparisonOperatorSymbol) {
-  if (!canvasRef) return;
-  const theme = getTheme();
-  const mapping: Record<ComparisonOperatorSymbol, { kind: string; label: string }> = {
-    '==': { kind: 'OpComparison/Equal', label: '==' },
-    '!=': { kind: 'OpComparison/NotEqual', label: '!=' },
-    '>': { kind: 'OpComparison/Greater', label: '>' },
-    '>=': { kind: 'OpComparison/GreaterEqual', label: '>=' },
-    '<': { kind: 'OpComparison/Less', label: '<' },
-    '<=': { kind: 'OpComparison/LessEqual', label: '<=' }
-  };
-  const conf = mapping[op];
-  const id =
-    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
-  const color = theme.blockKinds.OpComparison || theme.blockFill;
-  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
-  canvasRef.blocks.push(block);
-  const data: any = {
-    kind: conf.kind,
-    visual_id: id,
-    x: pos.x,
-    y: pos.y,
-    translations: { en: conf.label }
-  };
-  canvasRef.blocksData.push(data);
-  canvasRef.blockDataMap.set(id, data);
-  canvasRef.selected = new Set([block]);
-  canvasRef.moveCallback?.(block);
-  canvasRef.draw?.();
-  pushUndo({
-    undo: () => {
-      const idx = canvasRef.blocks.indexOf(block);
-      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
-      const dataIdx = canvasRef.blocksData.indexOf(data);
-      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
-      canvasRef.blockDataMap.delete(id);
-      canvasRef.selected?.delete(block);
-      canvasRef.draw?.();
-    },
-    redo: () => {
-      canvasRef.blocks.push(block);
-      canvasRef.blocksData.push(data);
-      canvasRef.blockDataMap.set(id, data);
-      canvasRef.selected = new Set([block]);
-      canvasRef.draw?.();
-    }
-  });
-}
-
-function insertLogBlock() {
-  if (!canvasRef) return;
-  const theme = getTheme();
-  const kind = 'Log';
-  const label = 'Log';
-  const id =
-    (globalThis.crypto && typeof globalThis.crypto.randomUUID === 'function')
-      ? globalThis.crypto.randomUUID()
-      : Math.random().toString(36).slice(2);
-  const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
-  const color = theme.blockKinds.Log || theme.blockFill;
-
-  const connectFrom =
-    (canvasRef as any).activeOutput ||
-    (canvasRef.selected && canvasRef.selected.size === 1
-      ? Array.from(canvasRef.selected)[0]
-      : null);
-
-  const block = createBlock(kind, id, pos.x, pos.y, label, color, { exec: true });
-  canvasRef.blocks.push(block);
-  const data: any = {
-    kind,
-    visual_id: id,
-    x: pos.x,
-    y: pos.y,
-    translations: { en: label },
-    exec: true
-  };
-  canvasRef.blocksData.push(data);
-  canvasRef.blockDataMap.set(id, data);
-  canvasRef.selected = new Set([block]);
-  canvasRef.moveCallback?.(block);
-  if (connectFrom && typeof (canvasRef as any).connect === 'function') {
-    (canvasRef as any).connect(connectFrom, block);
-  }
-  canvasRef.draw?.();
-  pushUndo({
-    undo: () => {
-      const idx = canvasRef.blocks.indexOf(block);
-      if (idx !== -1) canvasRef.blocks.splice(idx, 1);
-      const dataIdx = canvasRef.blocksData.indexOf(data);
-      if (dataIdx !== -1) canvasRef.blocksData.splice(dataIdx, 1);
-      canvasRef.blockDataMap.delete(id);
-      canvasRef.selected?.delete(block);
-      canvasRef.draw?.();
-    },
-    redo: () => {
-      canvasRef.blocks.push(block);
-      canvasRef.blocksData.push(data);
-      canvasRef.blockDataMap.set(id, data);
-      canvasRef.selected = new Set([block]);
-      canvasRef.moveCallback?.(block);
-      if (connectFrom && typeof (canvasRef as any).connect === 'function') {
-        (canvasRef as any).connect(connectFrom, block);
-      }
-      canvasRef.draw?.();
-    }
-  });
-}
-

@@ -11,6 +11,7 @@ async function setup() {
   vi.mock('../editor/goto-line.js', () => ({ gotoLine: vi.fn() }));
   vi.mock('../../scripts/format.js', () => ({ formatCurrentFile: vi.fn() }));
   vi.mock('../editor/command-palette.ts', () => ({ openCommandPalette: vi.fn() }));
+  vi.mock('./export.ts', () => ({ exportPNG: vi.fn() }));
   const mod = await import('./hotkeys.ts');
   const canvas: any = {
     blocks: [],
@@ -105,6 +106,18 @@ describe('hotkeys block insertion', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', ctrlKey: true, shiftKey: true }));
     await Promise.resolve();
     expect(canvas.blocksData).toHaveLength(1);
+    mod.unregisterHotkeys();
+  });
+});
+
+describe('hotkey bindings', () => {
+  it('allows export only with bound hotkey', async () => {
+    const { mod } = await setup();
+    const exp = (await import('./export.ts')).exportPNG as any;
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', ctrlKey: true }));
+    expect(exp).not.toHaveBeenCalled();
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'E', ctrlKey: true, shiftKey: true }));
+    expect(exp).toHaveBeenCalled();
     mod.unregisterHotkeys();
   });
 });
