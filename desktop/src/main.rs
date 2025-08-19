@@ -669,7 +669,12 @@ impl Application for MulticodeApp {
 }
 
 fn pick_folder() -> impl std::future::Future<Output = Option<PathBuf>> {
-    async { std::env::current_dir().ok() }
+    async {
+        tokio::task::spawn_blocking(|| rfd::FileDialog::new().pick_folder())
+            .await
+            .ok()
+            .flatten()
+    }
 }
 
 impl MulticodeApp {
