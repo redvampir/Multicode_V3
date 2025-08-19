@@ -5,7 +5,8 @@ use iced::widget::{
     button, column, container, row, scrollable, text, text_editor, text_input, MouseArea, Space,
 };
 use iced::{
-    alignment, subscription, Application, Command, Element, Length, Settings, Subscription, Theme,
+    alignment, event, keyboard, subscription, Application, Command, Element, Event, Length,
+    Settings, Subscription, Theme,
 };
 use multicode_core::{blocks, export, git, search};
 use tokio::{fs, sync::broadcast};
@@ -98,6 +99,7 @@ enum Message {
     RunExport,
     ExportFinished(Result<Vec<String>, String>),
     CoreEvent(String),
+    IcedEvent(Event),
     SaveSettings,
     ToggleDir(PathBuf),
     ShowContextMenu(PathBuf),
@@ -211,6 +213,31 @@ impl Application for MulticodeApp {
 
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::IcedEvent(Event::Keyboard(keyboard::Event::KeyPressed {
+                key,
+                modifiers,
+                ..
+            })) => {
+                if modifiers.control() {
+                    match key.as_ref() {
+                        keyboard::Key::Character("n") => return self.update(Message::CreateFile),
+                        keyboard::Key::Character("s") => return self.update(Message::SaveFile),
+                        _ => {}
+                    }
+                } else if modifiers.is_empty() {
+                    match key.as_ref() {
+                        keyboard::Key::Named(keyboard::key::Named::F2) => {
+                            return self.update(Message::RenameFile)
+                        }
+                        keyboard::Key::Named(keyboard::key::Named::Delete) => {
+                            return self.update(Message::DeleteFile)
+                        }
+                        _ => {}
+                    }
+                }
+                Command::none()
+            }
+            Message::IcedEvent(_) => Command::none(),
             Message::PickFolder => Command::perform(pick_folder(), Message::FolderPicked),
             Message::FolderPicked(path) => {
                 if let Some(root) = path {
@@ -639,7 +666,7 @@ impl Application for MulticodeApp {
     fn subscription(&self) -> Subscription<Message> {
         if matches!(self.screen, Screen::Workspace { .. }) {
             let rx = self.sender.subscribe();
-            subscription::run_with_id(
+            let core = subscription::run_with_id(
                 "core-events",
                 stream::unfold(rx, |mut rx| async {
                     match rx.recv().await {
@@ -647,7 +674,9 @@ impl Application for MulticodeApp {
                         Err(_) => None,
                     }
                 }),
-            )
+            );
+            let events = event::listen().map(Message::IcedEvent);
+            Subscription::batch([core, events])
         } else {
             Subscription::none()
         }
@@ -687,7 +716,9 @@ impl Application for MulticodeApp {
                     button("Переименовать").into()
                 };
                 let delete_btn: Element<_> = if self.selected_file.is_some() {
-                    button("Удалить").on_press(Message::RequestDeleteFile).into()
+                    button("Удалить")
+                        .on_press(Message::RequestDeleteFile)
+                        .into()
                 } else {
                     button("Удалить").into()
                 };
