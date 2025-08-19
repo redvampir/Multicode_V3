@@ -1,12 +1,10 @@
 use super::Message;
 use crate::app::io::{pick_file, pick_folder};
 use crate::app::ui::ContextMenu;
-use crate::app::{
-    EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen,
-};
+use crate::app::{EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen};
 use chrono::Utc;
 use iced::widget::text_editor::{self, Content};
-use iced::{keyboard, Command, Event};
+use iced::{keyboard, window, Command, Event};
 use multicode_core::{
     blocks, export, git,
     meta::{self, VisualMeta, DEFAULT_VERSION},
@@ -82,6 +80,14 @@ impl MulticodeApp {
                 }
                 if hotkeys.delete_file.matches(&key, modifiers) {
                     return self.handle_message(Message::RequestDeleteFile);
+                }
+                Command::none()
+            }
+            Message::IcedEvent(Event::Window(window::Event::FileDropped(path))) => {
+                if path.is_dir() {
+                    return self.handle_message(Message::FolderPicked(Some(path)));
+                } else if path.is_file() {
+                    return self.handle_message(Message::FilePicked(Some(path)));
                 }
                 Command::none()
             }
@@ -227,7 +233,10 @@ impl MulticodeApp {
                         self.select_range(range.end - range.start);
                         let replacement = Arc::new(self.replace_term.clone());
                         if let Some(f) = self.current_file_mut() {
-                            f.editor.perform(text_editor::Action::Edit(text_editor::Edit::Paste(replacement)));
+                            f.editor
+                                .perform(text_editor::Action::Edit(text_editor::Edit::Paste(
+                                    replacement,
+                                )));
                             f.content = f.editor.text();
                             f.dirty = true;
                         }

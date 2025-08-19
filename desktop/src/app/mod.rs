@@ -449,7 +449,7 @@ impl Application for MulticodeApp {
                 };
                 let content = column![
                     text("Выберите папку проекта"),
-                    button("Выбрать папку").on_press(Message::PickFolder),
+                    button("Выбрать").on_press(Message::PickFolder),
                     button("Выбрать файл").on_press(Message::PickFile),
                     button(settings_label).on_press(Message::OpenSettings),
                 ]
@@ -839,8 +839,7 @@ impl Application for MulticodeApp {
                 } else {
                     hotkeys.delete_file.to_string()
                 };
-                let syntect_themes: Vec<String> =
-                    THEME_SET.themes.keys().cloned().collect();
+                let syntect_themes: Vec<String> = THEME_SET.themes.keys().cloned().collect();
                 let warning: Element<_> = if let Some(w) = &self.settings_warning {
                     text(w.clone()).into()
                 } else {
