@@ -471,6 +471,23 @@ impl Application for MulticodeApp {
                 ) {
                     return Command::none();
                 }
+                if modifiers.control() && !modifiers.alt() && !modifiers.shift() {
+                    if let keyboard::Key::Character(c) = &key {
+                        match c.to_lowercase().as_str() {
+                            "n" => return self.update(Message::CreateFile),
+                            "s" => return self.update(Message::SaveFile),
+                            _ => {}
+                        }
+                    }
+                }
+                if !modifiers.control() && !modifiers.alt() && !modifiers.shift() {
+                    if let keyboard::Key::Named(keyboard::key::Named::F2) = key.clone() {
+                        return self.update(Message::RenameFile);
+                    }
+                    if let keyboard::Key::Named(keyboard::key::Named::Delete) = key.clone() {
+                        return self.update(Message::RequestDeleteFile);
+                    }
+                }
                 let hotkeys = &self.settings.hotkeys;
                 if hotkeys.create_file.matches(&key, modifiers) {
                     return self.update(Message::CreateFile);
