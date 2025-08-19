@@ -73,4 +73,8 @@ pub enum Message {
     StartCaptureHotkey(HotkeyField),
     SwitchToTextEditor,
     SwitchToVisualEditor,
+    ToggleTerminal,
+    TerminalCmdChanged(String),
+    RunTerminalCmd(String),
+    ShowTerminalHelp,
 }

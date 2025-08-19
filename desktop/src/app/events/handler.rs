@@ -15,6 +15,8 @@ use std::collections::{HashMap, HashSet};
 use std::path::Path;
 use std::sync::Arc;
 use tokio::fs;
+use tokio::io::{AsyncBufReadExt, BufReader};
+use tokio::process::{Child, Command as TokioCommand};
 
 impl MulticodeApp {
     pub fn handle_message(&mut self, message: Message) -> Command<Message> {
@@ -761,6 +763,69 @@ impl MulticodeApp {
             }
             Message::ExportFinished(Err(e)) => {
                 self.log.push(format!("ошибка экспорта: {e}"));
+                Command::none()
+            }
+            Message::ToggleTerminal => {
+                self.show_terminal = !self.show_terminal;
+                Command::none()
+            }
+            Message::TerminalCmdChanged(cmd) => {
+                self.terminal_cmd = cmd;
+                Command::none()
+            }
+            Message::RunTerminalCmd(cmd) => {
+                let cmd = cmd.trim().to_string();
+                self.log.push(format!("$ {}", cmd));
+                self.terminal_cmd.clear();
+                if cmd == ":clear" {
+                    self.log.clear();
+                    return Command::none();
+                }
+                if cmd == ":stop" {
+                    if let Some(mut child) = self.terminal_child.take() {
+                        tokio::spawn(async move {
+                            let _ = child.kill().await;
+                        });
+                    }
+                    return Command::none();
+                }
+                let sender = self.sender.clone();
+                match TokioCommand::new("sh")
+                    .arg("-c")
+                    .arg(cmd.clone())
+                    .stdout(std::process::Stdio::piped())
+                    .stderr(std::process::Stdio::piped())
+                    .spawn()
+                {
+                    Ok(mut child) => {
+                        if let Some(stdout) = child.stdout.take() {
+                            let mut reader = BufReader::new(stdout).lines();
+                            let tx = sender.clone();
+                            tokio::spawn(async move {
+                                while let Ok(Some(line)) = reader.next_line().await {
+                                    let _ = tx.send(line);
+                                }
+                            });
+                        }
+                        if let Some(stderr) = child.stderr.take() {
+                            let mut reader = BufReader::new(stderr).lines();
+                            let tx = sender.clone();
+                            tokio::spawn(async move {
+                                while let Ok(Some(line)) = reader.next_line().await {
+                                    let _ = tx.send(line);
+                                }
+                            });
+                        }
+                        self.terminal_child = Some(child);
+                    }
+                    Err(e) => {
+                        self.log.push(format!("ошибка запуска: {e}"));
+                    }
+                }
+                Command::none()
+            }
+            Message::ShowTerminalHelp => {
+                self.show_terminal_help = !self.show_terminal_help;
                 Command::none()
             }
             Message::ToggleDir(path) => {
