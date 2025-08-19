@@ -125,7 +125,7 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::CloseSettings => {
-                if let Some(root) = self.settings.last_folder.clone() {
+                if let Some(root) = self.settings.last_folders.first().cloned() {
                     self.screen = match self.settings.editor_mode {
                         EditorMode::Text => Screen::TextEditor { root },
                         EditorMode::Visual => Screen::VisualEditor { root },
@@ -154,7 +154,7 @@ impl MulticodeApp {
             Message::PickFolder => Command::perform(pick_folder(), Message::FolderPicked),
             Message::FolderPicked(path) => {
                 if let Some(root) = path {
-                    self.settings.last_folder = Some(root.clone());
+                    self.settings.add_recent_folder(root.clone());
                     self.screen = match self.settings.editor_mode {
                         EditorMode::Text => Screen::TextEditor { root: root.clone() },
                         EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
@@ -171,7 +171,7 @@ impl MulticodeApp {
             Message::FilePicked(path) => {
                 if let Some(file_path) = path {
                     if let Some(root) = file_path.parent().map(|p| p.to_path_buf()) {
-                        self.settings.last_folder = Some(root.clone());
+                        self.settings.add_recent_folder(root.clone());
                         self.screen = match self.settings.editor_mode {
                             EditorMode::Text => Screen::TextEditor { root: root.clone() },
                             EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
@@ -185,6 +185,18 @@ impl MulticodeApp {
                     }
                 }
                 Command::none()
+            }
+            Message::OpenRecent(root) => {
+                self.settings.add_recent_folder(root.clone());
+                self.screen = match self.settings.editor_mode {
+                    EditorMode::Text => Screen::TextEditor { root: root.clone() },
+                    EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
+                };
+                multicode_core::meta::watch::spawn(self.sender.clone());
+                Command::batch([
+                    self.load_files(root),
+                    self.handle_message(Message::SaveSettings),
+                ])
             }
             Message::FilesLoaded(list) => {
                 self.files = list;
