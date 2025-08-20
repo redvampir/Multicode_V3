@@ -2,14 +2,7 @@ use super::Message;
 use crate::app::io::{pick_file, pick_folder};
 use crate::app::ui::ContextMenu;
 use crate::app::{
-    diff::DiffView,
-    EditorMode,
-    Hotkey,
-    HotkeyField,
-    MulticodeApp,
-    OpenFile,
-    PendingAction,
-    Screen,
+    diff::DiffView, EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen,
 };
 use chrono::Utc;
 use iced::widget::text_editor::{self, Content};
@@ -837,14 +830,14 @@ impl MulticodeApp {
                 self.show_terminal_help = !self.show_terminal_help;
                 Command::none()
             }
-            Message::OpenDiff(left, right) => {
+            Message::OpenDiff(left, right, ignore_ws) => {
                 let left_content = std::fs::read_to_string(&left).unwrap_or_default();
                 let right_content = std::fs::read_to_string(&right).unwrap_or_default();
-                let diff = DiffView::new(left_content, right_content);
+                let diff = DiffView::new(left_content, right_content, ignore_ws);
                 self.screen = Screen::Diff(diff);
                 Command::none()
             }
-            Message::OpenGitDiff(path, commit) => {
+            Message::OpenGitDiff(path, commit, ignore_ws) => {
                 let current = std::fs::read_to_string(&path).unwrap_or_default();
                 let rel = if let Some(root) = self.current_root_path() {
                     path.strip_prefix(root).unwrap_or(&path).to_path_buf()
@@ -858,8 +851,14 @@ impl MulticodeApp {
                     .output()
                 {
                     let prev = String::from_utf8_lossy(&out.stdout).to_string();
-                    let diff = DiffView::new(prev, current);
+                    let diff = DiffView::new(prev, current, ignore_ws);
                     self.screen = Screen::Diff(diff);
+                }
+                Command::none()
+            }
+            Message::ToggleDiffIgnoreWhitespace(val) => {
+                if let Screen::Diff(ref mut diff) = self.screen {
+                    diff.set_ignore_whitespace(val);
                 }
                 Command::none()
             }

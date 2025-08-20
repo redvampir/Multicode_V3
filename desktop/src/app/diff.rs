@@ -12,38 +12,70 @@ pub struct DiffView {
     pub right_diff: Vec<usize>,
     left_scroll: scrollable::Id,
     right_scroll: scrollable::Id,
+    pub ignore_whitespace: bool,
 }
 
 impl DiffView {
-    pub fn new(left: String, right: String) -> Self {
-        let left_lines: Vec<&str> = left.lines().collect();
-        let right_lines: Vec<&str> = right.lines().collect();
-        let mut left_diff = Vec::new();
-        let mut right_diff = Vec::new();
+    pub fn new(left: String, right: String, ignore_whitespace: bool) -> Self {
+        let left_scroll = scrollable::Id::unique();
+        let right_scroll = scrollable::Id::unique();
+        scrollable::link(left_scroll.clone(), right_scroll.clone());
+
+        let mut diff = Self {
+            left: text_editor::Content::with_text(left),
+            right: text_editor::Content::with_text(right),
+            left_diff: Vec::new(),
+            right_diff: Vec::new(),
+            left_scroll,
+            right_scroll,
+            ignore_whitespace,
+        };
+        diff.recalculate();
+        diff
+    }
+
+    fn normalize(&self, s: &str) -> String {
+        if self.ignore_whitespace {
+            s.split_whitespace().collect::<Vec<_>>().join(" ")
+        } else {
+            s.to_string()
+        }
+    }
+
+    fn recalculate(&mut self) {
+        let left_lines: Vec<String> = self
+            .left
+            .text()
+            .lines()
+            .map(|l| self.normalize(l))
+            .collect();
+        let right_lines: Vec<String> = self
+            .right
+            .text()
+            .lines()
+            .map(|r| self.normalize(r))
+            .collect();
+        self.left_diff.clear();
+        self.right_diff.clear();
         let max = left_lines.len().max(right_lines.len());
         for i in 0..max {
             let l = left_lines.get(i);
             let r = right_lines.get(i);
             if l != r {
                 if i < left_lines.len() {
-                    left_diff.push(i);
+                    self.left_diff.push(i);
                 }
                 if i < right_lines.len() {
-                    right_diff.push(i);
+                    self.right_diff.push(i);
                 }
             }
         }
-        let left_scroll = scrollable::Id::unique();
-        let right_scroll = scrollable::Id::unique();
-        scrollable::link(left_scroll.clone(), right_scroll.clone());
+    }
 
-        Self {
-            left: text_editor::Content::with_text(left),
-            right: text_editor::Content::with_text(right),
-            left_diff,
-            right_diff,
-            left_scroll,
-            right_scroll,
+    pub fn set_ignore_whitespace(&mut self, ignore: bool) {
+        if self.ignore_whitespace != ignore {
+            self.ignore_whitespace = ignore;
+            self.recalculate();
         }
     }
 

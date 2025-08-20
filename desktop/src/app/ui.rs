@@ -6,7 +6,8 @@ use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::overlay::menu;
 use iced::widget::svg::{Handle, Svg};
 use iced::widget::{
-    button, column, container, row, scrollable, text, text_editor, text_input, MouseArea, Space,
+    button, checkbox, column, container, row, scrollable, text, text_editor, text_input, MouseArea,
+    Space,
 };
 use iced::{Alignment, Color, Element, Length};
 use once_cell::sync::Lazy;
@@ -246,7 +247,9 @@ impl MulticodeApp {
     }
 
     pub fn diff_component(&self, diff: &DiffView) -> Element<Message> {
-        diff.view()
+        let toggle = checkbox("Игнорировать пробелы", diff.ignore_whitespace)
+            .on_toggle(Message::ToggleDiffIgnoreWhitespace);
+        column![toggle, diff.view()].spacing(5).into()
     }
 
     pub fn visual_editor_component(&self) -> Element<Message> {
