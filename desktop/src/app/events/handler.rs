@@ -1,10 +1,10 @@
 use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
-use crate::components::file_manager::ContextMenu;
 use crate::app::{
     command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField,
     MulticodeApp, PendingAction, Screen, Tab,
 };
+use crate::components::file_manager::ContextMenu;
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -1267,8 +1267,8 @@ impl MulticodeApp {
                             y: diff.current as f32 / (lines - 1) as f32,
                         };
                         return Command::batch([
-                            Command::widget(scrollable::snap_to(diff.left_scroll.clone(), offset)),
-                            Command::widget(scrollable::snap_to(diff.right_scroll.clone(), offset)),
+                            scrollable::snap_to(diff.left_scroll.clone(), offset),
+                            scrollable::snap_to(diff.right_scroll.clone(), offset),
                         ]);
                     }
                 }
@@ -1298,8 +1298,8 @@ impl MulticodeApp {
                             y: diff.current as f32 / (lines - 1) as f32,
                         };
                         return Command::batch([
-                            Command::widget(scrollable::snap_to(diff.left_scroll.clone(), offset)),
-                            Command::widget(scrollable::snap_to(diff.right_scroll.clone(), offset)),
+                            scrollable::snap_to(diff.left_scroll.clone(), offset),
+                            scrollable::snap_to(diff.right_scroll.clone(), offset),
                         ]);
                     }
                 }
