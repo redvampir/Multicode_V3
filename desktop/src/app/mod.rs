@@ -13,8 +13,8 @@ use iced::widget::{
     text_input, Space,
 };
 use iced::{
-    alignment, event, keyboard, subscription, Application, Command, Element, Length, Settings,
-    Subscription, Theme,
+    alignment, event, keyboard, subscription, theme, Application, Command, Element, Length,
+    Settings, Subscription, Theme,
 };
 use tokio::{fs, process::Child, sync::broadcast};
 use ui::{ContextMenu, THEME_SET};
@@ -524,7 +524,7 @@ impl Application for MulticodeApp {
     }
 
     fn view(&self) -> Element<Message> {
-        let content: Element<_> = match &self.screen {
+        let (tabs, content): (Option<Element<_>>, Element<_>) = match &self.screen {
             Screen::ProjectPicker => {
                 let settings_label = if self.settings.language == Language::Russian {
                     "Настройки"
@@ -559,12 +559,13 @@ impl Application for MulticodeApp {
                     }
                 }
 
-                container(content)
+                let content = container(content)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .center_x()
                     .center_y()
-                    .into()
+                    .into();
+                (None, content)
             }
             Screen::TextEditor { .. } => {
                 let sidebar = container(self.file_tree()).width(200);
@@ -597,34 +598,6 @@ impl Application for MulticodeApp {
                 } else {
                     button("Удалить").into()
                 };
-                let save_label = if self.is_dirty() {
-                    "Сохранить*"
-                } else {
-                    "Сохранить"
-                };
-                let save_btn: Element<_> = if self.active_tab.is_some() {
-                    button(save_label).on_press(Message::SaveFile).into()
-                } else {
-                    button(save_label).into()
-                };
-                let text_btn: Element<_> = button("Text").into();
-                let visual_btn: Element<_> = button("Visual")
-                    .on_press(Message::SwitchToVisualEditor)
-                    .into();
-                let autocomplete_btn: Element<_> = if self.active_tab.is_some() {
-                    button("Автодополнить")
-                        .on_press(Message::AutoComplete)
-                        .into()
-                } else {
-                    button("Автодополнить").into()
-                };
-                let format_btn: Element<_> = if self.active_tab.is_some() {
-                    button("Форматировать").on_press(Message::AutoFormat).into()
-                } else {
-                    button("Форматировать").into()
-                };
-                let mode_bar =
-                    row![text_btn, visual_btn, save_btn, autocomplete_btn, format_btn].spacing(5);
 
                 let create_select = pick_list(
                     &CreateTarget::ALL[..],
@@ -703,8 +676,6 @@ impl Application for MulticodeApp {
                 let body = row![sidebar, content].spacing(10);
 
                 let page = column![
-                    tabs,
-                    mode_bar,
                     file_menu,
                     warning,
                     dirty_warning,
@@ -741,8 +712,7 @@ impl Application for MulticodeApp {
                 if self.show_meta_dialog {
                     let modal_content = container(
                         column![
-                            text_input("Теги", &self.meta_tags)
-                                .on_input(Message::MetaTagsChanged),
+                            text_input("Теги", &self.meta_tags).on_input(Message::MetaTagsChanged),
                             text_input("Связи", &self.meta_links)
                                 .on_input(Message::MetaLinksChanged),
                             text_input("Комментарий", &self.meta_comment)
@@ -751,7 +721,7 @@ impl Application for MulticodeApp {
                                 button("Сохранить").on_press(Message::SaveMeta),
                                 button("Отмена").on_press(Message::CloseMetaDialog)
                             ]
-                            .spacing(5)
+                            .spacing(5),
                         ]
                         .spacing(5),
                     )
@@ -761,7 +731,7 @@ impl Application for MulticodeApp {
                         .on_blur(Message::CloseMetaDialog)
                         .into();
                 }
-                content
+                (Some(tabs), content)
             }
             Screen::VisualEditor { .. } => {
                 let sidebar = container(self.file_tree()).width(200);
@@ -780,20 +750,6 @@ impl Application for MulticodeApp {
                 } else {
                     button("Удалить").into()
                 };
-                let save_label = if self.is_dirty() {
-                    "Сохранить*"
-                } else {
-                    "Сохранить"
-                };
-                let save_btn: Element<_> = if self.active_tab.is_some() {
-                    button(save_label).on_press(Message::SaveFile).into()
-                } else {
-                    button(save_label).into()
-                };
-                let text_btn: Element<_> =
-                    button("Text").on_press(Message::SwitchToTextEditor).into();
-                let visual_btn: Element<_> = button("Visual").into();
-                let mode_bar = row![text_btn, visual_btn, save_btn].spacing(5);
 
                 let create_select = pick_list(
                     &CreateTarget::ALL[..],
@@ -869,8 +825,6 @@ impl Application for MulticodeApp {
                 let body = row![sidebar, content].spacing(10);
 
                 let page = column![
-                    tabs,
-                    mode_bar,
                     file_menu,
                     warning,
                     dirty_warning,
@@ -907,8 +861,7 @@ impl Application for MulticodeApp {
                 if self.show_meta_dialog {
                     let modal_content = container(
                         column![
-                            text_input("Теги", &self.meta_tags)
-                                .on_input(Message::MetaTagsChanged),
+                            text_input("Теги", &self.meta_tags).on_input(Message::MetaTagsChanged),
                             text_input("Связи", &self.meta_links)
                                 .on_input(Message::MetaLinksChanged),
                             text_input("Комментарий", &self.meta_comment)
@@ -927,7 +880,7 @@ impl Application for MulticodeApp {
                         .on_blur(Message::CloseMetaDialog)
                         .into();
                 }
-                content
+                (Some(tabs), content)
             }
             Screen::Settings => {
                 let hotkeys = &self.settings.hotkeys;
@@ -1066,19 +1019,27 @@ impl Application for MulticodeApp {
                 .align_items(alignment::Alignment::Center)
                 .spacing(20);
 
-                container(content)
+                let content = container(content)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .center_x()
                     .center_y()
-                    .into()
+                    .into();
+                (None, content)
             }
-            Screen::Diff(diff) => container(self.diff_component(diff))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into(),
+            Screen::Diff(diff) => (
+                None,
+                container(self.diff_component(diff))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into(),
+            ),
         };
-        let page: Element<_> = column![self.main_menu(), content].spacing(10).into();
+        let mut page = column![self.main_menu()];
+        if let Some(tabs) = tabs {
+            page = page.push(tabs);
+        }
+        let page: Element<_> = page.push(self.mode_bar()).push(content).spacing(10).into();
         let content = if self.loading {
             container(spinner())
                 .width(Length::Fill)
@@ -1111,6 +1072,54 @@ impl MulticodeApp {
         ]
         .spacing(10)
         .into()
+    }
+
+    fn mode_bar(&self) -> Element<Message> {
+        let text_btn: Element<_> = match &self.screen {
+            Screen::TextEditor { .. } => button("Text").style(theme::Button::Primary).into(),
+            Screen::VisualEditor { .. } => {
+                button("Text").on_press(Message::SwitchToTextEditor).into()
+            }
+            _ => button("Text").into(),
+        };
+        let visual_btn: Element<_> = match &self.screen {
+            Screen::VisualEditor { .. } => button("Visual").style(theme::Button::Primary).into(),
+            Screen::TextEditor { .. } => button("Visual")
+                .on_press(Message::SwitchToVisualEditor)
+                .into(),
+            _ => button("Visual").into(),
+        };
+
+        let save_label = if self.is_dirty() {
+            "Сохранить*"
+        } else {
+            "Сохранить"
+        };
+        let save_btn: Element<_> = if self.active_tab.is_some() {
+            button(save_label).on_press(Message::SaveFile).into()
+        } else {
+            button(save_label).into()
+        };
+
+        if matches!(&self.screen, Screen::TextEditor { .. }) {
+            let autocomplete_btn: Element<_> = if self.active_tab.is_some() {
+                button("Автодополнить")
+                    .on_press(Message::AutoComplete)
+                    .into()
+            } else {
+                button("Автодополнить").into()
+            };
+            let format_btn: Element<_> = if self.active_tab.is_some() {
+                button("Форматировать").on_press(Message::AutoFormat).into()
+            } else {
+                button("Форматировать").into()
+            };
+            row![text_btn, visual_btn, save_btn, autocomplete_btn, format_btn]
+                .spacing(5)
+                .into()
+        } else {
+            row![text_btn, visual_btn, save_btn].spacing(5).into()
+        }
     }
 
     fn current_file(&self) -> Option<&Tab> {
