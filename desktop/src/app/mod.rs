@@ -1,8 +1,10 @@
 pub mod events;
 pub mod io;
 pub mod ui;
+pub mod diff;
 
 use crate::modal::Modal;
+use diff::DiffView;
 use events::Message;
 use iced::futures::stream;
 use iced::widget::{
@@ -82,6 +84,7 @@ pub enum Screen {
     ProjectPicker,
     TextEditor { root: PathBuf },
     VisualEditor { root: PathBuf },
+    Diff(DiffView),
     Settings,
 }
 
@@ -978,6 +981,12 @@ impl Application for MulticodeApp {
                     .center_y()
                     .into()
             }
+            Screen::Diff(diff) => {
+                container(self.diff_component(diff))
+                    .width(Length::Fill)
+                    .height(Length::Fill)
+                    .into()
+            }
         }
     }
 }
@@ -1008,6 +1017,7 @@ impl MulticodeApp {
     fn current_root_path(&self) -> Option<PathBuf> {
         match &self.screen {
             Screen::TextEditor { root } | Screen::VisualEditor { root } => Some(root.clone()),
+            Screen::Diff(_) => self.settings.last_folders.first().cloned(),
             Screen::ProjectPicker => None,
             Screen::Settings => self.settings.last_folders.first().cloned(),
         }
