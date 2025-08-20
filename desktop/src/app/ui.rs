@@ -199,6 +199,25 @@ impl MulticodeApp {
         }
     }
 
+    pub fn project_search_component(&self) -> Element<Message> {
+        if self.project_search_results.is_empty() {
+            return Space::with_height(Length::Shrink).into();
+        }
+        let items = self
+            .project_search_results
+            .iter()
+            .map(|(path, line, text)| {
+                let label = format!("{}:{}: {}", path.display(), line + 1, text);
+                button(label)
+                    .on_press(Message::OpenSearchResult(path.clone(), *line))
+                    .into()
+            })
+            .collect::<Vec<Element<Message>>>();
+        scrollable(column(items))
+            .height(Length::Fixed(150.0))
+            .into()
+    }
+
     pub fn tabs_component(&self) -> Element<Message> {
         let len = self.tabs.len();
         let tabs = self
