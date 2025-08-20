@@ -64,6 +64,20 @@ struct NodeTemplate {
 }
 ```
 
+### Преобразование NodeTemplate → AnalysisNode
+
+| Поле NodeTemplate | Поле AnalysisNode |
+| --- | --- |
+| `id` | `id` |
+| `node_type` | `analysis_type` |
+| `links` | `links` |
+| `metadata` | `metadata` |
+| `draft_content` | — |
+
+Поля `status`, `confidence_threshold`, `reasoning_chain` и `uncertainty_score` в шаблон не входят, поскольку задаются или вычисляются после ревью.
+
+**Пример (JSON)**
+
 ```json
 {
   "id": "example.template",
@@ -77,12 +91,51 @@ struct NodeTemplate {
 }
 ```
 
+→
+
+```json
+{
+  "id": "example.template",
+  "analysis_type": "ProgrammingSyntaxNode",
+  "links": ["prog.syntax.base"],
+  "status": "draft",
+  "confidence_threshold": 0.8,
+  "reasoning_chain": [
+    "initial review complete"
+  ],
+  "uncertainty_score": 0.2,
+  "metadata": {
+    "schema": "1.0",
+    "source": "https://example.org"
+  }
+}
+```
+
+**Пример (YAML)**
+
 ```yaml
 id: example.template
 node_type: ProgrammingSyntaxNode
 links:
   - prog.syntax.base
 draft_content: Initial description
+metadata:
+  schema: "1.0"
+  source: "https://example.org"
+```
+
+→
+
+```yaml
+id: example.template
+analysis_type: ProgrammingSyntaxNode
+links:
+  - prog.syntax.base
+status: draft
+confidence_threshold: 0.8
+reasoning_chain:
+  - initial review complete
+uncertainty_score: 0.2
 metadata:
   schema: "1.0"
   source: "https://example.org"
