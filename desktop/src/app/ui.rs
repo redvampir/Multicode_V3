@@ -343,8 +343,59 @@ impl MulticodeApp {
             } else {
                 Space::with_height(Length::Shrink).into()
             };
-
-            column![toolbar, editor_view].spacing(5).into()
+            let editor_column = column![toolbar, editor_view].spacing(5);
+            if self.settings.show_markdown_preview && ext == "md" {
+                use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
+                let parser = Parser::new(&file.content);
+                let mut elements: Vec<Element<Message>> = Vec::new();
+                let mut buf = String::new();
+                let mut heading = None;
+                for event in parser {
+                    match event {
+                        Event::Start(Tag::Heading(level, _, _)) => {
+                            buf.clear();
+                            heading = Some(level);
+                        }
+                        Event::End(Tag::Heading(_, _, _)) => {
+                            let size = match heading.unwrap_or(HeadingLevel::H1) {
+                                HeadingLevel::H1 => 30.0,
+                                HeadingLevel::H2 => 26.0,
+                                HeadingLevel::H3 => 22.0,
+                                _ => 20.0,
+                            };
+                            elements.push(text(buf.clone()).size(size).into());
+                            buf.clear();
+                            heading = None;
+                        }
+                        Event::Start(Tag::Paragraph) => buf.clear(),
+                        Event::End(Tag::Paragraph) => {
+                            elements.push(text(buf.clone()).into());
+                            buf.clear();
+                        }
+                        Event::Start(Tag::Item) => buf.push_str("• "),
+                        Event::End(Tag::Item) => {
+                            elements.push(text(buf.clone()).into());
+                            buf.clear();
+                        }
+                        Event::Text(t) | Event::Code(t) => buf.push_str(&t),
+                        Event::SoftBreak | Event::HardBreak => buf.push('\n'),
+                        _ => {}
+                    }
+                }
+                if !buf.is_empty() {
+                    elements.push(text(buf).into());
+                }
+                let preview = scrollable(column(elements).spacing(5))
+                    .width(Length::FillPortion(1));
+                row![
+                    editor_column.width(Length::FillPortion(1)),
+                    preview
+                ]
+                .spacing(5)
+                .into()
+            } else {
+                editor_column.into()
+            }
         } else {
             container(text("файл не выбран"))
                 .width(Length::Fill)

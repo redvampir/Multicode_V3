@@ -165,6 +165,10 @@ impl MulticodeApp {
                 self.settings.show_toolbar = value;
                 Command::none()
             }
+            Message::ToggleMarkdownPreview(value) => {
+                self.settings.show_markdown_preview = value;
+                Command::none()
+            }
             Message::StartCaptureHotkey(field) => {
                 self.hotkey_capture = Some(field);
                 Command::none()
