@@ -385,14 +385,10 @@ impl MulticodeApp {
                 if !buf.is_empty() {
                     elements.push(text(buf).into());
                 }
-                let preview = scrollable(column(elements).spacing(5))
-                    .width(Length::FillPortion(1));
-                row![
-                    editor_column.width(Length::FillPortion(1)),
-                    preview
-                ]
-                .spacing(5)
-                .into()
+                let preview = scrollable(column(elements).spacing(5)).width(Length::FillPortion(1));
+                row![editor_column.width(Length::FillPortion(1)), preview]
+                    .spacing(5)
+                    .into()
             } else {
                 editor_column.into()
             }
@@ -502,17 +498,11 @@ impl MulticodeApp {
             let (line, column) = file.editor.cursor_position();
             let path = file.path.to_string_lossy().to_string();
             let dirty = if file.dirty { "*" } else { "" };
-            container(
-                row![
-                    text(path).width(Length::Fill),
-                    text(format!("{}:{}", line + 1, column + 1)),
-                    text(dirty)
-                ]
-                .spacing(10),
-            )
-            .width(Length::Fill)
-            .padding(5)
-            .into()
+            let info = format!("{}:{} | blocks {}", line + 1, column + 1, file.blocks.len());
+            container(row![text(path).width(Length::Fill), text(info), text(dirty)].spacing(10))
+                .width(Length::Fill)
+                .padding(5)
+                .into()
         } else {
             Space::with_height(Length::Shrink).into()
         }
@@ -589,8 +579,7 @@ impl MulticodeApp {
                 let label = if self.shortcut_capture.as_deref() == Some(cmd.id) {
                     String::from("...")
                 } else {
-                    self
-                        .settings
+                    self.settings
                         .shortcuts
                         .get(cmd.id)
                         .map(|h| h.to_string())
@@ -598,8 +587,7 @@ impl MulticodeApp {
                 };
                 row![
                     text(cmd.title),
-                    button(text(label))
-                        .on_press(Message::StartCaptureShortcut(cmd.id.to_string()))
+                    button(text(label)).on_press(Message::StartCaptureShortcut(cmd.id.to_string()))
                 ]
                 .spacing(10)
                 .into()

@@ -22,7 +22,7 @@ use ui::{ContextMenu, THEME_SET};
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
 
 use directories::ProjectDirs;
-use multicode_core::git;
+use multicode_core::{git, BlockInfo};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -132,6 +132,7 @@ pub struct Tab {
     dirty: bool,
     blame: HashMap<usize, git::BlameLine>,
     diagnostics: Vec<Diagnostic>,
+    blocks: Vec<BlockInfo>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -562,8 +563,7 @@ impl Application for MulticodeApp {
                 };
                 let menu = row![
                     button("Разбор").on_press(Message::RunParse),
-                    button("Поиск")
-                        .on_press(Message::ProjectSearch(self.query.clone())),
+                    button("Поиск").on_press(Message::ProjectSearch(self.query.clone())),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
                     button("Терминал").on_press(Message::ToggleTerminal),
@@ -753,8 +753,7 @@ impl Application for MulticodeApp {
                 };
                 let menu = row![
                     button("Разбор").on_press(Message::RunParse),
-                    button("Поиск")
-                        .on_press(Message::ProjectSearch(self.query.clone())),
+                    button("Поиск").on_press(Message::ProjectSearch(self.query.clone())),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
                     button("Терминал").on_press(Message::ToggleTerminal),
