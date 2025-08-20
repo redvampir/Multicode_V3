@@ -92,7 +92,7 @@ metadata:
 
 ## 1. Базовый интерфейс узла
 - **Интерфейс:** `AnalysisNode`
-- **Свойства:** идентификатор, тип, степень достоверности, связи.
+- **Свойства:** идентификатор, `analysis_type`, `confidence_threshold`, `reasoning_chain`, `uncertainty_score`, связи.
 - **Методы:** `analyze()`, `explain()`, `updateContext()` и т. п.
 - **Назначение:** единый контракт для всех типов узлов, обеспечивающий расширяемость и полиморфизм.
 ### Сериализация и версионирование
@@ -101,29 +101,40 @@ metadata:
 
 ```yaml
 id: string                 # обязательный
-type: string               # обязательный
-confidence: number         # 0..1, опционально
+analysis_type: string      # обязательный
+confidence_threshold: number  # 0..1, опционально
 links:                     # опционально
   - string
 status: string             # обязательный (draft|active|deprecated|error)
+reasoning_chain:           # опционально, шаги рассуждений
+  - string
+uncertainty_score: number  # 0..1, опционально
 metadata:                  # опционально
   schema: "1.0"            # версия схемы
 ```
 
 Версионирование определяется полем `metadata.schema` и следует [Semantic Versioning](https://semver.org/). `MAJOR` меняется при несовместимых изменениях, `MINOR` — при добавлении опциональных полей, `PATCH` — при исправлении описаний.
 
-**Обязательные поля:** `id`, `type`, `status`, `metadata.schema`.
-**Опциональные поля:** `confidence`, `links`, остальные элементы `metadata`.
+**Обязательные поля:** `id`, `analysis_type`, `status`, `metadata.schema`.
+**Опциональные поля:** `confidence_threshold`, `links`, `reasoning_chain`, `uncertainty_score`, остальные элементы `metadata`.
+
+Поле `status` фиксирует жизненный цикл узла: `draft` — в разработке, `active` — готов к использованию, `deprecated` — устарел и подлежит замене, `error` — содержит ошибки и не должен применяться.
+`reasoning_chain` формируется как упорядоченный список шагов, добавляемых узлом во время работы методов `analyze()` и `updateContext()`, что позволяет проследить логическую цепочку рассуждений.
 
 #### Пример `ProgrammingSyntaxNode`
 
 ```json
 {
   "id": "prog.syntax.python.for",
-  "type": "ProgrammingSyntaxNode",
-  "confidence": 0.95,
+  "analysis_type": "ProgrammingSyntaxNode",
+  "confidence_threshold": 0.95,
   "links": ["prog.syntax.iteration"],
   "status": "active",
+  "reasoning_chain": [
+    "tokenized input",
+    "matched for-loop grammar"
+  ],
+  "uncertainty_score": 0.05,
   "metadata": {
     "schema": "1.0",
     "language": "Python",
