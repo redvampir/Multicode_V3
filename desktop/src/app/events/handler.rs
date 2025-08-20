@@ -2,18 +2,20 @@ use super::Message;
 use crate::app::io::{pick_file, pick_folder};
 use crate::app::ui::ContextMenu;
 use crate::app::{
-    diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField, MulticodeApp, PendingAction,
-    Screen, Tab,
+    command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField,
+    MulticodeApp, PendingAction, Screen, Tab,
 };
 use chrono::Utc;
-use iced::widget::{scrollable, text_editor::{self, Content}};
+use iced::widget::{
+    scrollable,
+    text_editor::{self, Content},
+};
 use iced::{keyboard, window, Command, Event};
 use multicode_core::{
     blocks, export, git,
     meta::{self, VisualMeta, DEFAULT_VERSION},
     parser::{self, Lang},
-    search,
-    viz_lint,
+    search, viz_lint,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -67,6 +69,13 @@ impl MulticodeApp {
                     Screen::TextEditor { .. } | Screen::VisualEditor { .. }
                 ) {
                     return Command::none();
+                }
+                if modifiers.control() && modifiers.shift() && !modifiers.alt() {
+                    if let keyboard::Key::Character(c) = &key {
+                        if c.eq_ignore_ascii_case("p") {
+                            return self.handle_message(Message::ToggleCommandPalette);
+                        }
+                    }
                 }
                 if modifiers.control() && !modifiers.alt() && !modifiers.shift() {
                     if let keyboard::Key::Character(c) = &key {
@@ -827,10 +836,7 @@ impl MulticodeApp {
                 match git::blame(path.to_string_lossy().as_ref()) {
                     Ok(lines) => {
                         if let Some(tab) = self.tabs.iter_mut().find(|t| t.path == path) {
-                            tab.blame = lines
-                                .into_iter()
-                                .map(|b| (b.line, b))
-                                .collect();
+                            tab.blame = lines.into_iter().map(|b| (b.line, b)).collect();
                         }
                     }
                     Err(e) => self.log.push(format!("ошибка git: {e}")),
@@ -1019,24 +1025,14 @@ impl MulticodeApp {
                             .copied()
                             .unwrap_or(all[0]);
                         diff.current = next;
-                        let lines = diff
-                            .left
-                            .line_count()
-                            .max(diff.right.line_count())
-                            .max(1);
+                        let lines = diff.left.line_count().max(diff.right.line_count()).max(1);
                         let offset = scrollable::RelativeOffset {
                             x: 0.0,
                             y: diff.current as f32 / (lines - 1) as f32,
                         };
                         return Command::batch([
-                            Command::widget(scrollable::snap_to(
-                                diff.left_scroll.clone(),
-                                offset,
-                            )),
-                            Command::widget(scrollable::snap_to(
-                                diff.right_scroll.clone(),
-                                offset,
-                            )),
+                            Command::widget(scrollable::snap_to(diff.left_scroll.clone(), offset)),
+                            Command::widget(scrollable::snap_to(diff.right_scroll.clone(), offset)),
                         ]);
                     }
                 }
@@ -1060,24 +1056,14 @@ impl MulticodeApp {
                             .copied()
                             .unwrap_or(*all.last().unwrap());
                         diff.current = prev;
-                        let lines = diff
-                            .left
-                            .line_count()
-                            .max(diff.right.line_count())
-                            .max(1);
+                        let lines = diff.left.line_count().max(diff.right.line_count()).max(1);
                         let offset = scrollable::RelativeOffset {
                             x: 0.0,
                             y: diff.current as f32 / (lines - 1) as f32,
                         };
                         return Command::batch([
-                            Command::widget(scrollable::snap_to(
-                                diff.left_scroll.clone(),
-                                offset,
-                            )),
-                            Command::widget(scrollable::snap_to(
-                                diff.right_scroll.clone(),
-                                offset,
-                            )),
+                            Command::widget(scrollable::snap_to(diff.left_scroll.clone(), offset)),
+                            Command::widget(scrollable::snap_to(diff.right_scroll.clone(), offset)),
                         ]);
                     }
                 }
@@ -1095,6 +1081,24 @@ impl MulticodeApp {
             }
             Message::ClearDiffError => {
                 self.diff_error = None;
+                Command::none()
+            }
+            Message::ToggleCommandPalette => {
+                self.show_command_palette = !self.show_command_palette;
+                if self.show_command_palette {
+                    self.query.clear();
+                }
+                Command::none()
+            }
+            Message::ExecuteCommand(cmd) => {
+                self.show_command_palette = false;
+                let msg = COMMANDS
+                    .iter()
+                    .find(|c| c.id == cmd)
+                    .map(|c| c.message.clone());
+                if let Some(m) = msg {
+                    return self.handle_message(m);
+                }
                 Command::none()
             }
             Message::ToggleDir(path) => {

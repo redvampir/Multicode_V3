@@ -1,3 +1,4 @@
+pub mod command_palette;
 pub mod diff;
 pub mod events;
 pub mod io;
@@ -21,12 +22,12 @@ use ui::{ContextMenu, THEME_SET};
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
 
 use directories::ProjectDirs;
+use multicode_core::git;
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::ops::Range;
 use std::path::PathBuf;
-use multicode_core::git;
 
 pub fn run(path: Option<PathBuf>) -> iced::Result {
     MulticodeApp::run(Settings {
@@ -61,6 +62,7 @@ pub struct MulticodeApp {
     /// новое имя при переименовании
     rename_file_name: String,
     query: String,
+    show_command_palette: bool,
     log: Vec<String>,
     show_terminal: bool,
     terminal_cmd: String,
@@ -429,6 +431,7 @@ impl Application for MulticodeApp {
             create_target: CreateTarget::File,
             rename_file_name: String::new(),
             query: String::new(),
+            show_command_palette: false,
             log: Vec::new(),
             show_terminal: false,
             terminal_cmd: String::new(),
@@ -1036,6 +1039,7 @@ impl Application for MulticodeApp {
         } else {
             content
         };
+        let content = self.command_palette_modal(content);
         self.error_modal(content)
     }
 }

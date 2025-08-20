@@ -2,23 +2,24 @@ use std::collections::HashMap;
 use std::ops::Range;
 use std::path::PathBuf;
 
+use chrono::NaiveDateTime;
 use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::overlay::menu;
 use iced::widget::svg::{Handle, Svg};
 use iced::widget::{
     button, checkbox, column, container, row, scrollable, text, text_editor, text_input,
-    tooltip::{self, Tooltip}, MouseArea, Space,
+    tooltip::{self, Tooltip},
+    MouseArea, Space,
 };
 use iced::{Alignment, Color, Element, Length};
 use once_cell::sync::Lazy;
-use chrono::NaiveDateTime;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 
 use crate::app::diff::DiffView;
 use crate::app::events::Message;
-use crate::app::{EntryType, FileEntry, MulticodeApp};
+use crate::app::{command_palette::COMMANDS, EntryType, FileEntry, MulticodeApp};
 use crate::modal::Modal;
 
 #[derive(Debug)]
@@ -216,18 +217,17 @@ impl MulticodeApp {
                     button(text("x")).on_press(Message::CloseFile(i))
                 ]
                 .spacing(5);
-                MouseArea::new(tab).on_drag(move |d| {
-                    if d.x > 30.0 && i + 1 < len {
-                        Message::ReorderTab { from: i, to: i + 1 }
-                    } else if d.x < -30.0 && i > 0 {
-                        Message::ReorderTab {
-                            from: i,
-                            to: i - 1,
+                MouseArea::new(tab)
+                    .on_drag(move |d| {
+                        if d.x > 30.0 && i + 1 < len {
+                            Message::ReorderTab { from: i, to: i + 1 }
+                        } else if d.x < -30.0 && i > 0 {
+                            Message::ReorderTab { from: i, to: i - 1 }
+                        } else {
+                            Message::ActivateTab(i)
                         }
-                    } else {
-                        Message::ActivateTab(i)
-                    }
-                }).into()
+                    })
+                    .into()
             })
             .collect::<Vec<Element<Message>>>();
         row(tabs).spacing(5).into()
@@ -485,6 +485,26 @@ impl MulticodeApp {
         } else {
             content
         }
+    }
+
+    pub fn command_palette_modal(&self, content: Element<Message>) -> Element<Message> {
+        if !self.show_command_palette {
+            return content;
+        }
+        let query_input = text_input("команда", &self.query).on_input(Message::QueryChanged);
+        let items = COMMANDS
+            .iter()
+            .filter(|c| c.title.to_lowercase().contains(&self.query.to_lowercase()))
+            .fold(column![], |col, cmd| {
+                col.push(
+                    button(text(cmd.title)).on_press(Message::ExecuteCommand(cmd.id.to_string())),
+                )
+            })
+            .spacing(5);
+        let modal_content = container(column![query_input, items]).padding(10);
+        Modal::new(content, modal_content)
+            .on_blur(Message::ToggleCommandPalette)
+            .into()
     }
 }
 
