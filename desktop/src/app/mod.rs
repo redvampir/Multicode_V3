@@ -563,11 +563,13 @@ impl Application for MulticodeApp {
                     }
                 }
 
-                let content = container(content)
+                let picker = container(content)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .center_x()
-                    .center_y()
+                    .center_y();
+                let content = column![picker, self.status_bar_component()]
+                    .spacing(10)
                     .into();
                 (None, content)
             }
@@ -1023,21 +1025,25 @@ impl Application for MulticodeApp {
                 .align_items(alignment::Alignment::Center)
                 .spacing(20);
 
-                let content = container(content)
+                let settings_page = container(content)
                     .width(Length::Fill)
                     .height(Length::Fill)
                     .center_x()
-                    .center_y()
+                    .center_y();
+                let content = column![settings_page, self.status_bar_component()]
+                    .spacing(10)
                     .into();
                 (None, content)
             }
-            Screen::Diff(diff) => (
-                None,
-                container(self.diff_component(diff))
+            Screen::Diff(diff) => {
+                let diff_view = container(self.diff_component(diff))
                     .width(Length::Fill)
-                    .height(Length::Fill)
-                    .into(),
-            ),
+                    .height(Length::Fill);
+                let content = column![diff_view, self.status_bar_component()]
+                    .spacing(10)
+                    .into();
+                (None, content)
+            }
         };
         let mut page = column![self.main_menu()];
         if let Some(tabs) = tabs {
