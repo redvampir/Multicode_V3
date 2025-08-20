@@ -14,6 +14,7 @@ use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
 
+use crate::app::diff::DiffView;
 use crate::app::events::Message;
 use crate::app::{EntryType, FileEntry, MulticodeApp};
 
@@ -242,6 +243,10 @@ impl MulticodeApp {
                 .height(Length::Fill)
                 .into()
         }
+    }
+
+    pub fn diff_component(&self, diff: &DiffView) -> Element<Message> {
+        diff.view()
     }
 
     pub fn visual_editor_component(&self) -> Element<Message> {

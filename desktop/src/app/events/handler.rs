@@ -1,7 +1,16 @@
 use super::Message;
 use crate::app::io::{pick_file, pick_folder};
 use crate::app::ui::ContextMenu;
-use crate::app::{EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen};
+use crate::app::{
+    diff::DiffView,
+    EditorMode,
+    Hotkey,
+    HotkeyField,
+    MulticodeApp,
+    OpenFile,
+    PendingAction,
+    Screen,
+};
 use chrono::Utc;
 use iced::widget::text_editor::{self, Content};
 use iced::{keyboard, window, Command, Event};
@@ -826,6 +835,32 @@ impl MulticodeApp {
             }
             Message::ShowTerminalHelp => {
                 self.show_terminal_help = !self.show_terminal_help;
+                Command::none()
+            }
+            Message::OpenDiff(left, right) => {
+                let left_content = std::fs::read_to_string(&left).unwrap_or_default();
+                let right_content = std::fs::read_to_string(&right).unwrap_or_default();
+                let diff = DiffView::new(left_content, right_content);
+                self.screen = Screen::Diff(diff);
+                Command::none()
+            }
+            Message::OpenGitDiff(path, commit) => {
+                let current = std::fs::read_to_string(&path).unwrap_or_default();
+                let rel = if let Some(root) = self.current_root_path() {
+                    path.strip_prefix(root).unwrap_or(&path).to_path_buf()
+                } else {
+                    path.clone()
+                };
+                let spec = format!("{commit}:{}", rel.to_string_lossy());
+                if let Ok(out) = std::process::Command::new("git")
+                    .arg("show")
+                    .arg(spec)
+                    .output()
+                {
+                    let prev = String::from_utf8_lossy(&out.stdout).to_string();
+                    let diff = DiffView::new(prev, current);
+                    self.screen = Screen::Diff(diff);
+                }
                 Command::none()
             }
             Message::ToggleDir(path) => {

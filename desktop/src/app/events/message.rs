@@ -77,4 +77,6 @@ pub enum Message {
     TerminalCmdChanged(String),
     RunTerminalCmd(String),
     ShowTerminalHelp,
+    OpenDiff(PathBuf, PathBuf),
+    OpenGitDiff(PathBuf, String),
 }
