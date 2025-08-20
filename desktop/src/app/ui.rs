@@ -414,10 +414,19 @@ impl MulticodeApp {
                 }
             }
         } else {
-            container(text("файл не выбран"))
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .into()
+            container(
+                column![
+                    button("Открыть файл").on_press(Message::PickFile),
+                    text("Файл можно перетащить в окно"),
+                ]
+                .spacing(5)
+                .align_items(Alignment::Center),
+            )
+            .width(Length::Fill)
+            .height(Length::Fill)
+            .center_x()
+            .center_y()
+            .into()
         }
     }
 
