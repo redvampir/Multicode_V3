@@ -80,4 +80,6 @@ pub enum Message {
     OpenDiff(PathBuf, PathBuf, bool),
     OpenGitDiff(PathBuf, String, bool),
     ToggleDiffIgnoreWhitespace(bool),
+    DiffError(String),
+    ClearDiffError,
 }

@@ -1,7 +1,7 @@
+pub mod diff;
 pub mod events;
 pub mod io;
 pub mod ui;
-pub mod diff;
 
 use crate::modal::Modal;
 use diff::DiffView;
@@ -77,6 +77,7 @@ pub struct MulticodeApp {
     pending_action: Option<PendingAction>,
     hotkey_capture: Option<HotkeyField>,
     settings_warning: Option<String>,
+    diff_error: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -414,6 +415,7 @@ impl Application for MulticodeApp {
             pending_action: None,
             hotkey_capture: None,
             settings_warning: None,
+            diff_error: None,
         };
 
         let cmd = match &app.screen {
@@ -464,7 +466,7 @@ impl Application for MulticodeApp {
     }
 
     fn view(&self) -> Element<Message> {
-        match &self.screen {
+        let content: Element<_> = match &self.screen {
             Screen::ProjectPicker => {
                 let settings_label = if self.settings.language == Language::Russian {
                     "Настройки"
@@ -646,12 +648,7 @@ impl Application for MulticodeApp {
 
                 let search_panel = self.search_panel_component();
 
-                let content = column![
-                    search_panel,
-                    editor,
-                    self.terminal_component(),
-                ]
-                .spacing(10);
+                let content = column![search_panel, editor, self.terminal_component(),].spacing(10);
 
                 let body = row![sidebar, content].spacing(10);
 
@@ -981,13 +978,12 @@ impl Application for MulticodeApp {
                     .center_y()
                     .into()
             }
-            Screen::Diff(diff) => {
-                container(self.diff_component(diff))
-                    .width(Length::Fill)
-                    .height(Length::Fill)
-                    .into()
-            }
-        }
+            Screen::Diff(diff) => container(self.diff_component(diff))
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .into(),
+        };
+        self.error_modal(content)
     }
 }
 

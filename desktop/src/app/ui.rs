@@ -18,6 +18,7 @@ use syntect::parsing::SyntaxSet;
 use crate::app::diff::DiffView;
 use crate::app::events::Message;
 use crate::app::{EntryType, FileEntry, MulticodeApp};
+use crate::modal::Modal;
 
 #[derive(Debug)]
 pub struct ContextMenu {
@@ -384,6 +385,24 @@ impl MulticodeApp {
         ]
         .spacing(5)
         .into()
+    }
+
+    pub fn error_modal(&self, content: Element<Message>) -> Element<Message> {
+        if let Some(err) = &self.diff_error {
+            let modal_content = container(
+                column![
+                    text(err.clone()),
+                    button("OK").on_press(Message::ClearDiffError)
+                ]
+                .spacing(10),
+            )
+            .padding(10);
+            Modal::new(content, modal_content)
+                .on_blur(Message::ClearDiffError)
+                .into()
+        } else {
+            content
+        }
     }
 }
 
