@@ -32,6 +32,21 @@ impl MulticodeApp {
                 modifiers,
                 ..
             })) => {
+                if let Some(id) = self.shortcut_capture.take() {
+                    let key_str = match key {
+                        keyboard::Key::Character(c) => c.to_string().to_uppercase(),
+                        keyboard::Key::Named(named) => format!("{:?}", named),
+                        _ => return Command::none(),
+                    };
+                    let hk = Hotkey {
+                        key: key_str,
+                        ctrl: modifiers.control(),
+                        alt: modifiers.alt(),
+                        shift: modifiers.shift(),
+                    };
+                    self.settings.shortcuts.insert(id, hk);
+                    return Command::none();
+                }
                 if let Some(field) = self.hotkey_capture.take() {
                     let key_str = match key {
                         keyboard::Key::Character(c) => c.to_string().to_uppercase(),
@@ -95,6 +110,13 @@ impl MulticodeApp {
                         return self.handle_message(Message::RequestDeleteFile);
                     }
                 }
+                for (id, hk) in &self.settings.shortcuts {
+                    if hk.matches(&key, modifiers) {
+                        if let Some(cmd) = COMMANDS.iter().find(|c| c.id == id.as_str()) {
+                            return self.handle_message(cmd.message.clone());
+                        }
+                    }
+                }
                 let hotkeys = &self.settings.hotkeys;
                 if hotkeys.create_file.matches(&key, modifiers) {
                     return self.handle_message(Message::CreateFile);
@@ -145,6 +167,10 @@ impl MulticodeApp {
             }
             Message::StartCaptureHotkey(field) => {
                 self.hotkey_capture = Some(field);
+                Command::none()
+            }
+            Message::StartCaptureShortcut(id) => {
+                self.shortcut_capture = Some(id);
                 Command::none()
             }
             Message::OpenSettings => {
@@ -1163,6 +1189,12 @@ impl MulticodeApp {
                 {
                     self.settings_warning = Some("Сочетания клавиш должны быть уникальными".into());
                     return Command::none();
+                }
+                for hk in self.settings.shortcuts.values() {
+                    if !set.insert(hk.to_string()) {
+                        self.settings_warning = Some("Сочетания клавиш должны быть уникальными".into());
+                        return Command::none();
+                    }
                 }
                 self.settings_warning = None;
                 Command::perform(self.settings.clone().save(), |_| Message::SettingsSaved)
