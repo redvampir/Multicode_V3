@@ -22,10 +22,11 @@ const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
 
 use directories::ProjectDirs;
 use serde::{Deserialize, Serialize};
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::ops::Range;
 use std::path::PathBuf;
+use multicode_core::git;
 
 pub fn run(path: Option<PathBuf>) -> iced::Result {
     MulticodeApp::run(Settings {
@@ -115,6 +116,7 @@ pub struct Tab {
     content: String,
     editor: text_editor::Content,
     dirty: bool,
+    blame: HashMap<usize, git::BlameLine>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

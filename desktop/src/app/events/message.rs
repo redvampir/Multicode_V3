@@ -52,6 +52,7 @@ pub enum Message {
     SearchFinished(Result<Vec<String>, String>),
     RunParse,
     ParseFinished(Result<Vec<String>, String>),
+    RunGitBlame(PathBuf),
     RunGitLog,
     GitFinished(Result<Vec<String>, String>),
     RunExport,
