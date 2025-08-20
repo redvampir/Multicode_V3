@@ -2,7 +2,7 @@ use super::Message;
 use crate::app::io::{pick_file, pick_folder};
 use crate::app::ui::ContextMenu;
 use crate::app::{
-    diff::DiffView, EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen,
+    diff::DiffView, EditorMode, Hotkey, HotkeyField, MulticodeApp, PendingAction, Screen, Tab,
 };
 use chrono::Utc;
 use iced::widget::{scrollable, text_editor::{self, Content}};
@@ -328,8 +328,8 @@ impl MulticodeApp {
             }
             Message::SelectFile(path) => {
                 self.context_menu = None;
-                if let Some(idx) = self.open_files.iter().position(|f| f.path == path) {
-                    self.active_file = Some(idx);
+                if let Some(idx) = self.tabs.iter().position(|f| f.path == path) {
+                    self.active_tab = Some(idx);
                     self.search_results.clear();
                     self.current_match = None;
                     Command::none()
@@ -349,13 +349,13 @@ impl MulticodeApp {
             }
             Message::FileLoaded(Ok((path, content))) => {
                 let editor = Content::with_text(&content);
-                self.open_files.push(OpenFile {
+                self.tabs.push(Tab {
                     path,
                     content,
                     editor,
                     dirty: false,
                 });
-                self.active_file = Some(self.open_files.len() - 1);
+                self.active_tab = Some(self.tabs.len() - 1);
                 self.rename_file_name.clear();
                 self.search_results.clear();
                 self.current_match = None;
@@ -483,13 +483,13 @@ impl MulticodeApp {
             Message::FileCreated(Ok(path)) => {
                 self.log.push(format!("создан {}", path.display()));
                 self.new_file_name.clear();
-                self.open_files.push(OpenFile {
+                self.tabs.push(Tab {
                     path: path.clone(),
                     content: String::new(),
                     editor: Content::new(),
                     dirty: false,
                 });
-                self.active_file = Some(self.open_files.len() - 1);
+                self.active_tab = Some(self.tabs.len() - 1);
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::FileCreated(Err(e)) => {
@@ -552,8 +552,8 @@ impl MulticodeApp {
             }
             Message::FileRenamed(Ok(path)) => {
                 self.log.push(format!("переименовано в {}", path.display()));
-                if let Some(i) = self.active_file {
-                    self.open_files[i].path = path.clone();
+                if let Some(i) = self.active_tab {
+                    self.tabs[i].path = path.clone();
                 }
                 self.rename_file_name.clear();
                 return self.load_files(self.current_root_path().unwrap());
@@ -563,7 +563,7 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::RequestDeleteFile => {
-                if self.active_file.is_some() {
+                if self.active_tab.is_some() {
                     self.show_delete_confirm = true;
                 }
                 Command::none()
@@ -594,14 +594,14 @@ impl MulticodeApp {
             }
             Message::FileDeleted(Ok(path)) => {
                 self.log.push(format!("удален {}", path.display()));
-                if let Some(idx) = self.open_files.iter().position(|f| f.path == path) {
-                    self.open_files.remove(idx);
-                    if let Some(active) = self.active_file {
+                if let Some(idx) = self.tabs.iter().position(|f| f.path == path) {
+                    self.tabs.remove(idx);
+                    if let Some(active) = self.active_tab {
                         if active >= idx {
-                            if self.open_files.is_empty() {
-                                self.active_file = None;
+                            if self.tabs.is_empty() {
+                                self.active_tab = None;
                             } else {
-                                self.active_file = Some(active.saturating_sub(1));
+                                self.active_tab = Some(active.saturating_sub(1));
                             }
                         }
                     }
@@ -613,7 +613,7 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::CloseFile(idx) => {
-                if let Some(file) = self.open_files.get(idx) {
+                if let Some(file) = self.tabs.get(idx) {
                     if file.dirty {
                         let path = file.path.clone();
                         let content = file.content.clone();
@@ -628,14 +628,14 @@ impl MulticodeApp {
                         );
                     }
                 }
-                if idx < self.open_files.len() {
-                    self.open_files.remove(idx);
-                    if let Some(active) = self.active_file {
+                if idx < self.tabs.len() {
+                    self.tabs.remove(idx);
+                    if let Some(active) = self.active_tab {
                         if active >= idx {
-                            if self.open_files.is_empty() {
-                                self.active_file = None;
+                            if self.tabs.is_empty() {
+                                self.active_tab = None;
                             } else {
-                                self.active_file = Some(active.saturating_sub(1));
+                                self.active_tab = Some(active.saturating_sub(1));
                             }
                         }
                     }
@@ -643,14 +643,14 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::FileClosed(Ok(idx)) => {
-                if idx < self.open_files.len() {
-                    self.open_files.remove(idx);
-                    if let Some(active) = self.active_file {
+                if idx < self.tabs.len() {
+                    self.tabs.remove(idx);
+                    if let Some(active) = self.active_tab {
                         if active >= idx {
-                            if self.open_files.is_empty() {
-                                self.active_file = None;
+                            if self.tabs.is_empty() {
+                                self.active_tab = None;
                             } else {
-                                self.active_file = Some(active.saturating_sub(1));
+                                self.active_tab = Some(active.saturating_sub(1));
                             }
                         }
                     }
@@ -659,6 +659,30 @@ impl MulticodeApp {
             }
             Message::FileClosed(Err(e)) => {
                 self.log.push(format!("ошибка сохранения: {e}"));
+                Command::none()
+            }
+            Message::ActivateTab(idx) => {
+                if idx < self.tabs.len() {
+                    self.active_tab = Some(idx);
+                }
+                Command::none()
+            }
+            Message::ReorderTab { from, to } => {
+                if from < self.tabs.len() && to < self.tabs.len() && from != to {
+                    let tab = self.tabs.remove(from);
+                    self.tabs.insert(to, tab);
+                    if let Some(active) = self.active_tab {
+                        self.active_tab = if active == from {
+                            Some(to)
+                        } else if from < active && active <= to {
+                            Some(active - 1)
+                        } else if to <= active && active < from {
+                            Some(active + 1)
+                        } else {
+                            Some(active)
+                        };
+                    }
+                }
                 Command::none()
             }
             Message::RunSearch => {

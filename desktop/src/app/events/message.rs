@@ -46,6 +46,8 @@ pub enum Message {
     FileDeleted(Result<PathBuf, String>),
     CloseFile(usize),
     FileClosed(Result<usize, String>),
+    ActivateTab(usize),
+    ReorderTab { from: usize, to: usize },
     RunSearch,
     SearchFinished(Result<Vec<String>, String>),
     RunParse,
