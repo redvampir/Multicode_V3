@@ -45,17 +45,28 @@ struct ActionNode {
 
 ### 2. Узлы анализа (Analysis Nodes)
 Обрабатывают запросы, строят логические цепочки,
-оценивают достоверность данных и выбирают нужные действия.
+оценивают достоверность данных и выбирают нужные действия. В базовом интерфейсе обязательны
+поля `id`, `analysis_type`, `status` и `metadata.schema`.
 
 ```rust
 struct AnalysisNode {
     id: String,
     analysis_type: AnalysisType,
-    confidence_threshold: f32,
+    status: NodeStatus,
     reasoning_chain: Vec<ReasoningStep>,
-    uncertainty_score: f32,
+    metadata: AnalysisMetadata,
+}
+
+struct AnalysisMetadata {
+    schema: String,
+    // дополнительные метаданные
 }
 ```
+
+`status` фиксирует состояние узла (`draft`, `active`, `deprecated`, `error`) и
+используется планировщиком и системами ревизий. `reasoning_chain` сохраняет
+последовательность рассуждений для объяснения выводов и отладки.
+`metadata.schema` содержит версию схемы описания узла.
 
 ### 3. Узлы памяти (Memory Nodes)
 Хранят знания и опыт, поддерживают приоритизацию источников
