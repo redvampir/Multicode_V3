@@ -22,7 +22,7 @@ use ui::{ContextMenu, THEME_SET};
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
 
 use directories::ProjectDirs;
-use multicode_core::{git, BlockInfo};
+use multicode_core::{git, meta::VisualMeta, BlockInfo};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -87,6 +87,11 @@ pub struct MulticodeApp {
     settings_warning: Option<String>,
     loading: bool,
     diff_error: Option<String>,
+    show_meta_dialog: bool,
+    meta_tags: String,
+    meta_links: String,
+    meta_comment: String,
+    show_meta_panel: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -133,6 +138,7 @@ pub struct Tab {
     blame: HashMap<usize, git::BlameLine>,
     diagnostics: Vec<Diagnostic>,
     blocks: Vec<BlockInfo>,
+    meta: Option<VisualMeta>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -463,6 +469,11 @@ impl Application for MulticodeApp {
             settings_warning: None,
             loading: false,
             diff_error: None,
+            show_meta_dialog: false,
+            meta_tags: String::new(),
+            meta_links: String::new(),
+            meta_comment: String::new(),
+            show_meta_panel: false,
         };
 
         let cmd = match &app.screen {
@@ -743,6 +754,29 @@ impl Application for MulticodeApp {
                         .on_blur(Message::ShowTerminalHelp)
                         .into();
                 }
+                if self.show_meta_dialog {
+                    let modal_content = container(
+                        column![
+                            text_input("Теги", &self.meta_tags)
+                                .on_input(Message::MetaTagsChanged),
+                            text_input("Связи", &self.meta_links)
+                                .on_input(Message::MetaLinksChanged),
+                            text_input("Комментарий", &self.meta_comment)
+                                .on_input(Message::MetaCommentChanged),
+                            row![
+                                button("Сохранить").on_press(Message::SaveMeta),
+                                button("Отмена").on_press(Message::CloseMetaDialog)
+                            ]
+                            .spacing(5)
+                        ]
+                        .spacing(5),
+                    )
+                    .width(Length::Fixed(400.0))
+                    .padding(10);
+                    content = Modal::new(content, modal_content)
+                        .on_blur(Message::CloseMetaDialog)
+                        .into();
+                }
                 content
             }
             Screen::VisualEditor { .. } => {
@@ -900,6 +934,29 @@ impl Application for MulticodeApp {
                         .padding(10);
                     content = Modal::new(content, help)
                         .on_blur(Message::ShowTerminalHelp)
+                        .into();
+                }
+                if self.show_meta_dialog {
+                    let modal_content = container(
+                        column![
+                            text_input("Теги", &self.meta_tags)
+                                .on_input(Message::MetaTagsChanged),
+                            text_input("Связи", &self.meta_links)
+                                .on_input(Message::MetaLinksChanged),
+                            text_input("Комментарий", &self.meta_comment)
+                                .on_input(Message::MetaCommentChanged),
+                            row![
+                                button("Сохранить").on_press(Message::SaveMeta),
+                                button("Отмена").on_press(Message::CloseMetaDialog)
+                            ]
+                            .spacing(5)
+                        ]
+                        .spacing(5),
+                    )
+                    .width(Length::Fixed(400.0))
+                    .padding(10);
+                    content = Modal::new(content, modal_content)
+                        .on_blur(Message::CloseMetaDialog)
                         .into();
                 }
                 content

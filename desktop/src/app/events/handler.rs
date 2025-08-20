@@ -17,6 +17,7 @@ use multicode_core::{
     parser::{self, Lang},
     search, viz_lint, BlockInfo,
 };
+use serde_json::json;
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
@@ -167,6 +168,107 @@ impl MulticodeApp {
             }
             Message::ToggleMarkdownPreview(value) => {
                 self.settings.show_markdown_preview = value;
+                Command::none()
+            }
+            Message::ToggleMetaPanel => {
+                self.show_meta_panel = !self.show_meta_panel;
+                Command::none()
+            }
+            Message::ShowMetaDialog => {
+                if let Some(f) = self.current_file() {
+                    self.meta_tags = f
+                        .meta
+                        .as_ref()
+                        .map(|m| m.tags.join(", "))
+                        .unwrap_or_default();
+                    self.meta_links = f
+                        .meta
+                        .as_ref()
+                        .map(|m| m.links.join(", "))
+                        .unwrap_or_default();
+                    let comment = f
+                        .meta
+                        .as_ref()
+                        .and_then(|m| m.extras.as_ref())
+                        .and_then(|e| e.get("comment"))
+                        .and_then(|c| c.as_str())
+                        .unwrap_or("");
+                    self.meta_comment = comment.to_string();
+                }
+                self.show_meta_dialog = true;
+                Command::none()
+            }
+            Message::CloseMetaDialog => {
+                self.show_meta_dialog = false;
+                Command::none()
+            }
+            Message::MetaTagsChanged(s) => {
+                self.meta_tags = s;
+                Command::none()
+            }
+            Message::MetaLinksChanged(s) => {
+                self.meta_links = s;
+                Command::none()
+            }
+            Message::MetaCommentChanged(s) => {
+                self.meta_comment = s;
+                Command::none()
+            }
+            Message::SaveMeta => {
+                if let Some(f) = self.current_file_mut() {
+                    let mut meta = f.meta.clone().unwrap_or(VisualMeta {
+                        version: DEFAULT_VERSION,
+                        id: "root".into(),
+                        x: 0.0,
+                        y: 0.0,
+                        tags: Vec::new(),
+                        links: Vec::new(),
+                        anchors: Vec::new(),
+                        tests: Vec::new(),
+                        extends: None,
+                        origin: None,
+                        translations: HashMap::new(),
+                        ai: None,
+                        extras: None,
+                        updated_at: Utc::now(),
+                    });
+                    meta.tags = self
+                        .meta_tags
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                    meta.links = self
+                        .meta_links
+                        .split(',')
+                        .map(|s| s.trim().to_string())
+                        .filter(|s| !s.is_empty())
+                        .collect();
+                    if self.meta_comment.trim().is_empty() {
+                        if let Some(mut extras) = meta.extras.take() {
+                            if let Some(obj) = extras.as_object_mut() {
+                                obj.remove("comment");
+                                if obj.is_empty() {
+                                    meta.extras = None;
+                                } else {
+                                    meta.extras = Some(extras);
+                                }
+                            }
+                        }
+                    } else {
+                        let mut extras = meta.extras.take().unwrap_or_else(|| json!({}));
+                        if let Some(obj) = extras.as_object_mut() {
+                            obj.insert("comment".into(), serde_json::Value::String(self.meta_comment.clone()));
+                        }
+                        meta.extras = Some(extras);
+                    }
+                    meta.updated_at = Utc::now();
+                    f.content = meta::upsert(&f.content, &meta);
+                    f.editor = Content::with_text(&f.content);
+                    f.meta = Some(meta);
+                    f.dirty = true;
+                }
+                self.show_meta_dialog = false;
                 Command::none()
             }
             Message::StartCaptureHotkey(field) => {
@@ -408,6 +510,7 @@ impl MulticodeApp {
                     .and_then(|lang| blocks::parse_blocks(content.clone(), lang.to_string()))
                     .unwrap_or_default();
                 let blame_path = path.clone();
+                let meta = meta::read_all(&content).into_iter().next();
                 self.tabs.push(Tab {
                     path,
                     content,
@@ -416,6 +519,7 @@ impl MulticodeApp {
                     blame: HashMap::new(),
                     diagnostics: Vec::new(),
                     blocks,
+                    meta,
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 self.rename_file_name.clear();
@@ -476,7 +580,7 @@ impl MulticodeApp {
             Message::SaveFile => {
                 if let Some(f) = self.current_file_mut() {
                     let path = f.path.clone();
-                    let meta = VisualMeta {
+                    let mut meta = f.meta.clone().unwrap_or(VisualMeta {
                         version: DEFAULT_VERSION,
                         id: "root".into(),
                         x: 0.0,
@@ -491,10 +595,12 @@ impl MulticodeApp {
                         ai: None,
                         extras: None,
                         updated_at: Utc::now(),
-                    };
+                    });
+                    meta.updated_at = Utc::now();
                     let content = meta::upsert(&f.content, &meta);
                     f.content = content.clone();
                     f.editor = Content::with_text(&f.content);
+                    f.meta = Some(meta);
                     return Command::perform(
                         async move {
                             fs::write(&path, content)
@@ -588,6 +694,7 @@ impl MulticodeApp {
                     blame: HashMap::new(),
                     diagnostics: Vec::new(),
                     blocks: Vec::new(),
+                    meta: None,
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 return self.load_files(self.current_root_path().unwrap());
