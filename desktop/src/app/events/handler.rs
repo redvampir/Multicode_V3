@@ -2,7 +2,7 @@ use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
 use crate::app::{
     command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField,
-    MulticodeApp, PendingAction, Screen, Tab,
+    MulticodeApp, PendingAction, Screen, Tab, TabDragState,
 };
 use crate::components::file_manager::ContextMenu;
 use chrono::Utc;
@@ -887,6 +887,50 @@ impl MulticodeApp {
             }
             Message::FileClosed(Err(e)) => {
                 self.log.push(format!("ошибка сохранения: {e}"));
+                Command::none()
+            }
+            Message::StartTabDrag(index) => {
+                self.tab_drag = Some(TabDragState {
+                    index,
+                    start: f32::NAN,
+                    current: 0.0,
+                });
+                Command::none()
+            }
+            Message::UpdateTabDrag(x) => {
+                if let Some(state) = self.tab_drag.as_mut() {
+                    if state.start.is_nan() {
+                        state.start = x;
+                    }
+                    state.current = x;
+                }
+                Command::none()
+            }
+            Message::EndTabDrag => {
+                if let Some(state) = self.tab_drag.take() {
+                    let start = if state.start.is_nan() {
+                        state.current
+                    } else {
+                        state.start
+                    };
+                    let delta = state.current - start;
+                    let idx = state.index;
+                    let len = self.tabs.len();
+                    let msg = if delta > 30.0 && idx + 1 < len {
+                        Message::ReorderTab {
+                            from: idx,
+                            to: idx + 1,
+                        }
+                    } else if delta < -30.0 && idx > 0 {
+                        Message::ReorderTab {
+                            from: idx,
+                            to: idx - 1,
+                        }
+                    } else {
+                        Message::ActivateTab(idx)
+                    };
+                    return self.handle_message(msg);
+                }
                 Command::none()
             }
             Message::ActivateTab(idx) => {

@@ -199,7 +199,6 @@ impl MulticodeApp {
     }
 
     pub fn tabs_component(&self) -> Element<Message> {
-        let len = self.tabs.len();
         let tabs = self
             .tabs
             .iter()
@@ -212,20 +211,14 @@ impl MulticodeApp {
                     .unwrap_or("")
                     .to_string();
                 let tab = row![
-                    button(text(name)).on_press(Message::ActivateTab(i)),
+                    text(name),
                     button(text("x")).on_press(Message::CloseFile(i))
                 ]
                 .spacing(5);
                 MouseArea::new(tab)
-                    .on_drag(move |d| {
-                        if d.x > 30.0 && i + 1 < len {
-                            Message::ReorderTab { from: i, to: i + 1 }
-                        } else if d.x < -30.0 && i > 0 {
-                            Message::ReorderTab { from: i, to: i - 1 }
-                        } else {
-                            Message::ActivateTab(i)
-                        }
-                    })
+                    .on_press(Message::StartTabDrag(i))
+                    .on_move(|p| Message::UpdateTabDrag(p.x))
+                    .on_release(Message::EndTabDrag)
                     .into()
             })
             .collect::<Vec<Element<Message>>>();
@@ -618,6 +611,7 @@ mod tests {
             meta_links: String::new(),
             meta_comment: String::new(),
             show_meta_panel: false,
+            tab_drag: None,
         }
     }
 
