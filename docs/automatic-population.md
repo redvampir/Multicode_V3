@@ -1,53 +1,56 @@
-# Automatic Population Workflow
+# Схема автоматического пополнения
 
-This document outlines the pipeline used to automatically create nodes from
-external data sources. The process consists of four stages:
+Этот документ дополняет [«Узлы памяти»](memory_nodes.md) и описывает конвейер,
+который автоматически создаёт узлы из внешних источников данных. Процесс
+включает четыре этапа:
 
-## 1. Data acquisition
-- Source open APIs, RSS feeds, or public repositories.
-- Retrieve data with `fetch`, `curl`, or `wget`.
+## 1. Получение данных
+- Используем открытые API, RSS‑ленты или публичные репозитории.
+- Получаем данные через `fetch`, `curl` или `wget`.
 
-## 2. Parsing
+## 2. Парсинг
 - HTML/DOM: [cheerio](https://github.com/cheeriojs/cheerio) (MIT).
-- CSV/JSON/YAML: built‑in Node.js parsers or
-  [`csv-parse`](https://github.com/adaltas/node-csv) (MIT) and
+- CSV/JSON/YAML: встроенные парсеры Node.js или
+  [`csv-parse`](https://github.com/adaltas/node-csv) (MIT) и
   [`js-yaml`](https://github.com/nodeca/js-yaml) (MIT).
-- Source code: [tree-sitter](https://github.com/tree-sitter/tree-sitter) (Apache 2.0).
+- Исходный код: [tree-sitter](https://github.com/tree-sitter/tree-sitter) (Apache 2.0).
 
-## 3. Fact extraction
-- Lightweight NLP libraries such as
-  [spaCy](https://github.com/explosion/spaCy) (MIT, small models),
+## 3. Извлечение фактов
+- Лёгкие NLP‑библиотеки:
+  [spaCy](https://github.com/explosion/spaCy) (MIT, модели small),
   [Natasha](https://github.com/natasha/natasha) (MIT),
   [NLTK](https://github.com/nltk/nltk) (Apache 2.0).
-- Custom rules and regular expressions.
+- Регулярные выражения и кастомные правила.
 
-## 4. Node generation
-- Assemble node objects with `id`, `type`, and arbitrary attributes.
-- Persist nodes in a graph database or local store:
+## 4. Генерация узла
+- Формируем объекты узлов с `id`, `type` и произвольными атрибутами.
+- Сохраняем узлы в графовую БД или локальное хранилище:
   [SQLite](https://sqlite.org) (public domain),
-  [NetworkX](https://github.com/networkx/networkx) (BSD), or
+  [NetworkX](https://github.com/networkx/networkx) (BSD),
   [Neo4j Community Edition](https://neo4j.com/licensing/) (GPL).
 
-## Deduplication and linking strategy
-1. **Normalization:** convert names to lowercase, trim whitespace,
-   and apply transliteration.
-2. **Unique keys:** compute hashes (e.g. SHA‑256) or derive composite
-   identifiers from meaningful attributes.
-3. **Comparison:**
-   - exact: look up the key in the registry;
-   - fuzzy: apply similarity metrics such as
+## Стратегия проверки дубликатов и связывания
+1. **Нормализация:** приводим имена к нижнему регистру, обрезаем пробелы,
+   при необходимости транслитерируем.
+2. **Уникальные ключи:** вычисляем хэши (например, SHA‑256) или составные
+   идентификаторы из значимых атрибутов.
+3. **Сравнение:**
+   - точное — поиск ключа в реестре;
+   - нестрогое — коэффициент похожести через
      [`string-similarity`](https://github.com/aceakash/string-similarity),
-     [`fuzzywuzzy`](https://github.com/seatgeek/fuzzywuzzy), or Levenshtein
-     distance.
-4. **Linking:**
-   - on exact match, attach new data to the existing node;
-   - on partial match, request manual or semi‑automatic confirmation;
-   - always record data source and version for traceability.
+     [`fuzzywuzzy`](https://github.com/seatgeek/fuzzywuzzy) или расстояние
+     Левенштейна.
+4. **Связывание:**
+   - при точном совпадении — привязываем новые данные к существующему узлу;
+   - при частичном — запрашиваем ручное или полуавтоматическое подтверждение;
+   - всегда фиксируем источник и версию данных для трассировки.
 
-## Summary of free technologies
-- Parsing: cheerio, csv-parse, js-yaml, tree-sitter.
+## Перечень используемых бесплатных технологий
+- Парсинг: cheerio, csv-parse, js-yaml, tree-sitter.
 - NLP: spaCy, Natasha, NLTK.
-- Storage: SQLite, NetworkX, Neo4j Community Edition.
-- Fuzzy matching: string-similarity, fuzzywuzzy.
+- Хранилище: SQLite, NetworkX, Neo4j Community Edition.
+- Фаззи‑поиск: string-similarity, fuzzywuzzy.
 
-For more information, consult the respective repositories and licenses linked above.
+Дополнительные сведения доступны в соответствующих репозиториях и лицензиях,
+ссылки на которые приведены выше.
+
