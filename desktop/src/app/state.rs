@@ -8,7 +8,7 @@ use std::fmt;
 use std::ops::Range;
 use std::path::PathBuf;
 
-use super::ui::ContextMenu;
+use crate::components::file_manager::ContextMenu;
 use crate::app::diff::DiffView;
 
 #[derive(Debug)]
