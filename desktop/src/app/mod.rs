@@ -30,8 +30,10 @@ use std::ops::Range;
 use std::path::PathBuf;
 
 pub fn run(path: Option<PathBuf>) -> iced::Result {
+    let settings = UserSettings::load();
+    let flags = if settings.last_folders.is_empty() { None } else { path };
     MulticodeApp::run(Settings {
-        flags: path,
+        flags,
         ..Settings::default()
     })
 }
