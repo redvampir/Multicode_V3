@@ -971,6 +971,7 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::RunParse => {
+                self.loading = true;
                 let files = self.file_paths();
                 Command::perform(
                     async move {
@@ -1013,10 +1014,12 @@ impl MulticodeApp {
                 )
             }
             Message::ParseFinished(Ok(lines)) => {
+                self.loading = false;
                 self.log.extend(lines);
                 Command::none()
             }
             Message::ParseFinished(Err(e)) => {
+                self.loading = false;
                 self.log.push(format!("ошибка разбора: {e}"));
                 Command::none()
             }
@@ -1086,19 +1089,25 @@ impl MulticodeApp {
                 }
                 Command::none()
             }
-            Message::RunGitLog => Command::perform(
-                async move { git::log().map_err(|e| e.to_string()) },
-                Message::GitFinished,
-            ),
+            Message::RunGitLog => {
+                self.loading = true;
+                Command::perform(
+                    async move { git::log().map_err(|e| e.to_string()) },
+                    Message::GitFinished,
+                )
+            }
             Message::GitFinished(Ok(lines)) => {
+                self.loading = false;
                 self.log.extend(lines);
                 Command::none()
             }
             Message::GitFinished(Err(e)) => {
+                self.loading = false;
                 self.log.push(format!("ошибка git: {e}"));
                 Command::none()
             }
             Message::RunExport => {
+                self.loading = true;
                 let files = self.file_paths();
                 Command::perform(
                     async move {
@@ -1121,10 +1130,12 @@ impl MulticodeApp {
                 )
             }
             Message::ExportFinished(Ok(lines)) => {
+                self.loading = false;
                 self.log.extend(lines);
                 Command::none()
             }
             Message::ExportFinished(Err(e)) => {
+                self.loading = false;
                 self.log.push(format!("ошибка экспорта: {e}"));
                 Command::none()
             }
