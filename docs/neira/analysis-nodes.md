@@ -196,6 +196,77 @@ metadata:                  # опционально
 }
 ```
 
+### reasoning_chain и uncertainty_score
+
+**Формат хранения**
+
+- `reasoning_chain` — упорядоченный список шагов рассуждений. Рекомендуется хранить как массив строк или объектов `{ step, timestamp }` для фиксации хронологии.
+- `uncertainty_score` — число в диапазоне `0..1`, где `0` означает полную уверенность, `1` — максимальную неопределённость.
+
+**Псевдокод обновления**
+
+```pseudocode
+analyze(input):
+    reasoning_chain.append("parsed input tokens")
+    evidence = gather_evidence(input)
+    reasoning_chain.append("evaluated grammar rules")
+    confidence = calc_confidence(evidence)
+    uncertainty_score = 1 - confidence
+```
+
+Каждый шаг в `reasoning_chain` отражает конкретное действие или вывод. `uncertainty_score` пересчитывается после каждого значимого шага на основе доступных данных.
+
+**Влияние на принятие решений**
+
+Результат выдаётся только если `confidence` (или `1 - uncertainty_score`) не ниже `confidence_threshold`. Высокий `uncertainty_score` или короткая `reasoning_chain` сигнализируют о нехватке данных, и узел обязан явно сообщить об этом, запросить дополнительную информацию или активировать резервные модули.
+
+**Взаимодействие с `confidence`**
+
+- `confidence` — текущая оценка надёжности вывода; обычно вычисляется как `1 - uncertainty_score`.
+- `confidence_threshold` — минимальное значение `confidence`, при котором ответ считается приемлемым. Если `confidence < confidence_threshold` (или `uncertainty_score > 1 - confidence_threshold`), узел возвращает статус `low_confidence` или `need_more_data` и может запросить дополнительные данные.
+
+**Пример (JSON)**
+
+```json
+{
+  "id": "prog.syntax.python.for",
+  "analysis_type": "ProgrammingSyntaxNode",
+  "status": "active",
+  "confidence": 0.84,
+  "confidence_threshold": 0.8,
+  "reasoning_chain": [
+    "tokenized input",
+    "matched for-loop grammar",
+    "validated loop bounds"
+  ],
+  "uncertainty_score": 0.16,
+  "metadata": {
+    "schema": "1.0",
+    "language": "Python"
+  }
+}
+```
+
+**Пример (YAML)**
+
+```yaml
+id: prog.syntax.python.for
+analysis_type: ProgrammingSyntaxNode
+status: active
+confidence: 0.84
+confidence_threshold: 0.8
+reasoning_chain:
+  - tokenized input
+  - matched for-loop grammar
+  - validated loop bounds
+uncertainty_score: 0.16
+metadata:
+  schema: "1.0"
+  language: Python
+```
+
+Высокий `uncertainty_score` указывает на недостаточную доказательную базу. В таких случаях узел должен сигнализировать о нехватке данных, запросить дополнительную информацию или воспользоваться резервными источниками.
+
 ## 2. Иерархия и назначение подтипов
 
 | Подтип | Назначение |
