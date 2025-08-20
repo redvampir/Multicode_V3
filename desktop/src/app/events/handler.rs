@@ -430,6 +430,27 @@ impl MulticodeApp {
                 self.log.push(format!("ошибка чтения: {e}"));
                 Command::none()
             }
+            Message::AddCursorUp => {
+                if let Some(f) = self.current_file_mut() {
+                    f.editor
+                        .perform(text_editor::Action::AddCursorUp);
+                }
+                Command::none()
+            }
+            Message::AddCursorDown => {
+                if let Some(f) = self.current_file_mut() {
+                    f.editor
+                        .perform(text_editor::Action::AddCursorDown);
+                }
+                Command::none()
+            }
+            Message::SelectAllMatches => {
+                if let Some(f) = self.current_file_mut() {
+                    f.editor
+                        .perform(text_editor::Action::SelectAllMatches);
+                }
+                Command::none()
+            }
             Message::FileContentEdited(action) => {
                 if let Some(f) = self.current_file_mut() {
                     let is_edit = action.is_edit();
