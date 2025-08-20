@@ -585,7 +585,11 @@ impl MulticodeApp {
                 .padding(5)
                 .into()
         } else {
-            Space::with_height(Length::Shrink).into()
+            let root = self.current_root();
+            container(row![text(root).width(Length::Fill)].spacing(10))
+                .width(Length::Fill)
+                .padding(5)
+                .into()
         }
     }
 
