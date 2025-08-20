@@ -336,7 +336,8 @@ impl MulticodeApp {
                     button(save_icon).on_press(Message::SaveFile),
                     button(format_icon).on_press(Message::AutoFormat),
                     button(auto_icon).on_press(Message::AutoComplete),
-                    lint_btn
+                    lint_btn,
+                    button("Meta").on_press(Message::ToggleMetaPanel)
                 ]
                 .spacing(5)
                 .into()
@@ -386,11 +387,29 @@ impl MulticodeApp {
                     elements.push(text(buf).into());
                 }
                 let preview = scrollable(column(elements).spacing(5)).width(Length::FillPortion(1));
-                row![editor_column.width(Length::FillPortion(1)), preview]
+                let main = row![editor_column.width(Length::FillPortion(1)), preview]
+                    .spacing(5);
+                if self.show_meta_panel {
+                    row![
+                        main.width(Length::FillPortion(3)),
+                        self.meta_panel_component()
+                    ]
                     .spacing(5)
                     .into()
+                } else {
+                    main.into()
+                }
             } else {
-                editor_column.into()
+                if self.show_meta_panel {
+                    row![
+                        editor_column.width(Length::FillPortion(3)),
+                        self.meta_panel_component()
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    editor_column.into()
+                }
             }
         } else {
             container(text("файл не выбран"))
@@ -406,13 +425,66 @@ impl MulticodeApp {
         column![toggle, diff.view()].spacing(5).into()
     }
 
+    pub fn meta_panel_component(&self) -> Element<Message> {
+        if let Some(file) = self.current_file() {
+            if let Some(meta) = &file.meta {
+                let tags = if meta.tags.is_empty() {
+                    "-".into()
+                } else {
+                    meta.tags.join(", ")
+                };
+                let links = if meta.links.is_empty() {
+                    "-".into()
+                } else {
+                    meta.links.join(", ")
+                };
+                let comment = meta
+                    .extras
+                    .as_ref()
+                    .and_then(|e| e.get("comment"))
+                    .and_then(|c| c.as_str())
+                    .unwrap_or("")
+                    .to_string();
+                column![
+                    text("Мета"),
+                    text(format!("Теги: {}", tags)),
+                    text(format!("Связи: {}", links)),
+                    text(format!("Комментарий: {}", if comment.is_empty() { "-".into() } else { comment })),
+                    button("Редактировать").on_press(Message::ShowMetaDialog)
+                ]
+                .spacing(5)
+                .width(Length::Fixed(200.0))
+                .into()
+            } else {
+                column![
+                    text("Мета отсутствует"),
+                    button("Создать").on_press(Message::ShowMetaDialog)
+                ]
+                .spacing(5)
+                .width(Length::Fixed(200.0))
+                .into()
+            }
+        } else {
+            Space::with_width(Length::Shrink).into()
+        }
+    }
+
     pub fn visual_editor_component(&self) -> Element<Message> {
-        container(text("visual editor stub"))
+        let editor = container(text("visual editor stub"))
             .width(Length::Fill)
             .height(Length::Fill)
             .center_x()
-            .center_y()
+            .center_y();
+        if self.show_meta_panel {
+            row![
+                editor.width(Length::FillPortion(3)),
+                self.meta_panel_component()
+            ]
+            .spacing(5)
             .into()
+        } else {
+            editor.into()
+        }
     }
 
     pub fn view_entries(&self, entries: &[FileEntry], depth: u16) -> Element<Message> {
