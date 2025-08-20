@@ -4,7 +4,7 @@ use iced::{Color, Element, Length};
 
 use crate::app::events::Message;
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct DiffView {
     pub left: text_editor::Content,
     pub right: text_editor::Content,
@@ -20,11 +20,10 @@ impl DiffView {
     pub fn new(left: String, right: String, ignore_whitespace: bool) -> Self {
         let left_scroll = scrollable::Id::unique();
         let right_scroll = scrollable::Id::unique();
-        scrollable::link(left_scroll.clone(), right_scroll.clone());
 
         let mut diff = Self {
-            left: text_editor::Content::with_text(left),
-            right: text_editor::Content::with_text(right),
+            left: text_editor::Content::with_text(&left),
+            right: text_editor::Content::with_text(&right),
             left_diff: Vec::new(),
             right_diff: Vec::new(),
             left_scroll,
@@ -130,6 +129,21 @@ impl DiffView {
         .width(Length::FillPortion(1));
 
         row![left_view, right_view].spacing(10).into()
+    }
+}
+
+impl Clone for DiffView {
+    fn clone(&self) -> Self {
+        Self {
+            left: text_editor::Content::with_text(&self.left.text()),
+            right: text_editor::Content::with_text(&self.right.text()),
+            left_diff: self.left_diff.clone(),
+            right_diff: self.right_diff.clone(),
+            left_scroll: self.left_scroll.clone(),
+            right_scroll: self.right_scroll.clone(),
+            ignore_whitespace: self.ignore_whitespace,
+            current: self.current,
+        }
     }
 }
 
