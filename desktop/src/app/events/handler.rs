@@ -15,7 +15,7 @@ use multicode_core::{
     blocks, export, git,
     meta::{self, VisualMeta, DEFAULT_VERSION},
     parser::{self, Lang},
-    search, viz_lint,
+    search, viz_lint, BlockInfo,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -379,8 +379,7 @@ impl MulticodeApp {
                     self.current_match = None;
                     if let Some(line) = self.goto_line.take() {
                         self.perform_search();
-                        if let Some(pos) =
-                            self.search_results.iter().position(|(l, _)| *l == line)
+                        if let Some(pos) = self.search_results.iter().position(|(l, _)| *l == line)
                         {
                             self.current_match = Some(pos);
                             self.focus_current_match();
@@ -405,6 +404,9 @@ impl MulticodeApp {
             }
             Message::FileLoaded(Ok((path, content))) => {
                 let editor = Content::with_text(&content);
+                let blocks = detect_lang(&path)
+                    .and_then(|lang| blocks::parse_blocks(content.clone(), lang.to_string()))
+                    .unwrap_or_default();
                 let blame_path = path.clone();
                 self.tabs.push(Tab {
                     path,
@@ -413,6 +415,7 @@ impl MulticodeApp {
                     dirty: false,
                     blame: HashMap::new(),
                     diagnostics: Vec::new(),
+                    blocks,
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 self.rename_file_name.clear();
@@ -420,8 +423,7 @@ impl MulticodeApp {
                 self.current_match = None;
                 if let Some(line) = self.goto_line.take() {
                     self.perform_search();
-                    if let Some(pos) = self.search_results.iter().position(|(l, _)| *l == line)
-                    {
+                    if let Some(pos) = self.search_results.iter().position(|(l, _)| *l == line) {
                         self.current_match = Some(pos);
                         self.focus_current_match();
                     } else {
@@ -436,22 +438,19 @@ impl MulticodeApp {
             }
             Message::AddCursorUp => {
                 if let Some(f) = self.current_file_mut() {
-                    f.editor
-                        .perform(text_editor::Action::AddCursorUp);
+                    f.editor.perform(text_editor::Action::AddCursorUp);
                 }
                 Command::none()
             }
             Message::AddCursorDown => {
                 if let Some(f) = self.current_file_mut() {
-                    f.editor
-                        .perform(text_editor::Action::AddCursorDown);
+                    f.editor.perform(text_editor::Action::AddCursorDown);
                 }
                 Command::none()
             }
             Message::SelectAllMatches => {
                 if let Some(f) = self.current_file_mut() {
-                    f.editor
-                        .perform(text_editor::Action::SelectAllMatches);
+                    f.editor.perform(text_editor::Action::SelectAllMatches);
                 }
                 Command::none()
             }
@@ -460,6 +459,14 @@ impl MulticodeApp {
                     let is_edit = action.is_edit();
                     f.editor.perform(action);
                     f.content = f.editor.text();
+                    if let Some(lang) = detect_lang(&f.path) {
+                        if let Some(bs) = blocks::parse_blocks(f.content.clone(), lang.to_string())
+                        {
+                            f.blocks = bs;
+                        } else {
+                            f.blocks.clear();
+                        }
+                    }
                     if is_edit {
                         f.dirty = true;
                     }
@@ -580,6 +587,7 @@ impl MulticodeApp {
                     dirty: false,
                     blame: HashMap::new(),
                     diagnostics: Vec::new(),
+                    blocks: Vec::new(),
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 return self.load_files(self.current_root_path().unwrap());
@@ -807,10 +815,7 @@ impl MulticodeApp {
                 self.search_term = query.clone();
                 self.project_search_results.clear();
                 if let Some(root) = self.current_root_path() {
-                    Command::perform(
-                        project_search(root, query),
-                        Message::ProjectSearchFinished,
-                    )
+                    Command::perform(project_search(root, query), Message::ProjectSearchFinished)
                 } else {
                     Command::none()
                 }
@@ -1242,7 +1247,18 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::CoreEvent(ev) => {
-                self.log.push(ev);
+                if let Ok(blocks) = serde_json::from_str::<Vec<BlockInfo>>(&ev) {
+                    if let Some(f) = self.current_file_mut() {
+                        f.blocks = blocks.clone();
+                        if let Ok(content) = std::fs::read_to_string(&f.path) {
+                            f.content = content.clone();
+                            f.editor = Content::with_text(&f.content);
+                        }
+                    }
+                    self.log.push(format!("обновлено блоков: {}", blocks.len()));
+                } else {
+                    self.log.push(ev);
+                }
                 Command::none()
             }
             Message::SaveSettings => {
@@ -1258,7 +1274,8 @@ impl MulticodeApp {
                 }
                 for hk in self.settings.shortcuts.values() {
                     if !set.insert(hk.to_string()) {
-                        self.settings_warning = Some("Сочетания клавиш должны быть уникальными".into());
+                        self.settings_warning =
+                            Some("Сочетания клавиш должны быть уникальными".into());
                         return Command::none();
                     }
                 }
