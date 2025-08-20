@@ -1,5 +1,5 @@
 use super::Message;
-use crate::app::io::{pick_file, pick_folder};
+use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
 use crate::app::ui::ContextMenu;
 use crate::app::{
     command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField,
@@ -330,10 +330,19 @@ impl MulticodeApp {
                         EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
                     };
                     multicode_core::meta::watch::spawn(self.sender.clone());
-                    return Command::batch([
-                        self.load_files(root),
-                        self.handle_message(Message::SaveSettings),
-                    ]);
+                    if let Some(entry) = self.settings.default_entry.clone() {
+                        return Command::batch([
+                            self.load_files(root),
+                            self.handle_message(Message::SaveSettings),
+                            self.handle_message(Message::SelectFile(entry)),
+                        ]);
+                    } else {
+                        return Command::batch([
+                            self.load_files(root.clone()),
+                            Command::perform(pick_file_in_dir(root), Message::DefaultEntryPicked),
+                            self.handle_message(Message::SaveSettings),
+                        ]);
+                    }
                 }
                 Command::none()
             }
@@ -363,13 +372,32 @@ impl MulticodeApp {
                     EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
                 };
                 multicode_core::meta::watch::spawn(self.sender.clone());
-                Command::batch([
-                    self.load_files(root),
-                    self.handle_message(Message::SaveSettings),
-                ])
+                if let Some(entry) = self.settings.default_entry.clone() {
+                    Command::batch([
+                        self.load_files(root),
+                        self.handle_message(Message::SaveSettings),
+                        self.handle_message(Message::SelectFile(entry)),
+                    ])
+                } else {
+                    Command::batch([
+                        self.load_files(root.clone()),
+                        Command::perform(pick_file_in_dir(root), Message::DefaultEntryPicked),
+                        self.handle_message(Message::SaveSettings),
+                    ])
+                }
             }
             Message::FilesLoaded(list) => {
                 self.files = list;
+                Command::none()
+            }
+            Message::DefaultEntryPicked(path) => {
+                if let Some(p) = path {
+                    self.settings.default_entry = Some(p.clone());
+                    return Command::batch([
+                        self.handle_message(Message::SelectFile(p)),
+                        self.handle_message(Message::SaveSettings),
+                    ]);
+                }
                 Command::none()
             }
             Message::QueryChanged(q) => {

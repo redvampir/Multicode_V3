@@ -341,6 +341,8 @@ struct UserSettings {
     #[serde(default)]
     last_folders: Vec<PathBuf>,
     #[serde(default)]
+    default_entry: Option<PathBuf>,
+    #[serde(default)]
     hotkeys: Hotkeys,
     #[serde(default)]
     shortcuts: HashMap<String, Hotkey>,
@@ -366,6 +368,7 @@ impl Default for UserSettings {
     fn default() -> Self {
         Self {
             last_folders: Vec::new(),
+            default_entry: None,
             hotkeys: Hotkeys::default(),
             shortcuts: HashMap::new(),
             editor_mode: EditorMode::Text,
@@ -433,7 +436,7 @@ impl Application for MulticodeApp {
         }
         let (sender, _) = broadcast::channel(100);
 
-        let app = MulticodeApp {
+        let mut app = MulticodeApp {
             screen: if let Some(path) = settings.last_folders.first().cloned() {
                 match settings.editor_mode {
                     EditorMode::Text => Screen::TextEditor { root: path },
@@ -484,7 +487,11 @@ impl Application for MulticodeApp {
 
         let cmd = match &app.screen {
             Screen::TextEditor { root } | Screen::VisualEditor { root } => {
-                app.load_files(root.clone())
+                let mut cmds = vec![app.load_files(root.clone())];
+                if let Some(entry) = app.settings.default_entry.clone() {
+                    cmds.push(app.handle_message(Message::SelectFile(entry)));
+                }
+                Command::batch(cmds)
             }
             _ => Command::none(),
         };
