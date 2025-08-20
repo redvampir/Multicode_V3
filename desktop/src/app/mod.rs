@@ -577,13 +577,12 @@ impl Application for MulticodeApp {
                     .height(Length::Fill)
                     .center_x()
                     .center_y();
-                let content = column![picker, self.status_bar_component()]
-                    .spacing(10)
-                    .into();
+                let content = column![picker, self.status_bar_component()].spacing(10);
+                let content = row![self.sidebar(), content].spacing(10).into();
                 (None, content)
             }
             Screen::TextEditor { .. } => {
-                let sidebar = container(self.file_tree()).width(200);
+                let sidebar = self.sidebar();
 
                 let tabs = row(self
                     .tabs
@@ -749,7 +748,7 @@ impl Application for MulticodeApp {
                 (Some(tabs), content)
             }
             Screen::VisualEditor { .. } => {
-                let sidebar = container(self.file_tree()).width(200);
+                let sidebar = self.sidebar();
 
                 let tabs = self.tabs_component();
 
@@ -1039,18 +1038,16 @@ impl Application for MulticodeApp {
                     .height(Length::Fill)
                     .center_x()
                     .center_y();
-                let content = column![settings_page, self.status_bar_component()]
-                    .spacing(10)
-                    .into();
+                let content = column![settings_page, self.status_bar_component()].spacing(10);
+                let content = row![self.sidebar(), content].spacing(10).into();
                 (None, content)
             }
             Screen::Diff(diff) => {
                 let diff_view = container(self.diff_component(diff))
                     .width(Length::Fill)
                     .height(Length::Fill);
-                let content = column![diff_view, self.status_bar_component()]
-                    .spacing(10)
-                    .into();
+                let content = column![diff_view, self.status_bar_component()].spacing(10);
+                let content = row![self.sidebar(), content].spacing(10).into();
                 (None, content)
             }
         };
@@ -1152,6 +1149,10 @@ impl MulticodeApp {
         } else {
             row![text_btn, visual_btn, save_btn].spacing(5).into()
         }
+    }
+
+    fn sidebar(&self) -> Element<Message> {
+        container(self.file_tree()).width(200).into()
     }
 
     fn current_file(&self) -> Option<&Tab> {
