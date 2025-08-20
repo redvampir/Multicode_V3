@@ -1,4 +1,4 @@
-import rawTranslations from "../../core/src/i18n/translations.json" assert { type: 'json' };
+import rawTranslations from "../../../../core/src/i18n/translations.json" assert { type: 'json' };
 
 interface Translations {
   [kind: string]: { [lang: string]: string };

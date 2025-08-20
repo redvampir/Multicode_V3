@@ -28,6 +28,12 @@ describe('palette search', () => {
     expect(res[0].kind).toBe('Variable/Get');
   });
 
+  it('finds by Russian translation', () => {
+    const res = filterBlocks('переменная');
+    expect(res).toHaveLength(1);
+    expect(res[0].kind).toBe('Variable/Get');
+  });
+
   it('returns all for empty query', () => {
     const res = filterBlocks('');
     expect(res).toHaveLength(blocks.length);
