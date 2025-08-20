@@ -349,17 +349,19 @@ impl MulticodeApp {
             }
             Message::FileLoaded(Ok((path, content))) => {
                 let editor = Content::with_text(&content);
+                let blame_path = path.clone();
                 self.tabs.push(Tab {
                     path,
                     content,
                     editor,
                     dirty: false,
+                    blame: HashMap::new(),
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 self.rename_file_name.clear();
                 self.search_results.clear();
                 self.current_match = None;
-                Command::none()
+                return self.handle_message(Message::RunGitBlame(blame_path));
             }
             Message::FileLoaded(Err(e)) => {
                 self.log.push(format!("ошибка чтения: {e}"));
@@ -488,6 +490,7 @@ impl MulticodeApp {
                     content: String::new(),
                     editor: Content::new(),
                     dirty: false,
+                    blame: HashMap::new(),
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 return self.load_files(self.current_root_path().unwrap());
@@ -759,6 +762,20 @@ impl MulticodeApp {
             }
             Message::ParseFinished(Err(e)) => {
                 self.log.push(format!("ошибка разбора: {e}"));
+                Command::none()
+            }
+            Message::RunGitBlame(path) => {
+                match git::blame(path.to_string_lossy().as_ref()) {
+                    Ok(lines) => {
+                        if let Some(tab) = self.tabs.iter_mut().find(|t| t.path == path) {
+                            tab.blame = lines
+                                .into_iter()
+                                .map(|b| (b.line, b))
+                                .collect();
+                        }
+                    }
+                    Err(e) => self.log.push(format!("ошибка git: {e}")),
+                }
                 Command::none()
             }
             Message::RunGitLog => Command::perform(

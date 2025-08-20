@@ -6,11 +6,12 @@ use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::overlay::menu;
 use iced::widget::svg::{Handle, Svg};
 use iced::widget::{
-    button, checkbox, column, container, row, scrollable, text, text_editor, text_input, MouseArea,
-    Space,
+    button, checkbox, column, container, row, scrollable, text, text_editor, text_input,
+    tooltip::{self, Tooltip}, MouseArea, Space,
 };
 use iced::{Alignment, Color, Element, Length};
 use once_cell::sync::Lazy;
+use chrono::NaiveDateTime;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
 use syntect::parsing::SyntaxSet;
@@ -231,7 +232,22 @@ impl MulticodeApp {
             let editor_view: Element<_> = if self.settings.show_line_numbers {
                 let lines = column(
                     (1..=file.editor.line_count())
-                        .map(|i| text(i.to_string()).into())
+                        .map(|i| {
+                            let ln = text(i.to_string());
+                            if let Some(info) = file.blame.get(&i) {
+                                let date = NaiveDateTime::from_timestamp_opt(info.time, 0)
+                                    .map(|dt| dt.format("%Y-%m-%d").to_string())
+                                    .unwrap_or_default();
+                                Tooltip::new(
+                                    ln,
+                                    format!("{} – {}", info.author, date),
+                                    tooltip::Position::FollowCursor,
+                                )
+                                .into()
+                            } else {
+                                ln.into()
+                            }
+                        })
                         .collect::<Vec<Element<Message>>>(),
                 );
 
