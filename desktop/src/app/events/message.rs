@@ -1,6 +1,7 @@
 use iced::{widget::text_editor, Event};
 use std::path::PathBuf;
 
+use crate::app::diff::DiffView;
 use crate::app::{AppTheme, CreateTarget, FileEntry, HotkeyField, Language};
 
 #[derive(Debug, Clone)]
@@ -79,6 +80,7 @@ pub enum Message {
     ShowTerminalHelp,
     OpenDiff(PathBuf, PathBuf, bool),
     OpenGitDiff(PathBuf, String, bool),
+    DiffLoaded(Result<DiffView, String>),
     NextDiff,
     PrevDiff,
     ToggleDiffIgnoreWhitespace(bool),
