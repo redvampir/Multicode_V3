@@ -1,16 +1,16 @@
 use crate::modal::Modal;
 use iced::widget::{
-    button, checkbox, column, container, pick_list, row, scrollable, spinner, text, text_editor,
-    text_input,
-    tooltip::{self, Tooltip},
+    button, checkbox, column, container, pick_list, row, scrollable,
     svg::{Handle, Svg},
+    text, text_editor, text_input,
+    tooltip::{self, Tooltip},
     Space,
 };
 use iced::{alignment, theme, Element, Length};
 
 use super::events::Message;
-use super::{AppTheme, CreateTarget, HotkeyField, Language, MulticodeApp, Screen};
 use super::ui::THEME_SET;
+use super::{AppTheme, CreateTarget, HotkeyField, Language, MulticodeApp, Screen};
 use crate::components::file_manager;
 
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
@@ -457,7 +457,7 @@ impl MulticodeApp {
 impl MulticodeApp {
     fn loading_overlay(&self, content: Element<Message>) -> Element<Message> {
         if self.loading {
-            let overlay = container(spinner())
+            let overlay = container(text("Loading…"))
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .center_x()
@@ -623,5 +623,4 @@ impl MulticodeApp {
             .width(200)
             .into()
     }
-
 }
