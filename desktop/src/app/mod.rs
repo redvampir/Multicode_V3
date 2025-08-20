@@ -1075,19 +1075,21 @@ impl MulticodeApp {
     }
 
     fn mode_bar(&self) -> Element<Message> {
-        let text_btn: Element<_> = match &self.screen {
-            Screen::TextEditor { .. } => button("Text").style(theme::Button::Primary).into(),
-            Screen::VisualEditor { .. } => {
-                button("Text").on_press(Message::SwitchToTextEditor).into()
-            }
-            _ => button("Text").into(),
+        let text_btn: Element<_> = if self.is_visual_mode() {
+            button("Text").on_press(Message::SwitchToTextEditor).into()
+        } else if matches!(self.screen, Screen::TextEditor { .. }) {
+            button("Text").style(theme::Button::Primary).into()
+        } else {
+            button("Text").into()
         };
-        let visual_btn: Element<_> = match &self.screen {
-            Screen::VisualEditor { .. } => button("Visual").style(theme::Button::Primary).into(),
-            Screen::TextEditor { .. } => button("Visual")
+        let visual_btn: Element<_> = if self.is_visual_mode() {
+            button("Visual").style(theme::Button::Primary).into()
+        } else if matches!(self.screen, Screen::TextEditor { .. }) {
+            button("Visual")
                 .on_press(Message::SwitchToVisualEditor)
-                .into(),
-            _ => button("Visual").into(),
+                .into()
+        } else {
+            button("Visual").into()
         };
 
         let save_label = if self.is_dirty() {
@@ -1142,6 +1144,10 @@ impl MulticodeApp {
         if let Some(f) = self.current_file_mut() {
             f.dirty = value;
         }
+    }
+
+    fn is_visual_mode(&self) -> bool {
+        matches!(self.screen, Screen::VisualEditor { .. })
     }
     /// Возвращает путь к корню проекта, если он выбран
     fn current_root_path(&self) -> Option<PathBuf> {

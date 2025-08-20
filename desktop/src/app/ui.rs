@@ -673,9 +673,67 @@ impl MulticodeApp {
 mod tests {
     use super::*;
 
+    use super::super::{CreateTarget, MulticodeApp, Screen, UserSettings};
+    use std::collections::HashSet;
+    use tokio::sync::broadcast;
+
     #[test]
     fn context_menu_creation() {
         let cm = ContextMenu::new(PathBuf::from("test"));
         assert!(cm.hovered.borrow().is_none());
+    }
+
+    fn build_app(screen: Screen) -> MulticodeApp {
+        let (sender, _) = broadcast::channel(1);
+        MulticodeApp {
+            screen,
+            files: Vec::new(),
+            tabs: Vec::new(),
+            active_tab: None,
+            search_term: String::new(),
+            replace_term: String::new(),
+            search_results: Vec::new(),
+            show_search_panel: false,
+            current_match: None,
+            new_file_name: String::new(),
+            new_directory_name: String::new(),
+            create_target: CreateTarget::File,
+            rename_file_name: String::new(),
+            query: String::new(),
+            show_command_palette: false,
+            log: Vec::new(),
+            project_search_results: Vec::new(),
+            goto_line: None,
+            show_terminal: false,
+            terminal_cmd: String::new(),
+            terminal_child: None,
+            show_terminal_help: false,
+            sender,
+            settings: UserSettings::default(),
+            expanded_dirs: HashSet::new(),
+            context_menu: None,
+            show_create_file_confirm: false,
+            show_delete_confirm: false,
+            pending_action: None,
+            hotkey_capture: None,
+            shortcut_capture: None,
+            settings_warning: None,
+            loading: false,
+            diff_error: None,
+            show_meta_dialog: false,
+            meta_tags: String::new(),
+            meta_links: String::new(),
+            meta_comment: String::new(),
+            show_meta_panel: false,
+        }
+    }
+
+    #[test]
+    fn visual_mode_check() {
+        let app = build_app(Screen::VisualEditor { root: PathBuf::new() });
+        assert!(app.is_visual_mode());
+
+        let app = build_app(Screen::TextEditor { root: PathBuf::new() });
+        assert!(!app.is_visual_mode());
     }
 }
