@@ -275,7 +275,12 @@ impl MulticodeApp {
                     color: Some(*c),
                     font: None,
                 })
-                .on_action(Message::FileContentEdited);
+                .on_action(|action| match action {
+                    text_editor::Action::AddCursorUp => Message::AddCursorUp,
+                    text_editor::Action::AddCursorDown => Message::AddCursorDown,
+                    text_editor::Action::SelectAllMatches => Message::SelectAllMatches,
+                    other => Message::FileContentEdited(other),
+                });
 
             let editor_view: Element<_> = if self.settings.show_line_numbers {
                 let lines = column(
