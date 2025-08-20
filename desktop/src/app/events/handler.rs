@@ -301,6 +301,10 @@ impl MulticodeApp {
                 }
                 Command::none()
             }
+            Message::OpenProjectPicker => {
+                self.screen = Screen::ProjectPicker;
+                Command::none()
+            }
             Message::SwitchToTextEditor => {
                 if let Some(root) = self.current_root_path() {
                     self.screen = Screen::TextEditor { root: root.clone() };

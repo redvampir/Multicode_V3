@@ -71,6 +71,7 @@ pub enum Message {
     SettingsSaved,
     OpenSettings,
     CloseSettings,
+    OpenProjectPicker,
     ToggleDir(PathBuf),
     ShowContextMenu(PathBuf),
     CloseContextMenu,

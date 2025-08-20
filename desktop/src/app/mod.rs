@@ -31,7 +31,7 @@ use std::path::PathBuf;
 
 pub fn run(path: Option<PathBuf>) -> iced::Result {
     let settings = UserSettings::load();
-    let flags = if settings.last_folders.is_empty() { None } else { path };
+    let flags = path.or_else(|| settings.last_folders.first().cloned());
     MulticodeApp::run(Settings {
         flags,
         ..Settings::default()
@@ -1079,11 +1079,17 @@ impl MulticodeApp {
         } else {
             "Settings"
         };
+        let open_other_label = if self.settings.language == Language::Russian {
+            "Открыть другой проект"
+        } else {
+            "Open another project"
+        };
         row![
             button("Разбор").on_press(Message::RunParse),
             button("Поиск").on_press(Message::ProjectSearch(self.query.clone())),
             button("Журнал Git").on_press(Message::RunGitLog),
             button("Экспорт").on_press(Message::RunExport),
+            button(open_other_label).on_press(Message::OpenProjectPicker),
             button("Терминал").on_press(Message::ToggleTerminal),
             button(settings_label).on_press(Message::OpenSettings),
         ]
