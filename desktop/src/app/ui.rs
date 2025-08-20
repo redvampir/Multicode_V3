@@ -186,9 +186,9 @@ impl MulticodeApp {
         let items = self
             .project_search_results
             .iter()
-            .map(|(path, line, text)| {
-                let label = format!("{}:{}: {}", path.display(), line + 1, text);
-                button(label)
+            .map(|(path, line, snippet)| {
+                let label = format!("{}:{}: {}", path.display(), line + 1, snippet);
+                button(text(label))
                     .on_press(Message::OpenSearchResult(path.clone(), *line))
                     .into()
             })
@@ -268,7 +268,7 @@ impl MulticodeApp {
                                     .unwrap_or_default();
                                 Tooltip::new(
                                     ln,
-                                    format!("{} – {}", info.author, date),
+                                    text(format!("{} – {}", info.author, date)),
                                     tooltip::Position::FollowCursor,
                                 )
                                 .into()
