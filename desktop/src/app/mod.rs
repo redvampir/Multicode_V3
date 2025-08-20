@@ -110,6 +110,13 @@ pub struct FileEntry {
     children: Vec<FileEntry>,
 }
 
+#[derive(Debug, Clone)]
+pub struct Diagnostic {
+    pub line: usize,
+    pub range: Range<usize>,
+    pub message: String,
+}
+
 #[derive(Debug)]
 pub struct Tab {
     path: PathBuf,
@@ -117,6 +124,7 @@ pub struct Tab {
     editor: text_editor::Content,
     dirty: bool,
     blame: HashMap<usize, git::BlameLine>,
+    diagnostics: Vec<Diagnostic>,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -669,7 +677,13 @@ impl Application for MulticodeApp {
 
                 let search_panel = self.search_panel_component();
 
-                let content = column![search_panel, editor, self.terminal_component(),].spacing(10);
+                let content = column![
+                    search_panel,
+                    editor,
+                    self.lint_panel_component(),
+                    self.terminal_component(),
+                ]
+                .spacing(10);
 
                 let body = row![sidebar, content].spacing(10);
 
