@@ -111,7 +111,7 @@ pub fn log() -> Result<Vec<String>, git2::Error> {
     Ok(entries)
 }
 
-#[derive(serde::Serialize)]
+#[derive(Debug, serde::Serialize)]
 pub struct BlameLine {
     pub line: usize,
     pub author: String,
