@@ -1,5 +1,5 @@
 use iced::advanced::text::highlighter::{self, Highlighter};
-use iced::widget::{row, scrollable, text_editor};
+use iced::widget::{column, container, row, scrollable, text, text_editor};
 use iced::{Color, Element, Length};
 
 use crate::app::events::Message;
@@ -48,30 +48,53 @@ impl DiffView {
     }
 
     pub fn view(&self) -> Element<Message> {
-        let left = text_editor(&self.left).highlight::<LineHighlighter>(
-            self.left_diff.clone(),
-            |c, _| highlighter::Format {
-                color: Some(*c),
-                font: None,
-            },
-        );
-        let right = text_editor(&self.right).highlight::<LineHighlighter>(
+        let left_editor =
+            text_editor(&self.left).highlight::<LineHighlighter>(self.left_diff.clone(), |c, _| {
+                highlighter::Format {
+                    color: Some(*c),
+                    font: None,
+                }
+            });
+        let right_editor = text_editor(&self.right).highlight::<LineHighlighter>(
             self.right_diff.clone(),
             |c, _| highlighter::Format {
                 color: Some(*c),
                 font: None,
             },
         );
-        row![
-            scrollable(left)
-                .id(self.left_scroll.clone())
-                .width(Length::FillPortion(1)),
-            scrollable(right)
-                .id(self.right_scroll.clone())
-                .width(Length::FillPortion(1)),
-        ]
-        .spacing(10)
-        .into()
+        let left_lines = column(
+            (1..=self.left.line_count())
+                .map(|i| text(i.to_string()).into())
+                .collect::<Vec<Element<Message>>>(),
+        );
+
+        let right_lines = column(
+            (1..=self.right.line_count())
+                .map(|i| text(i.to_string()).into())
+                .collect::<Vec<Element<Message>>>(),
+        );
+
+        let left_view = scrollable(
+            row![
+                container(left_lines).width(Length::Shrink),
+                left_editor.height(Length::Shrink)
+            ]
+            .spacing(5),
+        )
+        .id(self.left_scroll.clone())
+        .width(Length::FillPortion(1));
+
+        let right_view = scrollable(
+            row![
+                container(right_lines).width(Length::Shrink),
+                right_editor.height(Length::Shrink)
+            ]
+            .spacing(5),
+        )
+        .id(self.right_scroll.clone())
+        .width(Length::FillPortion(1));
+
+        row![left_view, right_view].spacing(10).into()
     }
 }
 
@@ -115,4 +138,3 @@ impl Highlighter for LineHighlighter {
         self.current
     }
 }
-
