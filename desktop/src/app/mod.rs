@@ -330,6 +330,10 @@ fn default_syntect_theme() -> String {
     "InspiredGitHub".into()
 }
 
+fn default_true() -> bool {
+    true
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 struct UserSettings {
     #[serde(default)]
@@ -350,7 +354,7 @@ struct UserSettings {
     show_line_numbers: bool,
     #[serde(default)]
     show_status_bar: bool,
-    #[serde(default)]
+    #[serde(default = "default_true")]
     show_toolbar: bool,
     #[serde(default)]
     show_markdown_preview: bool,
@@ -1039,7 +1043,12 @@ impl Application for MulticodeApp {
         if let Some(tabs) = tabs {
             page = page.push(tabs);
         }
-        let page: Element<_> = page.push(self.mode_bar()).push(content).spacing(10).into();
+        let page: Element<_> = page
+            .push(self.mode_bar())
+            .push(self.toolbar())
+            .push(content)
+            .spacing(10)
+            .into();
         let content = if self.loading {
             container(spinner())
                 .width(Length::Fill)

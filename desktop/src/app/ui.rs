@@ -199,6 +199,36 @@ impl MulticodeApp {
         }
     }
 
+    pub fn toolbar(&self) -> Element<Message> {
+        if self.settings.show_toolbar {
+            let open_icon = Svg::new(Handle::from_memory(OPEN_ICON))
+                .width(Length::Fixed(16.0))
+                .height(Length::Fixed(16.0));
+            let save_icon = Svg::new(Handle::from_memory(SAVE_ICON))
+                .width(Length::Fixed(16.0))
+                .height(Length::Fixed(16.0));
+            let format_icon = Svg::new(Handle::from_memory(FORMAT_ICON))
+                .width(Length::Fixed(16.0))
+                .height(Length::Fixed(16.0));
+            let auto_icon = Svg::new(Handle::from_memory(AUTOCOMPLETE_ICON))
+                .width(Length::Fixed(16.0))
+                .height(Length::Fixed(16.0));
+            let lint_btn = button("Lint").on_press(Message::RunLint);
+            row![
+                button(open_icon).on_press(Message::PickFile),
+                button(save_icon).on_press(Message::SaveFile),
+                button(format_icon).on_press(Message::AutoFormat),
+                button(auto_icon).on_press(Message::AutoComplete),
+                lint_btn,
+                button("Meta").on_press(Message::ToggleMetaPanel)
+            ]
+            .spacing(5)
+            .into()
+        } else {
+            Space::with_height(Length::Shrink).into()
+        }
+    }
+
     pub fn project_search_component(&self) -> Element<Message> {
         if self.project_search_results.is_empty() {
             return Space::with_height(Length::Shrink).into();
@@ -317,34 +347,7 @@ impl MulticodeApp {
                 editor.height(Length::Fill).into()
             };
 
-            let toolbar: Element<_> = if self.settings.show_toolbar {
-                let open_icon = Svg::new(Handle::from_memory(OPEN_ICON))
-                    .width(Length::Fixed(16.0))
-                    .height(Length::Fixed(16.0));
-                let save_icon = Svg::new(Handle::from_memory(SAVE_ICON))
-                    .width(Length::Fixed(16.0))
-                    .height(Length::Fixed(16.0));
-                let format_icon = Svg::new(Handle::from_memory(FORMAT_ICON))
-                    .width(Length::Fixed(16.0))
-                    .height(Length::Fixed(16.0));
-                let auto_icon = Svg::new(Handle::from_memory(AUTOCOMPLETE_ICON))
-                    .width(Length::Fixed(16.0))
-                    .height(Length::Fixed(16.0));
-                let lint_btn = button("Lint").on_press(Message::RunLint);
-                row![
-                    button(open_icon).on_press(Message::PickFile),
-                    button(save_icon).on_press(Message::SaveFile),
-                    button(format_icon).on_press(Message::AutoFormat),
-                    button(auto_icon).on_press(Message::AutoComplete),
-                    lint_btn,
-                    button("Meta").on_press(Message::ToggleMetaPanel)
-                ]
-                .spacing(5)
-                .into()
-            } else {
-                Space::with_height(Length::Shrink).into()
-            };
-            let editor_column = column![toolbar, editor_view].spacing(5);
+            let editor_column = column![editor_view];
             if self.settings.show_markdown_preview && ext == "md" {
                 use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
                 let parser = Parser::new(&file.content);
@@ -387,8 +390,7 @@ impl MulticodeApp {
                     elements.push(text(buf).into());
                 }
                 let preview = scrollable(column(elements).spacing(5)).width(Length::FillPortion(1));
-                let main = row![editor_column.width(Length::FillPortion(1)), preview]
-                    .spacing(5);
+                let main = row![editor_column.width(Length::FillPortion(1)), preview].spacing(5);
                 if self.show_meta_panel {
                     row![
                         main.width(Length::FillPortion(3)),
@@ -449,7 +451,14 @@ impl MulticodeApp {
                     text("Мета"),
                     text(format!("Теги: {}", tags)),
                     text(format!("Связи: {}", links)),
-                    text(format!("Комментарий: {}", if comment.is_empty() { "-".into() } else { comment })),
+                    text(format!(
+                        "Комментарий: {}",
+                        if comment.is_empty() {
+                            "-".into()
+                        } else {
+                            comment
+                        }
+                    )),
                     button("Редактировать").on_press(Message::ShowMetaDialog)
                 ]
                 .spacing(5)
@@ -730,10 +739,14 @@ mod tests {
 
     #[test]
     fn visual_mode_check() {
-        let app = build_app(Screen::VisualEditor { root: PathBuf::new() });
+        let app = build_app(Screen::VisualEditor {
+            root: PathBuf::new(),
+        });
         assert!(app.is_visual_mode());
 
-        let app = build_app(Screen::TextEditor { root: PathBuf::new() });
+        let app = build_app(Screen::TextEditor {
+            root: PathBuf::new(),
+        });
         assert!(!app.is_visual_mode());
     }
 }
