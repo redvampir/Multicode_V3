@@ -972,22 +972,26 @@ impl Application for MulticodeApp {
             .push(content)
             .spacing(10)
             .into();
-        let content = if self.loading {
-            container(spinner())
-                .width(Length::Fill)
-                .height(Length::Fill)
-                .center_x()
-                .center_y()
-                .into()
-        } else {
-            page
-        };
+        let content = self.loading_overlay(page);
         let content = self.command_palette_modal(content);
         self.error_modal(content)
     }
 }
 
 impl MulticodeApp {
+    fn loading_overlay(&self, content: Element<Message>) -> Element<Message> {
+        if self.loading {
+            let overlay = container(spinner())
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x()
+                .center_y();
+            Modal::new(content, overlay).into()
+        } else {
+            content
+        }
+    }
+
     fn main_menu(&self) -> Element<Message> {
         let settings_label = if self.settings.language == Language::Russian {
             "Настройки"
