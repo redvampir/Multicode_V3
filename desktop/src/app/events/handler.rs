@@ -91,15 +91,9 @@ impl MulticodeApp {
                         if c.eq_ignore_ascii_case("p") {
                             return self.handle_message(Message::ToggleCommandPalette);
                         } else if c.eq_ignore_ascii_case("v") {
-                            return match self.screen {
-                                Screen::VisualEditor { .. } => {
-                                    self.handle_message(Message::SwitchToTextEditor)
-                                }
-                                Screen::TextEditor { .. } => {
-                                    self.handle_message(Message::SwitchToVisualEditor)
-                                }
-                                _ => Command::none(),
-                            };
+                            return self.handle_message(Message::SwitchToVisualEditor);
+                        } else if c.eq_ignore_ascii_case("t") {
+                            return self.handle_message(Message::SwitchToTextEditor);
                         }
                     }
                 }
