@@ -137,7 +137,7 @@ impl MulticodeApp {
                 }
                 Command::none()
             }
-            Message::IcedEvent(Event::Window(window::Event::FileDropped(path))) => {
+            Message::IcedEvent(Event::Window(_, window::Event::FileDropped(path))) => {
                 if path.is_dir() {
                     return self.handle_message(Message::FolderPicked(Some(path)));
                 } else if path.is_file() {
