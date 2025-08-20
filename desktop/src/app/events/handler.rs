@@ -90,6 +90,16 @@ impl MulticodeApp {
                     if let keyboard::Key::Character(c) = &key {
                         if c.eq_ignore_ascii_case("p") {
                             return self.handle_message(Message::ToggleCommandPalette);
+                        } else if c.eq_ignore_ascii_case("v") {
+                            return match self.screen {
+                                Screen::VisualEditor { .. } => {
+                                    self.handle_message(Message::SwitchToTextEditor)
+                                }
+                                Screen::TextEditor { .. } => {
+                                    self.handle_message(Message::SwitchToVisualEditor)
+                                }
+                                _ => Command::none(),
+                            };
                         }
                     }
                 }
@@ -258,7 +268,10 @@ impl MulticodeApp {
                     } else {
                         let mut extras = meta.extras.take().unwrap_or_else(|| json!({}));
                         if let Some(obj) = extras.as_object_mut() {
-                            obj.insert("comment".into(), serde_json::Value::String(self.meta_comment.clone()));
+                            obj.insert(
+                                "comment".into(),
+                                serde_json::Value::String(self.meta_comment.clone()),
+                            );
                         }
                         meta.extras = Some(extras);
                     }
