@@ -567,21 +567,6 @@ impl Application for MulticodeApp {
                     .into()
             }
             Screen::TextEditor { .. } => {
-                let settings_label = if self.settings.language == Language::Russian {
-                    "Настройки"
-                } else {
-                    "Settings"
-                };
-                let menu = row![
-                    button("Разбор").on_press(Message::RunParse),
-                    button("Поиск").on_press(Message::ProjectSearch(self.query.clone())),
-                    button("Журнал Git").on_press(Message::RunGitLog),
-                    button("Экспорт").on_press(Message::RunExport),
-                    button("Терминал").on_press(Message::ToggleTerminal),
-                    button(settings_label).on_press(Message::OpenSettings),
-                ]
-                .spacing(10);
-
                 let sidebar = container(self.file_tree()).width(200);
 
                 let tabs = row(self
@@ -718,7 +703,6 @@ impl Application for MulticodeApp {
                 let body = row![sidebar, content].spacing(10);
 
                 let page = column![
-                    menu,
                     tabs,
                     mode_bar,
                     file_menu,
@@ -780,21 +764,6 @@ impl Application for MulticodeApp {
                 content
             }
             Screen::VisualEditor { .. } => {
-                let settings_label = if self.settings.language == Language::Russian {
-                    "Настройки"
-                } else {
-                    "Settings"
-                };
-                let menu = row![
-                    button("Разбор").on_press(Message::RunParse),
-                    button("Поиск").on_press(Message::ProjectSearch(self.query.clone())),
-                    button("Журнал Git").on_press(Message::RunGitLog),
-                    button("Экспорт").on_press(Message::RunExport),
-                    button("Терминал").on_press(Message::ToggleTerminal),
-                    button(settings_label).on_press(Message::OpenSettings),
-                ]
-                .spacing(10);
-
                 let sidebar = container(self.file_tree()).width(200);
 
                 let tabs = self.tabs_component();
@@ -900,7 +869,6 @@ impl Application for MulticodeApp {
                 let body = row![sidebar, content].spacing(10);
 
                 let page = column![
-                    menu,
                     tabs,
                     mode_bar,
                     file_menu,
@@ -1110,6 +1078,7 @@ impl Application for MulticodeApp {
                 .height(Length::Fill)
                 .into(),
         };
+        let page: Element<_> = column![self.main_menu(), content].spacing(10).into();
         let content = if self.loading {
             container(spinner())
                 .width(Length::Fill)
@@ -1118,7 +1087,7 @@ impl Application for MulticodeApp {
                 .center_y()
                 .into()
         } else {
-            content
+            page
         };
         let content = self.command_palette_modal(content);
         self.error_modal(content)
@@ -1126,6 +1095,24 @@ impl Application for MulticodeApp {
 }
 
 impl MulticodeApp {
+    fn main_menu(&self) -> Element<Message> {
+        let settings_label = if self.settings.language == Language::Russian {
+            "Настройки"
+        } else {
+            "Settings"
+        };
+        row![
+            button("Разбор").on_press(Message::RunParse),
+            button("Поиск").on_press(Message::ProjectSearch(self.query.clone())),
+            button("Журнал Git").on_press(Message::RunGitLog),
+            button("Экспорт").on_press(Message::RunExport),
+            button("Терминал").on_press(Message::ToggleTerminal),
+            button(settings_label).on_press(Message::OpenSettings),
+        ]
+        .spacing(10)
+        .into()
+    }
+
     fn current_file(&self) -> Option<&Tab> {
         self.active_tab.and_then(|i| self.tabs.get(i))
     }
