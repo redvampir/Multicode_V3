@@ -1,4 +1,6 @@
 import { getSnippets } from './snippets.ts';
+import { getBlockTranslations } from '../shared/block-i18n.ts';
+import { applyTranslations } from '../shared/i18n.ts';
 
 export interface PaletteBlock {
   kind: string;
@@ -11,12 +13,25 @@ let registry: PaletteBlock[] = [
   { kind: 'File/Read', name: 'File Read', tags: ['file', 'read'] },
   { kind: 'File/Write', name: 'File Write', tags: ['file', 'write'] }
 ];
+let index: string[] = [];
+
+function buildIndex(blocks: PaletteBlock[]): void {
+  registry = [...blocks];
+  index = blocks.map(b => {
+    const translations = Object.values(getBlockTranslations(b.kind));
+    return [b.name, b.kind, ...(b.synonyms ?? []), ...(b.tags ?? []), ...translations]
+      .join(' ')
+      .toLowerCase();
+  });
+}
+
+buildIndex(registry);
 
 /**
  * Replace current registry with provided blocks. Useful for tests.
  */
 export function setRegistry(blocks: PaletteBlock[]): void {
-  registry = [...blocks];
+  buildIndex(blocks);
 }
 
 /**
@@ -26,7 +41,7 @@ export function setRegistry(blocks: PaletteBlock[]): void {
 export async function loadRegistry(fetcher: typeof fetch = fetch): Promise<PaletteBlock[]> {
   const res = await fetcher('/api/registry/blocks');
   const blocks: PaletteBlock[] = await res.json();
-  registry = blocks;
+  buildIndex(blocks);
   return blocks;
 }
 
@@ -37,12 +52,11 @@ export async function loadRegistry(fetcher: typeof fetch = fetch): Promise<Palet
 export function filterBlocks(query: string): PaletteBlock[] {
   const q = query.trim().toLowerCase();
   if (!q) return [...registry];
-  return registry.filter(b => {
-    const haystack = [b.name, b.kind, ...(b.synonyms ?? []), ...(b.tags ?? [])]
-      .join(' ')
-      .toLowerCase();
-    return haystack.includes(q);
-  });
+  const res: PaletteBlock[] = [];
+  for (let i = 0; i < registry.length; i++) {
+    if (index[i].includes(q)) res.push(registry[i]);
+  }
+  return res;
 }
 
 /**
@@ -63,6 +77,7 @@ export function createPalette(container: HTMLElement): void {
   const blocksPane = document.createElement('div');
   const search = document.createElement('input');
   search.type = 'search';
+  search.setAttribute('data-i18n-placeholder', 'search_placeholder');
   const list = document.createElement('ul');
   const renderBlocks = () => {
     list.innerHTML = '';
@@ -100,6 +115,7 @@ export function createPalette(container: HTMLElement): void {
 
   renderBlocks();
   showPane('blocks');
+  applyTranslations();
 }
 
 export function getRegistry(): PaletteBlock[] {
