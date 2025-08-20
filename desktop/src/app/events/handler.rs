@@ -18,7 +18,7 @@ use multicode_core::{
     search, viz_lint,
 };
 use std::collections::{HashMap, HashSet};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -363,12 +363,27 @@ impl MulticodeApp {
                 }
                 Command::none()
             }
+            Message::OpenSearchResult(path, line) => {
+                self.goto_line = Some(line);
+                return self.handle_message(Message::SelectFile(path));
+            }
             Message::SelectFile(path) => {
                 self.context_menu = None;
                 if let Some(idx) = self.tabs.iter().position(|f| f.path == path) {
                     self.active_tab = Some(idx);
                     self.search_results.clear();
                     self.current_match = None;
+                    if let Some(line) = self.goto_line.take() {
+                        self.perform_search();
+                        if let Some(pos) =
+                            self.search_results.iter().position(|(l, _)| *l == line)
+                        {
+                            self.current_match = Some(pos);
+                            self.focus_current_match();
+                        } else {
+                            self.move_cursor_to(line, 0);
+                        }
+                    }
                     Command::none()
                 } else {
                     self.search_results.clear();
@@ -399,6 +414,16 @@ impl MulticodeApp {
                 self.rename_file_name.clear();
                 self.search_results.clear();
                 self.current_match = None;
+                if let Some(line) = self.goto_line.take() {
+                    self.perform_search();
+                    if let Some(pos) = self.search_results.iter().position(|(l, _)| *l == line)
+                    {
+                        self.current_match = Some(pos);
+                        self.focus_current_match();
+                    } else {
+                        self.move_cursor_to(line, 0);
+                    }
+                }
                 return self.handle_message(Message::RunGitBlame(blame_path));
             }
             Message::FileLoaded(Err(e)) => {
@@ -751,6 +776,22 @@ impl MulticodeApp {
             }
             Message::SearchFinished(Err(e)) => {
                 self.log.push(format!("ошибка поиска: {e}"));
+                Command::none()
+            }
+            Message::ProjectSearch(query) => {
+                self.search_term = query.clone();
+                self.project_search_results.clear();
+                if let Some(root) = self.current_root_path() {
+                    Command::perform(
+                        project_search(root, query),
+                        Message::ProjectSearchFinished,
+                    )
+                } else {
+                    Command::none()
+                }
+            }
+            Message::ProjectSearchFinished(results) => {
+                self.project_search_results = results;
                 Command::none()
             }
             Message::RunParse => {
@@ -1267,6 +1308,36 @@ impl MulticodeApp {
             }
         }
     }
+}
+
+async fn project_search(root: PathBuf, query: String) -> Vec<(PathBuf, usize, String)> {
+    let mut stack = vec![root];
+    let mut results = Vec::new();
+    while let Some(dir) = stack.pop() {
+        let mut entries = match fs::read_dir(&dir).await {
+            Ok(e) => e,
+            Err(_) => continue,
+        };
+        while let Ok(Some(entry)) = entries.next_entry().await {
+            let path = entry.path();
+            let ty = match entry.file_type().await {
+                Ok(t) => t,
+                Err(_) => continue,
+            };
+            if ty.is_dir() {
+                stack.push(path);
+            } else if ty.is_file() {
+                if let Ok(content) = fs::read_to_string(&path).await {
+                    for (i, line) in content.lines().enumerate() {
+                        if line.contains(&query) {
+                            results.push((path.clone(), i, line.to_string()));
+                        }
+                    }
+                }
+            }
+        }
+    }
+    results
 }
 
 fn detect_lang(path: &Path) -> Option<Lang> {

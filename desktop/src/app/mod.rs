@@ -64,6 +64,10 @@ pub struct MulticodeApp {
     query: String,
     show_command_palette: bool,
     log: Vec<String>,
+    /// результаты поиска по проекту
+    project_search_results: Vec<(PathBuf, usize, String)>,
+    /// строка для перехода после открытия файла
+    goto_line: Option<usize>,
     show_terminal: bool,
     terminal_cmd: String,
     terminal_child: Option<Child>,
@@ -437,6 +441,8 @@ impl Application for MulticodeApp {
             query: String::new(),
             show_command_palette: false,
             log: Vec::new(),
+            project_search_results: Vec::new(),
+            goto_line: None,
             show_terminal: false,
             terminal_cmd: String::new(),
             terminal_child: None,
@@ -553,7 +559,8 @@ impl Application for MulticodeApp {
                 };
                 let menu = row![
                     button("Разбор").on_press(Message::RunParse),
-                    button("Поиск").on_press(Message::RunSearch),
+                    button("Поиск")
+                        .on_press(Message::ProjectSearch(self.query.clone())),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
                     button("Терминал").on_press(Message::ToggleTerminal),
@@ -688,6 +695,7 @@ impl Application for MulticodeApp {
                 let content = column![
                     search_panel,
                     editor,
+                    self.project_search_component(),
                     self.lint_panel_component(),
                     self.terminal_component(),
                 ]
@@ -742,7 +750,8 @@ impl Application for MulticodeApp {
                 };
                 let menu = row![
                     button("Разбор").on_press(Message::RunParse),
-                    button("Поиск").on_press(Message::RunSearch),
+                    button("Поиск")
+                        .on_press(Message::ProjectSearch(self.query.clone())),
                     button("Журнал Git").on_press(Message::RunGitLog),
                     button("Экспорт").on_press(Message::RunExport),
                     button("Терминал").on_press(Message::ToggleTerminal),
@@ -847,6 +856,7 @@ impl Application for MulticodeApp {
                 let content = column![
                     text_input("поиск", &self.query).on_input(Message::QueryChanged),
                     editor,
+                    self.project_search_component(),
                     self.terminal_component(),
                 ]
                 .spacing(10);
