@@ -2,7 +2,7 @@ use iced::{widget::text_editor, Event};
 use std::path::PathBuf;
 
 use crate::app::diff::DiffView;
-use crate::app::{AppTheme, CreateTarget, FileEntry, HotkeyField, Language};
+use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -52,6 +52,8 @@ pub enum Message {
     SearchFinished(Result<Vec<String>, String>),
     RunParse,
     ParseFinished(Result<Vec<String>, String>),
+    RunLint,
+    LintFinished(Vec<Diagnostic>),
     RunGitBlame(PathBuf),
     RunGitLog,
     GitFinished(Result<Vec<String>, String>),

@@ -2,7 +2,8 @@ use super::Message;
 use crate::app::io::{pick_file, pick_folder};
 use crate::app::ui::ContextMenu;
 use crate::app::{
-    diff::DiffView, EditorMode, Hotkey, HotkeyField, MulticodeApp, PendingAction, Screen, Tab,
+    diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField, MulticodeApp, PendingAction,
+    Screen, Tab,
 };
 use chrono::Utc;
 use iced::widget::{scrollable, text_editor::{self, Content}};
@@ -12,6 +13,7 @@ use multicode_core::{
     meta::{self, VisualMeta, DEFAULT_VERSION},
     parser::{self, Lang},
     search,
+    viz_lint,
 };
 use std::collections::{HashMap, HashSet};
 use std::path::Path;
@@ -356,6 +358,7 @@ impl MulticodeApp {
                     editor,
                     dirty: false,
                     blame: HashMap::new(),
+                    diagnostics: Vec::new(),
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 self.rename_file_name.clear();
@@ -491,6 +494,7 @@ impl MulticodeApp {
                     editor: Content::new(),
                     dirty: false,
                     blame: HashMap::new(),
+                    diagnostics: Vec::new(),
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 return self.load_files(self.current_root_path().unwrap());
@@ -762,6 +766,61 @@ impl MulticodeApp {
             }
             Message::ParseFinished(Err(e)) => {
                 self.log.push(format!("ошибка разбора: {e}"));
+                Command::none()
+            }
+            Message::RunLint => {
+                if let Some(file) = self.current_file() {
+                    let content = file.content.clone();
+                    Command::perform(
+                        async move {
+                            let errors = viz_lint::lint_str(&content);
+                            let lines: Vec<&str> = content.lines().collect();
+                            let mut id_map = HashMap::new();
+                            for (i, line) in lines.iter().enumerate() {
+                                if let Some(idx) = line.find("@viz") {
+                                    if let Some(id_pos) = line[idx..].find("id=") {
+                                        let rest = &line[idx + id_pos + 3..];
+                                        let id = rest
+                                            .split_whitespace()
+                                            .next()
+                                            .unwrap_or("")
+                                            .split(',')
+                                            .next()
+                                            .unwrap_or("")
+                                            .to_string();
+                                        id_map.insert(id, (i, line.len()));
+                                    }
+                                }
+                            }
+                            let mut diags = Vec::new();
+                            for err in errors {
+                                let ident = err
+                                    .strip_prefix("узел ")
+                                    .and_then(|s| s.split(':').next())
+                                    .unwrap_or("<unknown>")
+                                    .to_string();
+                                let (line_idx, len) = id_map
+                                    .get(&ident)
+                                    .copied()
+                                    .unwrap_or((0, lines.get(0).map(|l| l.len()).unwrap_or(0)));
+                                diags.push(Diagnostic {
+                                    line: line_idx,
+                                    range: 0..len,
+                                    message: err,
+                                });
+                            }
+                            diags
+                        },
+                        Message::LintFinished,
+                    )
+                } else {
+                    Command::none()
+                }
+            }
+            Message::LintFinished(diags) => {
+                if let Some(tab) = self.current_file_mut() {
+                    tab.diagnostics = diags;
+                }
                 Command::none()
             }
             Message::RunGitBlame(path) => {

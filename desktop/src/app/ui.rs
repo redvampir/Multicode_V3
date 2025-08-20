@@ -80,6 +80,7 @@ static EXT_ICON_MAP: Lazy<HashMap<&'static str, &'static [u8]>> = Lazy::new(|| {
 pub struct SyntaxSettings {
     pub extension: String,
     pub matches: Vec<(usize, Range<usize>)>,
+    pub diagnostics: Vec<(usize, Range<usize>)>,
     pub theme: String,
 }
 
@@ -146,6 +147,11 @@ impl Highlighter for SyntectHighlighter {
                 res.push((range.clone(), Color::from_rgb(1.0, 1.0, 0.0)));
             }
         }
+        for (line_idx, range) in &self.settings.diagnostics {
+            if *line_idx == self.current_line {
+                res.push((range.clone(), Color::from_rgb(1.0, 0.0, 0.0)));
+            }
+        }
         self.current_line += 1;
         res.into_iter()
     }
@@ -172,6 +178,24 @@ impl MulticodeApp {
         ]
         .spacing(5)
         .into()
+    }
+
+    pub fn lint_panel_component(&self) -> Element<Message> {
+        if let Some(file) = self.current_file() {
+            if file.diagnostics.is_empty() {
+                return Space::with_height(Length::Shrink).into();
+            }
+            let items = file
+                .diagnostics
+                .iter()
+                .map(|d| text(format!("{}: {}", d.line + 1, d.message)).into())
+                .collect::<Vec<Element<Message>>>();
+            scrollable(column(items))
+                .height(Length::Fixed(100.0))
+                .into()
+        } else {
+            Space::with_height(Length::Shrink).into()
+        }
     }
 
     pub fn tabs_component(&self) -> Element<Message> {
@@ -220,6 +244,11 @@ impl MulticodeApp {
             let settings = SyntaxSettings {
                 extension: ext,
                 matches: self.search_results.clone(),
+                diagnostics: file
+                    .diagnostics
+                    .iter()
+                    .map(|d| (d.line, d.range.clone()))
+                    .collect(),
                 theme: self.settings.syntect_theme.clone(),
             };
             let editor = text_editor(&file.editor)
@@ -277,11 +306,13 @@ impl MulticodeApp {
                 let auto_icon = Svg::new(Handle::from_memory(AUTOCOMPLETE_ICON))
                     .width(Length::Fixed(16.0))
                     .height(Length::Fixed(16.0));
+                let lint_btn = button("Lint").on_press(Message::RunLint);
                 row![
                     button(open_icon).on_press(Message::PickFile),
                     button(save_icon).on_press(Message::SaveFile),
                     button(format_icon).on_press(Message::AutoFormat),
-                    button(auto_icon).on_press(Message::AutoComplete)
+                    button(auto_icon).on_press(Message::AutoComplete),
+                    lint_btn
                 ]
                 .spacing(5)
                 .into()
