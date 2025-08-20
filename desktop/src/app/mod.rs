@@ -8,8 +8,8 @@ use diff::DiffView;
 use events::Message;
 use iced::futures::stream;
 use iced::widget::{
-    button, checkbox, column, container, pick_list, row, scrollable, text, text_editor, text_input,
-    Space,
+    button, checkbox, column, container, pick_list, row, scrollable, spinner, text, text_editor,
+    text_input, Space,
 };
 use iced::{
     alignment, event, keyboard, subscription, Application, Command, Element, Length, Settings,
@@ -77,6 +77,7 @@ pub struct MulticodeApp {
     pending_action: Option<PendingAction>,
     hotkey_capture: Option<HotkeyField>,
     settings_warning: Option<String>,
+    loading: bool,
     diff_error: Option<String>,
 }
 
@@ -432,6 +433,7 @@ impl Application for MulticodeApp {
             pending_action: None,
             hotkey_capture: None,
             settings_warning: None,
+            loading: false,
             diff_error: None,
         };
 
@@ -1021,6 +1023,16 @@ impl Application for MulticodeApp {
                 .width(Length::Fill)
                 .height(Length::Fill)
                 .into(),
+        };
+        let content = if self.loading {
+            container(spinner())
+                .width(Length::Fill)
+                .height(Length::Fill)
+                .center_x()
+                .center_y()
+                .into()
+        } else {
+            content
         };
         self.error_modal(content)
     }

@@ -843,65 +843,63 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::OpenDiff(left, right, ignore_ws) => {
-                let left_content = match std::fs::read_to_string(&left) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        return self.handle_message(Message::DiffError(format!(
-                            "{}: {}",
-                            left.display(),
-                            e
-                        )))
-                    }
-                };
-                let right_content = match std::fs::read_to_string(&right) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        return self.handle_message(Message::DiffError(format!(
-                            "{}: {}",
-                            right.display(),
-                            e
-                        )))
-                    }
-                };
-                let diff = DiffView::new(left_content, right_content, ignore_ws);
-                self.screen = Screen::Diff(diff);
-                Command::none()
+                self.loading = true;
+                let left_path = left.clone();
+                let right_path = right.clone();
+                Command::perform(
+                    async move {
+                        let left_content = fs::read_to_string(&left_path)
+                            .await
+                            .map_err(|e| format!("{}: {}", left_path.display(), e))?;
+                        let right_content = fs::read_to_string(&right_path)
+                            .await
+                            .map_err(|e| format!("{}: {}", right_path.display(), e))?;
+                        Ok(DiffView::new(left_content, right_content, ignore_ws))
+                    },
+                    Message::DiffLoaded,
+                )
             }
             Message::OpenGitDiff(path, commit, ignore_ws) => {
-                let current = match std::fs::read_to_string(&path) {
-                    Ok(c) => c,
-                    Err(e) => {
-                        return self.handle_message(Message::DiffError(format!(
-                            "{}: {}",
-                            path.display(),
-                            e
-                        )))
-                    }
-                };
+                self.loading = true;
                 let rel = if let Some(root) = self.current_root_path() {
                     path.strip_prefix(root).unwrap_or(&path).to_path_buf()
                 } else {
                     path.clone()
                 };
-                let spec = format!("{commit}:{}", rel.to_string_lossy());
-                match std::process::Command::new("git")
-                    .arg("show")
-                    .arg(spec)
-                    .output()
-                {
-                    Ok(out) if out.status.success() => {
-                        let prev = String::from_utf8_lossy(&out.stdout).to_string();
-                        let diff = DiffView::new(prev, current, ignore_ws);
-                        self.screen = Screen::Diff(diff);
-                    }
-                    Ok(out) => {
-                        let err = String::from_utf8_lossy(&out.stderr).to_string();
-                        return self.handle_message(Message::DiffError(err));
-                    }
-                    Err(e) => {
-                        return self.handle_message(Message::DiffError(format!("{}", e)));
-                    }
-                }
+                Command::perform(
+                    async move {
+                        let current = fs::read_to_string(&path)
+                            .await
+                            .map_err(|e| format!("{}: {}", path.display(), e))?;
+                        let spec = format!("{commit}:{}", rel.to_string_lossy());
+                        match TokioCommand::new("git")
+                            .arg("show")
+                            .arg(spec)
+                            .output()
+                            .await
+                        {
+                            Ok(out) if out.status.success() => {
+                                let prev = String::from_utf8_lossy(&out.stdout).to_string();
+                                Ok(DiffView::new(prev, current, ignore_ws))
+                            }
+                            Ok(out) => {
+                                let err = String::from_utf8_lossy(&out.stderr).to_string();
+                                Err(err)
+                            }
+                            Err(e) => Err(format!("{}", e)),
+                        }
+                    },
+                    Message::DiffLoaded,
+                )
+            }
+            Message::DiffLoaded(Ok(diff)) => {
+                self.loading = false;
+                self.screen = Screen::Diff(diff);
+                Command::none()
+            }
+            Message::DiffLoaded(Err(e)) => {
+                self.loading = false;
+                self.diff_error = Some(e);
                 Command::none()
             }
             Message::NextDiff => {
