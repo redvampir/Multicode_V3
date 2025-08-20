@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::fmt::{self, Display};
 use std::ops::Range;
 use tree_sitter::{Language, Node, Parser, Tree};
 
@@ -12,7 +13,7 @@ pub mod typescript;
 pub mod viz_comments;
 
 /// Поддерживаемые языки для парсинга.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Lang {
     Rust,
     Python,
@@ -21,6 +22,38 @@ pub enum Lang {
     Html,
     Go,
     TypeScript,
+}
+
+impl Display for Lang {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let name = match self {
+            Lang::Rust => "rust",
+            Lang::Python => "python",
+            Lang::JavaScript => "javascript",
+            Lang::Css => "css",
+            Lang::Html => "html",
+            Lang::Go => "go",
+            Lang::TypeScript => "typescript",
+        };
+        f.write_str(name)
+    }
+}
+
+impl std::str::FromStr for Lang {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "rust" => Ok(Lang::Rust),
+            "python" => Ok(Lang::Python),
+            "javascript" => Ok(Lang::JavaScript),
+            "css" => Ok(Lang::Css),
+            "html" => Ok(Lang::Html),
+            "go" => Ok(Lang::Go),
+            "typescript" => Ok(Lang::TypeScript),
+            _ => Err(()),
+        }
+    }
 }
 
 /// Возвращает [`Language`] tree-sitter из [`Lang`].
@@ -129,6 +162,23 @@ pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
 mod tests {
     use super::*;
     use std::collections::HashSet;
+
+    #[test]
+    fn lang_display_and_from_str() {
+        let cases = [
+            (Lang::Rust, "rust"),
+            (Lang::Python, "python"),
+            (Lang::JavaScript, "javascript"),
+            (Lang::Css, "css"),
+            (Lang::Html, "html"),
+            (Lang::Go, "go"),
+            (Lang::TypeScript, "typescript"),
+        ];
+        for (lang, name) in cases {
+            assert_eq!(lang.to_string(), name);
+            assert_eq!(name.parse::<Lang>().ok(), Some(lang));
+        }
+    }
 
     #[test]
     fn parse_sources_into_blocks() {
