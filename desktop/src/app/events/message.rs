@@ -10,6 +10,7 @@ pub enum Message {
     FolderPicked(Option<PathBuf>),
     PickFile,
     FilePicked(Option<PathBuf>),
+    DefaultEntryPicked(Option<PathBuf>),
     OpenRecent(PathBuf),
     FilesLoaded(Vec<FileEntry>),
     QueryChanged(String),
