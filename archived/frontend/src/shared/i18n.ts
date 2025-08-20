@@ -1,6 +1,7 @@
 import en from "../locales/en.json" assert { type: 'json' };
 import ru from "../locales/ru.json" assert { type: 'json' };
 import es from "../locales/es.json" assert { type: 'json' };
+import { languages as coreLanguages } from "./block-i18n.ts";
 
 const resources: Record<string, Record<string, string>> = {
   en: en as Record<string, string>,
@@ -26,7 +27,7 @@ export function t(key: string): string {
 }
 
 export function availableLanguages(): string[] {
-  return Object.keys(resources);
+  return coreLanguages().filter(l => resources[l]);
 }
 
 export function getLanguageName(lang: string): string {

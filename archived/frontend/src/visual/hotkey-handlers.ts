@@ -8,6 +8,7 @@ import { formatCurrentFile } from '../../scripts/format.js';
 import { openCommandPalette } from '../editor/command-palette.ts';
 import { exportPNG } from './export.ts';
 import { push as pushUndo, undo as undoAction, redo as redoAction } from './undo.ts';
+import { getBlockTranslations, hasTranslation, languages as blockLanguages } from '../shared/block-i18n.ts';
 
 import { hotkeys } from './hotkey-map.ts';
 
@@ -50,6 +51,15 @@ export const system = {
   formatCurrentFile,
   exportPNG
 };
+
+function makeTranslations(kind: string, label: string): Record<string, string> {
+  if (hasTranslation(kind)) {
+    return { ...getBlockTranslations(kind) };
+  }
+  const t: Record<string, string> = {};
+  for (const l of blockLanguages()) t[l] = label;
+  return t;
+}
 
 // Editing handlers
 function copyBlock() {
@@ -165,9 +175,11 @@ export function insertKeywordBlock(keyword: 'var' | 'let' | 'for' | 'while' | 'i
       ? globalThis.crypto.randomUUID()
       : Math.random().toString(36).slice(2);
   const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
-  const block = createBlock(kind, id, pos.x, pos.y, label, color);
+  const translations = makeTranslations(kind, label);
+  const lbl = translations[canvasRef.locale] || label;
+  const block = createBlock(kind, id, pos.x, pos.y, lbl, color);
   canvasRef.blocks.push(block);
-  const data: any = { kind, visual_id: id, x: pos.x, y: pos.y, translations: { en: label } };
+  const data: any = { kind, visual_id: id, x: pos.x, y: pos.y, translations };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);
   canvasRef.selected = new Set([block]);
@@ -213,14 +225,16 @@ export function insertOperatorBlock(op: OperatorSymbol) {
       : Math.random().toString(36).slice(2);
   const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.Operator || theme.blockFill;
-  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
+  const translations = makeTranslations(conf.kind, conf.label);
+  const label = translations[canvasRef.locale] || conf.label;
+  const block = createBlock(conf.kind, id, pos.x, pos.y, label, color);
   canvasRef.blocks.push(block);
   const data: any = {
     kind: conf.kind,
     visual_id: id,
     x: pos.x,
     y: pos.y,
-    translations: { en: conf.label }
+    translations
   };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);
@@ -263,14 +277,16 @@ export function insertOpBlock(op: OpSymbol) {
       : Math.random().toString(36).slice(2);
   const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.Operator || theme.blockFill;
-  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
+  const translations = makeTranslations(conf.kind, conf.label);
+  const label = translations[canvasRef.locale] || conf.label;
+  const block = createBlock(conf.kind, id, pos.x, pos.y, label, color);
   canvasRef.blocks.push(block);
   const data: any = {
     kind: conf.kind,
     visual_id: id,
     x: pos.x,
     y: pos.y,
-    translations: { en: conf.label }
+    translations
   };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);
@@ -308,14 +324,16 @@ export function insertTernaryBlock() {
       : Math.random().toString(36).slice(2);
   const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.Operator || theme.blockFill;
-  const block = createBlock(kind, id, pos.x, pos.y, label, color);
+  const translations = makeTranslations(kind, label);
+  const lbl = translations[canvasRef.locale] || label;
+  const block = createBlock(kind, id, pos.x, pos.y, lbl, color);
   canvasRef.blocks.push(block);
   const data: any = {
     kind,
     visual_id: id,
     x: pos.x,
     y: pos.y,
-    translations: { en: label }
+    translations
   };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);
@@ -359,14 +377,16 @@ export function insertLogicOperatorBlock(op: LogicOperatorSymbol) {
       : Math.random().toString(36).slice(2);
   const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.OpLogic || theme.blockFill;
-  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
+  const translations = makeTranslations(conf.kind, conf.label);
+  const label = translations[canvasRef.locale] || conf.label;
+  const block = createBlock(conf.kind, id, pos.x, pos.y, label, color);
   canvasRef.blocks.push(block);
   const data: any = {
     kind: conf.kind,
     visual_id: id,
     x: pos.x,
     y: pos.y,
-    translations: { en: conf.label }
+    translations
   };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);
@@ -413,14 +433,16 @@ export function insertComparisonOperatorBlock(op: ComparisonOperatorSymbol) {
       : Math.random().toString(36).slice(2);
   const pos = canvasRef.getFreePos ? canvasRef.getFreePos() : { x: 0, y: 0 };
   const color = theme.blockKinds.OpComparison || theme.blockFill;
-  const block = createBlock(conf.kind, id, pos.x, pos.y, conf.label, color);
+  const translations = makeTranslations(conf.kind, conf.label);
+  const label = translations[canvasRef.locale] || conf.label;
+  const block = createBlock(conf.kind, id, pos.x, pos.y, label, color);
   canvasRef.blocks.push(block);
   const data: any = {
     kind: conf.kind,
     visual_id: id,
     x: pos.x,
     y: pos.y,
-    translations: { en: conf.label }
+    translations
   };
   canvasRef.blocksData.push(data);
   canvasRef.blockDataMap.set(id, data);
@@ -465,14 +487,16 @@ function insertLogBlock() {
       ? Array.from(canvasRef.selected)[0]
       : null);
 
-  const block = createBlock(kind, id, pos.x, pos.y, label, color, { exec: true });
+  const translations = makeTranslations(kind, label);
+  const lbl = translations[canvasRef.locale] || label;
+  const block = createBlock(kind, id, pos.x, pos.y, lbl, color, { exec: true });
   canvasRef.blocks.push(block);
   const data: any = {
     kind,
     visual_id: id,
     x: pos.x,
     y: pos.y,
-    translations: { en: label },
+    translations,
     exec: true
   };
   canvasRef.blocksData.push(data);
