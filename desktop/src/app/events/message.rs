@@ -91,4 +91,6 @@ pub enum Message {
     ToggleDiffIgnoreWhitespace(bool),
     DiffError(String),
     ClearDiffError,
+    ToggleCommandPalette,
+    ExecuteCommand(String),
 }
