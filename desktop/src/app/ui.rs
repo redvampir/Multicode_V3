@@ -173,6 +173,41 @@ impl MulticodeApp {
         .into()
     }
 
+    pub fn tabs_component(&self) -> Element<Message> {
+        let len = self.tabs.len();
+        let tabs = self
+            .tabs
+            .iter()
+            .enumerate()
+            .map(|(i, f)| {
+                let name = f
+                    .path
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("")
+                    .to_string();
+                let tab = row![
+                    button(text(name)).on_press(Message::ActivateTab(i)),
+                    button(text("x")).on_press(Message::CloseFile(i))
+                ]
+                .spacing(5);
+                MouseArea::new(tab).on_drag(move |d| {
+                    if d.x > 30.0 && i + 1 < len {
+                        Message::ReorderTab { from: i, to: i + 1 }
+                    } else if d.x < -30.0 && i > 0 {
+                        Message::ReorderTab {
+                            from: i,
+                            to: i - 1,
+                        }
+                    } else {
+                        Message::ActivateTab(i)
+                    }
+                }).into()
+            })
+            .collect::<Vec<Element<Message>>>();
+        row(tabs).spacing(5).into()
+    }
+
     pub fn text_editor_component(&self) -> Element<Message> {
         if let Some(file) = self.current_file() {
             let ext = file

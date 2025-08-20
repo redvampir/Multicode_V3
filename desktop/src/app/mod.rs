@@ -38,9 +38,9 @@ pub fn run(path: Option<PathBuf>) -> iced::Result {
 pub struct MulticodeApp {
     screen: Screen,
     files: Vec<FileEntry>,
-    open_files: Vec<OpenFile>,
-    /// индекс активного файла во вкладках
-    active_file: Option<usize>,
+    tabs: Vec<Tab>,
+    /// индекс активной вкладки
+    active_tab: Option<usize>,
     /// строка поиска
     search_term: String,
     /// строка замены
@@ -110,7 +110,7 @@ pub struct FileEntry {
 }
 
 #[derive(Debug)]
-pub struct OpenFile {
+pub struct Tab {
     path: PathBuf,
     content: String,
     editor: text_editor::Content,
@@ -407,8 +407,8 @@ impl Application for MulticodeApp {
                 Screen::ProjectPicker
             },
             files: Vec::new(),
-            open_files: Vec::new(),
-            active_file: None,
+            tabs: Vec::new(),
+            active_tab: None,
             search_term: String::new(),
             replace_term: String::new(),
             search_results: Vec::new(),
@@ -546,7 +546,7 @@ impl Application for MulticodeApp {
                 let sidebar = container(self.file_tree()).width(200);
 
                 let tabs = row(self
-                    .open_files
+                    .tabs
                     .iter()
                     .enumerate()
                     .map(|(i, f)| {
@@ -561,12 +561,12 @@ impl Application for MulticodeApp {
                     .collect::<Vec<Element<Message>>>())
                 .spacing(5);
 
-                let rename_btn: Element<_> = if self.active_file.is_some() {
+                let rename_btn: Element<_> = if self.active_tab.is_some() {
                     button("Переименовать").on_press(Message::RenameFile).into()
                 } else {
                     button("Переименовать").into()
                 };
-                let delete_btn: Element<_> = if self.active_file.is_some() {
+                let delete_btn: Element<_> = if self.active_tab.is_some() {
                     button("Удалить")
                         .on_press(Message::RequestDeleteFile)
                         .into()
@@ -578,7 +578,7 @@ impl Application for MulticodeApp {
                 } else {
                     "Сохранить"
                 };
-                let save_btn: Element<_> = if self.active_file.is_some() {
+                let save_btn: Element<_> = if self.active_tab.is_some() {
                     button(save_label).on_press(Message::SaveFile).into()
                 } else {
                     button(save_label).into()
@@ -587,14 +587,14 @@ impl Application for MulticodeApp {
                 let visual_btn: Element<_> = button("Visual")
                     .on_press(Message::SwitchToVisualEditor)
                     .into();
-                let autocomplete_btn: Element<_> = if self.active_file.is_some() {
+                let autocomplete_btn: Element<_> = if self.active_tab.is_some() {
                     button("Автодополнить")
                         .on_press(Message::AutoComplete)
                         .into()
                 } else {
                     button("Автодополнить").into()
                 };
-                let format_btn: Element<_> = if self.active_file.is_some() {
+                let format_btn: Element<_> = if self.active_tab.is_some() {
                     button("Форматировать").on_press(Message::AutoFormat).into()
                 } else {
                     button("Форматировать").into()
@@ -728,28 +728,14 @@ impl Application for MulticodeApp {
 
                 let sidebar = container(self.file_tree()).width(200);
 
-                let tabs = row(self
-                    .open_files
-                    .iter()
-                    .enumerate()
-                    .map(|(i, f)| {
-                        let name = f.path.file_name().unwrap().to_string_lossy().to_string();
-                        row![
-                            button(text(name)).on_press(Message::SelectFile(f.path.clone())),
-                            button(text("x")).on_press(Message::CloseFile(i))
-                        ]
-                        .spacing(5)
-                        .into()
-                    })
-                    .collect::<Vec<Element<Message>>>())
-                .spacing(5);
+                let tabs = self.tabs_component();
 
-                let rename_btn: Element<_> = if self.active_file.is_some() {
+                let rename_btn: Element<_> = if self.active_tab.is_some() {
                     button("Переименовать").on_press(Message::RenameFile).into()
                 } else {
                     button("Переименовать").into()
                 };
-                let delete_btn: Element<_> = if self.active_file.is_some() {
+                let delete_btn: Element<_> = if self.active_tab.is_some() {
                     button("Удалить")
                         .on_press(Message::RequestDeleteFile)
                         .into()
@@ -761,7 +747,7 @@ impl Application for MulticodeApp {
                 } else {
                     "Сохранить"
                 };
-                let save_btn: Element<_> = if self.active_file.is_some() {
+                let save_btn: Element<_> = if self.active_tab.is_some() {
                     button(save_label).on_press(Message::SaveFile).into()
                 } else {
                     button(save_label).into()
@@ -1039,13 +1025,13 @@ impl Application for MulticodeApp {
 }
 
 impl MulticodeApp {
-    fn current_file(&self) -> Option<&OpenFile> {
-        self.active_file.and_then(|i| self.open_files.get(i))
+    fn current_file(&self) -> Option<&Tab> {
+        self.active_tab.and_then(|i| self.tabs.get(i))
     }
 
-    fn current_file_mut(&mut self) -> Option<&mut OpenFile> {
-        if let Some(i) = self.active_file {
-            self.open_files.get_mut(i)
+    fn current_file_mut(&mut self) -> Option<&mut Tab> {
+        if let Some(i) = self.active_tab {
+            self.tabs.get_mut(i)
         } else {
             None
         }
