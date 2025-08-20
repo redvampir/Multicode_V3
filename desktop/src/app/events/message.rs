@@ -82,4 +82,6 @@ pub enum Message {
     NextDiff,
     PrevDiff,
     ToggleDiffIgnoreWhitespace(bool),
+    DiffError(String),
+    ClearDiffError,
 }

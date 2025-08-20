@@ -843,28 +843,64 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::OpenDiff(left, right, ignore_ws) => {
-                let left_content = std::fs::read_to_string(&left).unwrap_or_default();
-                let right_content = std::fs::read_to_string(&right).unwrap_or_default();
+                let left_content = match std::fs::read_to_string(&left) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        return self.handle_message(Message::DiffError(format!(
+                            "{}: {}",
+                            left.display(),
+                            e
+                        )))
+                    }
+                };
+                let right_content = match std::fs::read_to_string(&right) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        return self.handle_message(Message::DiffError(format!(
+                            "{}: {}",
+                            right.display(),
+                            e
+                        )))
+                    }
+                };
                 let diff = DiffView::new(left_content, right_content, ignore_ws);
                 self.screen = Screen::Diff(diff);
                 Command::none()
             }
             Message::OpenGitDiff(path, commit, ignore_ws) => {
-                let current = std::fs::read_to_string(&path).unwrap_or_default();
+                let current = match std::fs::read_to_string(&path) {
+                    Ok(c) => c,
+                    Err(e) => {
+                        return self.handle_message(Message::DiffError(format!(
+                            "{}: {}",
+                            path.display(),
+                            e
+                        )))
+                    }
+                };
                 let rel = if let Some(root) = self.current_root_path() {
                     path.strip_prefix(root).unwrap_or(&path).to_path_buf()
                 } else {
                     path.clone()
                 };
                 let spec = format!("{commit}:{}", rel.to_string_lossy());
-                if let Ok(out) = std::process::Command::new("git")
+                match std::process::Command::new("git")
                     .arg("show")
                     .arg(spec)
                     .output()
                 {
-                    let prev = String::from_utf8_lossy(&out.stdout).to_string();
-                    let diff = DiffView::new(prev, current, ignore_ws);
-                    self.screen = Screen::Diff(diff);
+                    Ok(out) if out.status.success() => {
+                        let prev = String::from_utf8_lossy(&out.stdout).to_string();
+                        let diff = DiffView::new(prev, current, ignore_ws);
+                        self.screen = Screen::Diff(diff);
+                    }
+                    Ok(out) => {
+                        let err = String::from_utf8_lossy(&out.stderr).to_string();
+                        return self.handle_message(Message::DiffError(err));
+                    }
+                    Err(e) => {
+                        return self.handle_message(Message::DiffError(format!("{}", e)));
+                    }
                 }
                 Command::none()
             }
@@ -953,6 +989,14 @@ impl MulticodeApp {
                 if let Screen::Diff(ref mut diff) = self.screen {
                     diff.set_ignore_whitespace(val);
                 }
+                Command::none()
+            }
+            Message::DiffError(e) => {
+                self.diff_error = Some(e);
+                Command::none()
+            }
+            Message::ClearDiffError => {
+                self.diff_error = None;
                 Command::none()
             }
             Message::ToggleDir(path) => {
