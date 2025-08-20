@@ -79,5 +79,7 @@ pub enum Message {
     ShowTerminalHelp,
     OpenDiff(PathBuf, PathBuf, bool),
     OpenGitDiff(PathBuf, String, bool),
+    NextDiff,
+    PrevDiff,
     ToggleDiffIgnoreWhitespace(bool),
 }

@@ -5,7 +5,7 @@ use crate::app::{
     diff::DiffView, EditorMode, Hotkey, HotkeyField, MulticodeApp, OpenFile, PendingAction, Screen,
 };
 use chrono::Utc;
-use iced::widget::text_editor::{self, Content};
+use iced::widget::{scrollable, text_editor::{self, Content}};
 use iced::{keyboard, window, Command, Event};
 use multicode_core::{
     blocks, export, git,
@@ -45,6 +45,18 @@ impl MulticodeApp {
                         HotkeyField::SaveFile => self.settings.hotkeys.save_file = hk,
                         HotkeyField::RenameFile => self.settings.hotkeys.rename_file = hk,
                         HotkeyField::DeleteFile => self.settings.hotkeys.delete_file = hk,
+                        HotkeyField::NextDiff => self.settings.hotkeys.next_diff = hk,
+                        HotkeyField::PrevDiff => self.settings.hotkeys.prev_diff = hk,
+                    }
+                    return Command::none();
+                }
+                if let Screen::Diff(_) = self.screen {
+                    let hotkeys = &self.settings.hotkeys;
+                    if hotkeys.next_diff.matches(&key, modifiers) {
+                        return self.handle_message(Message::NextDiff);
+                    }
+                    if hotkeys.prev_diff.matches(&key, modifiers) {
+                        return self.handle_message(Message::PrevDiff);
                     }
                     return Command::none();
                 }
@@ -853,6 +865,87 @@ impl MulticodeApp {
                     let prev = String::from_utf8_lossy(&out.stdout).to_string();
                     let diff = DiffView::new(prev, current, ignore_ws);
                     self.screen = Screen::Diff(diff);
+                }
+                Command::none()
+            }
+            Message::NextDiff => {
+                if let Screen::Diff(ref mut diff) = self.screen {
+                    let mut all: Vec<usize> = diff
+                        .left_diff
+                        .iter()
+                        .chain(diff.right_diff.iter())
+                        .cloned()
+                        .collect();
+                    all.sort_unstable();
+                    all.dedup();
+                    if !all.is_empty() {
+                        let next = all
+                            .iter()
+                            .find(|&&i| i > diff.current)
+                            .copied()
+                            .unwrap_or(all[0]);
+                        diff.current = next;
+                        let lines = diff
+                            .left
+                            .line_count()
+                            .max(diff.right.line_count())
+                            .max(1);
+                        let offset = scrollable::RelativeOffset {
+                            x: 0.0,
+                            y: diff.current as f32 / (lines - 1) as f32,
+                        };
+                        return Command::batch([
+                            Command::widget(scrollable::snap_to(
+                                diff.left_scroll.clone(),
+                                offset,
+                            )),
+                            Command::widget(scrollable::snap_to(
+                                diff.right_scroll.clone(),
+                                offset,
+                            )),
+                        ]);
+                    }
+                }
+                Command::none()
+            }
+            Message::PrevDiff => {
+                if let Screen::Diff(ref mut diff) = self.screen {
+                    let mut all: Vec<usize> = diff
+                        .left_diff
+                        .iter()
+                        .chain(diff.right_diff.iter())
+                        .cloned()
+                        .collect();
+                    all.sort_unstable();
+                    all.dedup();
+                    if !all.is_empty() {
+                        let prev = all
+                            .iter()
+                            .rev()
+                            .find(|&&i| i < diff.current)
+                            .copied()
+                            .unwrap_or(*all.last().unwrap());
+                        diff.current = prev;
+                        let lines = diff
+                            .left
+                            .line_count()
+                            .max(diff.right.line_count())
+                            .max(1);
+                        let offset = scrollable::RelativeOffset {
+                            x: 0.0,
+                            y: diff.current as f32 / (lines - 1) as f32,
+                        };
+                        return Command::batch([
+                            Command::widget(scrollable::snap_to(
+                                diff.left_scroll.clone(),
+                                offset,
+                            )),
+                            Command::widget(scrollable::snap_to(
+                                diff.right_scroll.clone(),
+                                offset,
+                            )),
+                        ]);
+                    }
                 }
                 Command::none()
             }
