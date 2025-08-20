@@ -506,6 +506,32 @@ impl MulticodeApp {
             .on_blur(Message::ToggleCommandPalette)
             .into()
     }
+
+    pub fn shortcuts_settings_component(&self) -> Element<Message> {
+        let items = COMMANDS
+            .iter()
+            .map(|cmd| {
+                let label = if self.shortcut_capture.as_deref() == Some(cmd.id) {
+                    String::from("...")
+                } else {
+                    self
+                        .settings
+                        .shortcuts
+                        .get(cmd.id)
+                        .map(|h| h.to_string())
+                        .unwrap_or_else(|| String::from("-"))
+                };
+                row![
+                    text(cmd.title),
+                    button(text(label))
+                        .on_press(Message::StartCaptureShortcut(cmd.id.to_string()))
+                ]
+                .spacing(10)
+                .into()
+            })
+            .collect::<Vec<Element<Message>>>();
+        column(items).spacing(10).into()
+    }
 }
 
 #[cfg(test)]

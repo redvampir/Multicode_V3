@@ -79,6 +79,7 @@ pub struct MulticodeApp {
     /// ожидаемое действие при подтверждении потери изменений
     pending_action: Option<PendingAction>,
     hotkey_capture: Option<HotkeyField>,
+    shortcut_capture: Option<String>,
     settings_warning: Option<String>,
     loading: bool,
     diff_error: Option<String>,
@@ -325,6 +326,8 @@ struct UserSettings {
     #[serde(default)]
     hotkeys: Hotkeys,
     #[serde(default)]
+    shortcuts: HashMap<String, Hotkey>,
+    #[serde(default)]
     editor_mode: EditorMode,
     #[serde(default)]
     theme: AppTheme,
@@ -345,6 +348,7 @@ impl Default for UserSettings {
         Self {
             last_folders: Vec::new(),
             hotkeys: Hotkeys::default(),
+            shortcuts: HashMap::new(),
             editor_mode: EditorMode::Text,
             theme: AppTheme::default(),
             syntect_theme: default_syntect_theme(),
@@ -445,6 +449,7 @@ impl Application for MulticodeApp {
             show_delete_confirm: false,
             pending_action: None,
             hotkey_capture: None,
+            shortcut_capture: None,
             settings_warning: None,
             loading: false,
             diff_error: None,
@@ -1007,6 +1012,7 @@ impl Application for MulticodeApp {
                             .on_press(Message::StartCaptureHotkey(HotkeyField::PrevDiff))
                     ]
                     .spacing(10),
+                    self.shortcuts_settings_component(),
                     warning,
                     row![
                         button("Save / Сохранить").on_press(Message::SaveSettings),

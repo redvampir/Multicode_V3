@@ -77,6 +77,7 @@ pub enum Message {
     ToggleStatusBar(bool),
     ToggleToolbar(bool),
     StartCaptureHotkey(HotkeyField),
+    StartCaptureShortcut(String),
     SwitchToTextEditor,
     SwitchToVisualEditor,
     ToggleTerminal,
