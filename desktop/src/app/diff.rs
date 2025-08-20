@@ -10,9 +10,10 @@ pub struct DiffView {
     pub right: text_editor::Content,
     pub left_diff: Vec<usize>,
     pub right_diff: Vec<usize>,
-    left_scroll: scrollable::Id,
-    right_scroll: scrollable::Id,
+    pub left_scroll: scrollable::Id,
+    pub right_scroll: scrollable::Id,
     pub ignore_whitespace: bool,
+    pub current: usize,
 }
 
 impl DiffView {
@@ -29,6 +30,7 @@ impl DiffView {
             left_scroll,
             right_scroll,
             ignore_whitespace,
+            current: 0,
         };
         diff.recalculate();
         diff
@@ -70,6 +72,7 @@ impl DiffView {
                 }
             }
         }
+        self.current = 0;
     }
 
     pub fn set_ignore_whitespace(&mut self, ignore: bool) {

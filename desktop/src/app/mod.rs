@@ -175,11 +175,14 @@ impl fmt::Display for Hotkey {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Hotkeys {
     create_file: Hotkey,
     save_file: Hotkey,
     rename_file: Hotkey,
     delete_file: Hotkey,
+    next_diff: Hotkey,
+    prev_diff: Hotkey,
 }
 
 impl Default for Hotkeys {
@@ -209,6 +212,18 @@ impl Default for Hotkeys {
                 alt: false,
                 shift: false,
             },
+            next_diff: Hotkey {
+                key: "F8".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
+            prev_diff: Hotkey {
+                key: "F7".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
         }
     }
 }
@@ -219,6 +234,8 @@ pub enum HotkeyField {
     SaveFile,
     RenameFile,
     DeleteFile,
+    NextDiff,
+    PrevDiff,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -888,6 +905,16 @@ impl Application for MulticodeApp {
                 } else {
                     hotkeys.delete_file.to_string()
                 };
+                let next_diff_label = if self.hotkey_capture == Some(HotkeyField::NextDiff) {
+                    String::from("...")
+                } else {
+                    hotkeys.next_diff.to_string()
+                };
+                let prev_diff_label = if self.hotkey_capture == Some(HotkeyField::PrevDiff) {
+                    String::from("...")
+                } else {
+                    hotkeys.prev_diff.to_string()
+                };
                 let syntect_themes: Vec<String> = THEME_SET.themes.keys().cloned().collect();
                 let warning: Element<_> = if let Some(w) = &self.settings_warning {
                     text(w.clone()).into()
@@ -962,6 +989,18 @@ impl Application for MulticodeApp {
                         text("Удалить файл"),
                         button(text(delete_label))
                             .on_press(Message::StartCaptureHotkey(HotkeyField::DeleteFile))
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Следующее отличие"),
+                        button(text(next_diff_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::NextDiff))
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Предыдущее отличие"),
+                        button(text(prev_diff_label))
+                            .on_press(Message::StartCaptureHotkey(HotkeyField::PrevDiff))
                     ]
                     .spacing(10),
                     warning,
