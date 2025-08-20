@@ -345,6 +345,8 @@ struct UserSettings {
     show_status_bar: bool,
     #[serde(default)]
     show_toolbar: bool,
+    #[serde(default)]
+    show_markdown_preview: bool,
 }
 
 impl Default for UserSettings {
@@ -360,6 +362,7 @@ impl Default for UserSettings {
             show_line_numbers: true,
             show_status_bar: true,
             show_toolbar: true,
+            show_markdown_preview: false,
         }
     }
 }
@@ -984,6 +987,12 @@ impl Application for MulticodeApp {
                     row![
                         text("Панель инструментов"),
                         checkbox("", self.settings.show_toolbar).on_toggle(Message::ToggleToolbar),
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Предпросмотр Markdown"),
+                        checkbox("", self.settings.show_markdown_preview)
+                            .on_toggle(Message::ToggleMarkdownPreview),
                     ]
                     .spacing(10),
                     row![

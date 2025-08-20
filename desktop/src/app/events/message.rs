@@ -82,6 +82,7 @@ pub enum Message {
     ToggleLineNumbers(bool),
     ToggleStatusBar(bool),
     ToggleToolbar(bool),
+    ToggleMarkdownPreview(bool),
     StartCaptureHotkey(HotkeyField),
     StartCaptureShortcut(String),
     SwitchToTextEditor,
