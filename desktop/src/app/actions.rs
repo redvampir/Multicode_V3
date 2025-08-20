@@ -1,8 +1,10 @@
 use std::collections::HashSet;
 use std::path::PathBuf;
 
-use iced::{application, event, subscription, Application, Command, Element, Settings, Subscription, Theme};
 use iced::futures::stream;
+use iced::{
+    application, event, subscription, Application, Command, Element, Settings, Subscription, Theme,
+};
 use tokio::sync::broadcast;
 
 use super::events::Message;
@@ -68,6 +70,7 @@ impl Application for MulticodeApp {
             meta_links: String::new(),
             meta_comment: String::new(),
             show_meta_panel: false,
+            tab_drag: None,
         };
 
         let cmd = match &app.screen {

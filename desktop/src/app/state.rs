@@ -1,4 +1,3 @@
-use tokio::{fs, process::Child, sync::broadcast};
 use directories::ProjectDirs;
 use iced::widget::text_editor;
 use multicode_core::{git, meta::VisualMeta, BlockInfo};
@@ -7,9 +6,10 @@ use std::collections::{HashMap, HashSet};
 use std::fmt;
 use std::ops::Range;
 use std::path::PathBuf;
+use tokio::{fs, process::Child, sync::broadcast};
 
-use crate::components::file_manager::ContextMenu;
 use crate::app::diff::DiffView;
+use crate::components::file_manager::ContextMenu;
 
 #[derive(Debug)]
 pub struct MulticodeApp {
@@ -67,6 +67,7 @@ pub struct MulticodeApp {
     pub(super) meta_links: String,
     pub(super) meta_comment: String,
     pub(super) show_meta_panel: bool,
+    pub(super) tab_drag: Option<TabDragState>,
 }
 
 #[derive(Debug, Clone)]
@@ -114,6 +115,13 @@ pub struct Tab {
     pub diagnostics: Vec<Diagnostic>,
     pub blocks: Vec<BlockInfo>,
     pub meta: Option<VisualMeta>,
+}
+
+#[derive(Debug)]
+pub struct TabDragState {
+    pub index: usize,
+    pub start: f32,
+    pub current: f32,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -189,12 +197,42 @@ pub struct Hotkeys {
 impl Default for Hotkeys {
     fn default() -> Self {
         Self {
-            create_file: Hotkey { key: "N".into(), ctrl: true, alt: false, shift: false },
-            save_file: Hotkey { key: "S".into(), ctrl: true, alt: false, shift: false },
-            rename_file: Hotkey { key: "F2".into(), ctrl: false, alt: false, shift: false },
-            delete_file: Hotkey { key: "Delete".into(), ctrl: false, alt: false, shift: false },
-            next_diff: Hotkey { key: "F8".into(), ctrl: false, alt: false, shift: false },
-            prev_diff: Hotkey { key: "F7".into(), ctrl: false, alt: false, shift: false },
+            create_file: Hotkey {
+                key: "N".into(),
+                ctrl: true,
+                alt: false,
+                shift: false,
+            },
+            save_file: Hotkey {
+                key: "S".into(),
+                ctrl: true,
+                alt: false,
+                shift: false,
+            },
+            rename_file: Hotkey {
+                key: "F2".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
+            delete_file: Hotkey {
+                key: "Delete".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
+            next_diff: Hotkey {
+                key: "F8".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
+            prev_diff: Hotkey {
+                key: "F7".into(),
+                ctrl: false,
+                alt: false,
+                shift: false,
+            },
         }
     }
 }
