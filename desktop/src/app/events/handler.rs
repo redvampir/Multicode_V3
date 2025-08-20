@@ -1,6 +1,6 @@
 use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
-use crate::app::ui::ContextMenu;
+use crate::components::file_manager::ContextMenu;
 use crate::app::{
     command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField,
     MulticodeApp, PendingAction, Screen, Tab,

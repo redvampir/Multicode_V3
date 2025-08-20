@@ -11,6 +11,7 @@ use iced::{alignment, theme, Element, Length};
 use super::events::Message;
 use super::{AppTheme, CreateTarget, HotkeyField, Language, MulticodeApp, Screen};
 use super::ui::THEME_SET;
+use crate::components::file_manager;
 
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
 const CREATE_ICON: &[u8] = include_bytes!("../../assets/create.svg");
@@ -618,7 +619,9 @@ impl MulticodeApp {
     }
 
     fn sidebar(&self) -> Element<Message> {
-        container(self.file_tree()).width(200).into()
+        container(file_manager::file_tree(&self.files, &self.expanded_dirs))
+            .width(200)
+            .into()
     }
 
 }
