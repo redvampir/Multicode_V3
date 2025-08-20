@@ -10,6 +10,8 @@ pub struct DiffView {
     pub right: text_editor::Content,
     pub left_diff: Vec<usize>,
     pub right_diff: Vec<usize>,
+    left_scroll: scrollable::Id,
+    right_scroll: scrollable::Id,
 }
 
 impl DiffView {
@@ -31,11 +33,17 @@ impl DiffView {
                 }
             }
         }
+        let left_scroll = scrollable::Id::unique();
+        let right_scroll = scrollable::Id::unique();
+        scrollable::link(left_scroll.clone(), right_scroll.clone());
+
         Self {
             left: text_editor::Content::with_text(left),
             right: text_editor::Content::with_text(right),
             left_diff,
             right_diff,
+            left_scroll,
+            right_scroll,
         }
     }
 
@@ -55,8 +63,12 @@ impl DiffView {
             },
         );
         row![
-            scrollable(left).width(Length::FillPortion(1)),
-            scrollable(right).width(Length::FillPortion(1)),
+            scrollable(left)
+                .id(self.left_scroll.clone())
+                .width(Length::FillPortion(1)),
+            scrollable(right)
+                .id(self.right_scroll.clone())
+                .width(Length::FillPortion(1)),
         ]
         .spacing(10)
         .into()
