@@ -10,7 +10,10 @@ use events::Message;
 use iced::futures::stream;
 use iced::widget::{
     button, checkbox, column, container, pick_list, row, scrollable, spinner, text, text_editor,
-    text_input, Space,
+    text_input,
+    tooltip::{self, Tooltip},
+    svg::{Handle, Svg},
+    Space,
 };
 use iced::{
     alignment, event, keyboard, subscription, theme, Application, Command, Element, Length,
@@ -20,6 +23,10 @@ use tokio::{fs, process::Child, sync::broadcast};
 use ui::{ContextMenu, THEME_SET};
 
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
+
+const CREATE_ICON: &[u8] = include_bytes!("../../assets/create.svg");
+const RENAME_ICON: &[u8] = include_bytes!("../../assets/rename.svg");
+const DELETE_ICON: &[u8] = include_bytes!("../../assets/delete.svg");
 
 use directories::ProjectDirs;
 use multicode_core::{git, meta::VisualMeta, BlockInfo};
@@ -600,55 +607,7 @@ impl Application for MulticodeApp {
                     .collect::<Vec<Element<Message>>>())
                 .spacing(5);
 
-                let rename_btn: Element<_> = if self.active_tab.is_some() {
-                    button("Переименовать").on_press(Message::RenameFile).into()
-                } else {
-                    button("Переименовать").into()
-                };
-                let delete_btn: Element<_> = if self.active_tab.is_some() {
-                    button("Удалить")
-                        .on_press(Message::RequestDeleteFile)
-                        .into()
-                } else {
-                    button("Удалить").into()
-                };
-
-                let create_select = pick_list(
-                    &CreateTarget::ALL[..],
-                    Some(self.create_target),
-                    Message::CreateTargetChanged,
-                );
-                let (placeholder, value, on_input_msg, create_msg): (
-                    &str,
-                    &String,
-                    fn(String) -> Message,
-                    Message,
-                ) = match self.create_target {
-                    CreateTarget::File => (
-                        "новый файл",
-                        &self.new_file_name,
-                        Message::NewFileNameChanged as fn(String) -> Message,
-                        Message::CreateFile,
-                    ),
-                    CreateTarget::Directory => (
-                        "новый каталог",
-                        &self.new_directory_name,
-                        Message::NewDirectoryNameChanged as fn(String) -> Message,
-                        Message::CreateDirectory,
-                    ),
-                };
-                let create_input = text_input(placeholder, value).on_input(on_input_msg);
-                let create_button = button("Создать").on_press(create_msg);
-                let file_menu = row![
-                    create_select,
-                    create_input,
-                    create_button,
-                    text_input("новое имя", &self.rename_file_name)
-                        .on_input(Message::RenameFileNameChanged),
-                    rename_btn,
-                    delete_btn,
-                ]
-                .spacing(5);
+                let file_menu = self.file_menu();
 
                 let warning: Element<_> = if self.show_create_file_confirm {
                     row![
@@ -752,55 +711,7 @@ impl Application for MulticodeApp {
 
                 let tabs = self.tabs_component();
 
-                let rename_btn: Element<_> = if self.active_tab.is_some() {
-                    button("Переименовать").on_press(Message::RenameFile).into()
-                } else {
-                    button("Переименовать").into()
-                };
-                let delete_btn: Element<_> = if self.active_tab.is_some() {
-                    button("Удалить")
-                        .on_press(Message::RequestDeleteFile)
-                        .into()
-                } else {
-                    button("Удалить").into()
-                };
-
-                let create_select = pick_list(
-                    &CreateTarget::ALL[..],
-                    Some(self.create_target),
-                    Message::CreateTargetChanged,
-                );
-                let (placeholder, value, on_input_msg, create_msg): (
-                    &str,
-                    &String,
-                    fn(String) -> Message,
-                    Message,
-                ) = match self.create_target {
-                    CreateTarget::File => (
-                        "новый файл",
-                        &self.new_file_name,
-                        Message::NewFileNameChanged as fn(String) -> Message,
-                        Message::CreateFile,
-                    ),
-                    CreateTarget::Directory => (
-                        "новый каталог",
-                        &self.new_directory_name,
-                        Message::NewDirectoryNameChanged as fn(String) -> Message,
-                        Message::CreateDirectory,
-                    ),
-                };
-                let create_input = text_input(placeholder, value).on_input(on_input_msg);
-                let create_button = button("Создать").on_press(create_msg);
-                let file_menu = row![
-                    create_select,
-                    create_input,
-                    create_button,
-                    text_input("новое имя", &self.rename_file_name)
-                        .on_input(Message::RenameFileNameChanged),
-                    rename_btn,
-                    delete_btn,
-                ]
-                .spacing(5);
+                let file_menu = self.file_menu();
 
                 let warning: Element<_> = if self.show_create_file_confirm {
                     row![
@@ -1149,6 +1060,82 @@ impl MulticodeApp {
         } else {
             row![text_btn, visual_btn, save_btn].spacing(5).into()
         }
+    }
+
+    fn file_menu(&self) -> Element<Message> {
+        let create_icon = Svg::new(Handle::from_memory(CREATE_ICON))
+            .width(Length::Fixed(16.0))
+            .height(Length::Fixed(16.0));
+        let rename_icon = Svg::new(Handle::from_memory(RENAME_ICON))
+            .width(Length::Fixed(16.0))
+            .height(Length::Fixed(16.0));
+        let delete_icon = Svg::new(Handle::from_memory(DELETE_ICON))
+            .width(Length::Fixed(16.0))
+            .height(Length::Fixed(16.0));
+
+        let create_select = pick_list(
+            &CreateTarget::ALL[..],
+            Some(self.create_target),
+            Message::CreateTargetChanged,
+        );
+        let (placeholder, value, on_input_msg, create_msg): (
+            &str,
+            &String,
+            fn(String) -> Message,
+            Message,
+        ) = match self.create_target {
+            CreateTarget::File => (
+                "новый файл",
+                &self.new_file_name,
+                Message::NewFileNameChanged as fn(String) -> Message,
+                Message::CreateFile,
+            ),
+            CreateTarget::Directory => (
+                "новый каталог",
+                &self.new_directory_name,
+                Message::NewDirectoryNameChanged as fn(String) -> Message,
+                Message::CreateDirectory,
+            ),
+        };
+        let create_input = text_input(placeholder, value).on_input(on_input_msg);
+        let create_button: Element<_> = Tooltip::new(
+            button(create_icon).on_press(create_msg),
+            "Создать",
+            tooltip::Position::Top,
+        )
+        .into();
+
+        let rename_btn: Element<_> = {
+            let btn = button(rename_icon);
+            let btn = if self.active_tab.is_some() {
+                btn.on_press(Message::RenameFile)
+            } else {
+                btn
+            };
+            Tooltip::new(btn, "Переименовать", tooltip::Position::Top).into()
+        };
+
+        let delete_btn: Element<_> = {
+            let btn = button(delete_icon);
+            let btn = if self.active_tab.is_some() {
+                btn.on_press(Message::RequestDeleteFile)
+            } else {
+                btn
+            };
+            Tooltip::new(btn, "Удалить", tooltip::Position::Top).into()
+        };
+
+        row![
+            create_select,
+            create_input,
+            create_button,
+            text_input("новое имя", &self.rename_file_name)
+                .on_input(Message::RenameFileNameChanged),
+            rename_btn,
+            delete_btn,
+        ]
+        .spacing(5)
+        .into()
     }
 
     fn sidebar(&self) -> Element<Message> {
