@@ -255,12 +255,7 @@ impl MulticodeApp {
                     color: Some(*c),
                     font: None,
                 })
-                .on_action(|action| match action {
-                    text_editor::Action::AddCursorUp => Message::AddCursorUp,
-                    text_editor::Action::AddCursorDown => Message::AddCursorDown,
-                    text_editor::Action::SelectAllMatches => Message::SelectAllMatches,
-                    other => Message::FileContentEdited(other),
-                });
+                .on_action(Message::FileContentEdited);
 
             let editor_view: Element<_> = if self.settings.show_line_numbers {
                 let lines = column(
@@ -455,7 +450,6 @@ impl MulticodeApp {
         }
     }
 
-
     pub fn status_bar_component(&self) -> Element<Message> {
         if !self.settings.show_status_bar {
             return Space::with_height(Length::Shrink).into();
@@ -569,8 +563,8 @@ impl MulticodeApp {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::{CreateTarget, MulticodeApp, Screen, UserSettings};
+    use super::*;
     use crate::components::file_manager::ContextMenu;
     use std::collections::HashSet;
     use std::path::PathBuf;
