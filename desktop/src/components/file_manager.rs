@@ -1,10 +1,10 @@
 use std::collections::{HashMap, HashSet};
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 use iced::widget::overlay::menu;
 use iced::widget::svg::{Handle, Svg};
 use iced::widget::{button, column, row, scrollable, text, MouseArea, Space};
-use iced::{Alignment, Element, Length};
+use iced::{Alignment, Element, Length, theme};
 use once_cell::sync::Lazy;
 
 use crate::app::events::Message;
@@ -101,6 +101,7 @@ pub fn view_entries(
     depth: u16,
     expanded_dirs: &HashSet<PathBuf>,
     favorites: &[PathBuf],
+    selected: &Option<PathBuf>,
 ) -> Element<'static, Message> {
     let mut rows = Vec::new();
     for entry in entries {
@@ -155,13 +156,15 @@ pub fn view_entries(
                 let content = row![icon, text(name)]
                     .spacing(5)
                     .align_items(Alignment::Center);
+                let mut btn = button(content).on_press(Message::SelectFile(entry.path.clone()));
+                if selected.as_ref() == Some(&entry.path) {
+                    btn = btn.style(theme::Button::Primary);
+                }
                 let row = row![
                     indent,
                     fav_button,
-                    MouseArea::new(
-                        button(content).on_press(Message::SelectFile(entry.path.clone())),
-                    )
-                    .on_right_press(Message::ShowContextMenu(entry.path.clone())),
+                    MouseArea::new(btn)
+                        .on_right_press(Message::ShowContextMenu(entry.path.clone())),
                 ]
                 .spacing(5)
                 .align_items(Alignment::Center)
@@ -195,13 +198,15 @@ pub fn view_entries(
                 let content = row![text(icon), text(name)]
                     .spacing(5)
                     .align_items(Alignment::Center);
+                let mut btn = button(content).on_press(Message::ToggleDir(entry.path.clone()));
+                if selected.as_ref() == Some(&entry.path) {
+                    btn = btn.style(theme::Button::Primary);
+                }
                 let header = row![
                     indent,
                     fav_button,
-                    MouseArea::new(
-                        button(content).on_press(Message::ToggleDir(entry.path.clone())),
-                    )
-                    .on_right_press(Message::ShowContextMenu(entry.path.clone())),
+                    MouseArea::new(btn)
+                        .on_right_press(Message::ShowContextMenu(entry.path.clone())),
                 ]
                 .spacing(5)
                 .align_items(Alignment::Center)
@@ -214,6 +219,7 @@ pub fn view_entries(
                         depth + 1,
                         expanded_dirs,
                         favorites,
+                        selected,
                     ));
                 }
             }
@@ -227,7 +233,41 @@ pub fn file_tree(
     expanded_dirs: &HashSet<PathBuf>,
     search_query: &str,
     favorites: &[PathBuf],
+    selected: &Option<PathBuf>,
 ) -> Element<'static, Message> {
     let filtered = filter_entries(entries, search_query);
-    scrollable(view_entries(&filtered, 0, expanded_dirs, favorites)).into()
+    scrollable(view_entries(&filtered, 0, expanded_dirs, favorites, selected)).into()
+}
+
+pub fn flatten_visible_paths(
+    entries: &[FileEntry],
+    expanded_dirs: &HashSet<PathBuf>,
+    search_query: &str,
+) -> Vec<PathBuf> {
+    fn flatten(entries: &[FileEntry], expanded: &HashSet<PathBuf>, out: &mut Vec<PathBuf>) {
+        for e in entries {
+            out.push(e.path.clone());
+            if matches!(e.ty, EntryType::Dir) && expanded.contains(&e.path) {
+                flatten(&e.children, expanded, out);
+            }
+        }
+    }
+    let filtered = filter_entries(entries, search_query);
+    let mut out = Vec::new();
+    flatten(&filtered, expanded_dirs, &mut out);
+    out
+}
+
+pub fn find_entry<'a>(entries: &'a [FileEntry], path: &Path) -> Option<&'a FileEntry> {
+    for e in entries {
+        if e.path == path {
+            return Some(e);
+        }
+        if matches!(e.ty, EntryType::Dir) {
+            if let Some(f) = find_entry(&e.children, path) {
+                return Some(f);
+            }
+        }
+    }
+    None
 }

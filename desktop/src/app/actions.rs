@@ -61,6 +61,7 @@ impl Application for MulticodeApp {
             settings,
             expanded_dirs: HashSet::new(),
             context_menu: None,
+            selected_path: None,
             show_create_file_confirm: false,
             show_delete_confirm: false,
             pending_action: None,
