@@ -20,12 +20,22 @@ use multicode_core::{
     search, viz_lint, BlockInfo,
 };
 use serde_json::json;
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::Command as TokioCommand;
+use tokio::time::{sleep, Duration};
+
+const HISTORY_LIMIT: usize = 100;
+
+fn push_with_limit(stack: &mut VecDeque<String>, value: String) {
+    if stack.len() >= HISTORY_LIMIT {
+        stack.pop_front();
+    }
+    stack.push_back(value);
+}
 
 impl MulticodeApp {
     pub fn handle_message(&mut self, message: Message) -> Command<Message> {
@@ -690,8 +700,9 @@ impl MulticodeApp {
                     diagnostics,
                     blocks,
                     meta,
-                    undo_stack: Vec::new(),
-                    redo_stack: Vec::new(),
+                    undo_stack: VecDeque::new(),
+                    redo_stack: VecDeque::new(),
+                    analysis_version: 0,
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 self.rename_file_name.clear();
@@ -713,33 +724,27 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::FileContentEdited(action) => {
-                if let Some(f) = self.current_file_mut() {
-                    let is_edit = action.is_edit();
-                    if is_edit {
-                        f.undo_stack.push(f.content.clone());
-                        f.redo_stack.clear();
-                    }
-                    f.editor.perform(action);
-                    f.content = f.editor.text();
-                    if let Some(lang) = detect_lang(&f.path) {
-                        if let Some(bs) = blocks::parse_blocks(f.content.clone(), lang.to_string())
-                        {
-                            f.blocks = bs;
-                        } else {
-                            f.blocks.clear();
+                if let Some(i) = self.active_tab {
+                    if let Some(f) = self.tabs.get_mut(i) {
+                        let is_edit = action.is_edit();
+                        if is_edit {
+                            push_with_limit(&mut f.undo_stack, f.content.clone());
+                            f.redo_stack.clear();
                         }
-                    }
-                    f.diagnostics = validate_meta_json(&f.content);
-                    if is_edit {
-                        f.dirty = true;
+                        f.editor.perform(action);
+                        f.content = f.editor.text();
+                        if is_edit {
+                            f.dirty = true;
+                        }
+                        return self.schedule_analysis(i);
                     }
                 }
                 Command::none()
             }
             Message::Undo => {
                 if let Some(f) = self.current_file_mut() {
-                    if let Some(prev) = f.undo_stack.pop() {
-                        f.redo_stack.push(f.content.clone());
+                    if let Some(prev) = f.undo_stack.pop_back() {
+                        push_with_limit(&mut f.redo_stack, f.content.clone());
                         f.content = prev;
                         f.editor = Content::with_text(&f.content);
                         if let Some(lang) = detect_lang(&f.path) {
@@ -758,8 +763,8 @@ impl MulticodeApp {
             }
             Message::Redo => {
                 if let Some(f) = self.current_file_mut() {
-                    if let Some(next) = f.redo_stack.pop() {
-                        f.undo_stack.push(f.content.clone());
+                    if let Some(next) = f.redo_stack.pop_back() {
+                        push_with_limit(&mut f.undo_stack, f.content.clone());
                         f.content = next;
                         f.editor = Content::with_text(&f.content);
                         if let Some(lang) = detect_lang(&f.path) {
@@ -772,6 +777,19 @@ impl MulticodeApp {
                             }
                         }
                         f.dirty = true;
+                    }
+                }
+                Command::none()
+            }
+            Message::AnalysisReady(path, version, blocks, diagnostics) => {
+                if let Some(tab) = self
+                    .tabs
+                    .iter_mut()
+                    .find(|t| t.path == path)
+                {
+                    if tab.analysis_version == version {
+                        tab.blocks = blocks;
+                        tab.diagnostics = diagnostics;
                     }
                 }
                 Command::none()
@@ -898,8 +916,9 @@ impl MulticodeApp {
                     diagnostics: Vec::new(),
                     blocks: Vec::new(),
                     meta: None,
-                    undo_stack: Vec::new(),
-                    redo_stack: Vec::new(),
+                    undo_stack: VecDeque::new(),
+                    redo_stack: VecDeque::new(),
+                    analysis_version: 0,
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 return self.load_files(self.current_root_path().unwrap());
@@ -1804,6 +1823,29 @@ impl MulticodeApp {
                     .perform(text_editor::Action::Select(text_editor::Motion::Right));
             }
         }
+    }
+
+    fn schedule_analysis(&mut self, tab_index: usize) -> Command<Message> {
+        if let Some(tab) = self.tabs.get_mut(tab_index) {
+            tab.analysis_version = tab.analysis_version.wrapping_add(1);
+            let version = tab.analysis_version;
+            let path = tab.path.clone();
+            let content = tab.content.clone();
+            return Command::perform(
+                async move {
+                    sleep(Duration::from_millis(300)).await;
+                    let diagnostics = validate_meta_json(&content);
+                    let blocks = detect_lang(&path)
+                        .and_then(|lang| blocks::parse_blocks(content.clone(), lang.to_string()))
+                        .unwrap_or_default();
+                    (path, version, blocks, diagnostics)
+                },
+                |(path, version, blocks, diagnostics)| {
+                    Message::AnalysisReady(path, version, blocks, diagnostics)
+                },
+            );
+        }
+        Command::none()
     }
 }
 
