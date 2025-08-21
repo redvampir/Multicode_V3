@@ -180,12 +180,12 @@ impl MulticodeApp {
             }
             Message::ShowMetaDialog => {
                 if let Some(f) = self.current_file() {
-                    self.meta_tags = f
+                    let tags = f
                         .meta
                         .as_ref()
                         .map(|m| m.tags.join(", "))
                         .unwrap_or_default();
-                    self.meta_links = f
+                    let links = f
                         .meta
                         .as_ref()
                         .map(|m| m.links.join(", "))
@@ -196,8 +196,11 @@ impl MulticodeApp {
                         .and_then(|m| m.extras.as_ref())
                         .and_then(|e| e.get("comment"))
                         .and_then(|c| c.as_str())
-                        .unwrap_or("");
-                    self.meta_comment = comment.to_string();
+                        .unwrap_or("")
+                        .to_string();
+                    self.meta_tags = tags;
+                    self.meta_links = links;
+                    self.meta_comment = comment;
                 }
                 self.show_meta_dialog = true;
                 Command::none()
@@ -219,6 +222,9 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::SaveMeta => {
+                let tags_str = self.meta_tags.clone();
+                let links_str = self.meta_links.clone();
+                let comment_str = self.meta_comment.clone();
                 if let Some(f) = self.current_file_mut() {
                     let mut meta = f.meta.clone().unwrap_or(VisualMeta {
                         version: DEFAULT_VERSION,
@@ -236,19 +242,17 @@ impl MulticodeApp {
                         extras: None,
                         updated_at: Utc::now(),
                     });
-                    meta.tags = self
-                        .meta_tags
+                    meta.tags = tags_str
                         .split(',')
                         .map(|s| s.trim().to_string())
                         .filter(|s| !s.is_empty())
                         .collect();
-                    meta.links = self
-                        .meta_links
+                    meta.links = links_str
                         .split(',')
                         .map(|s| s.trim().to_string())
                         .filter(|s| !s.is_empty())
                         .collect();
-                    if self.meta_comment.trim().is_empty() {
+                    if comment_str.trim().is_empty() {
                         if let Some(mut extras) = meta.extras.take() {
                             if let Some(obj) = extras.as_object_mut() {
                                 obj.remove("comment");
@@ -264,7 +268,7 @@ impl MulticodeApp {
                         if let Some(obj) = extras.as_object_mut() {
                             obj.insert(
                                 "comment".into(),
-                                serde_json::Value::String(self.meta_comment.clone()),
+                                serde_json::Value::String(comment_str.clone()),
                             );
                         }
                         meta.extras = Some(extras);
