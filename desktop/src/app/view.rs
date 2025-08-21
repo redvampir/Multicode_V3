@@ -182,6 +182,118 @@ impl MulticodeApp {
                 }
                 (Some(tabs.into()), content)
             }
+            Screen::Split { .. } => {
+                let sidebar = self.sidebar();
+
+                let tabs = self.tabs_component();
+
+                let file_menu = self.file_menu();
+
+                let warning: Element<_> = if self.show_create_file_confirm {
+                    row![
+                        text("Файл уже существует. Перезаписать?"),
+                        button("Да").on_press(Message::ConfirmCreateFile),
+                        button("Нет").on_press(Message::CancelCreateFile)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let dirty_warning: Element<_> = if self.pending_action.is_some() {
+                    row![
+                        text("Есть несохранённые изменения. Продолжить?"),
+                        button("Да").on_press(Message::ConfirmDiscard),
+                        button("Нет").on_press(Message::CancelDiscard)
+                    ]
+                    .spacing(5)
+                    .into()
+                } else {
+                    Space::with_width(Length::Shrink).into()
+                };
+
+                let text_editor = self.text_editor_component();
+                let visual_editor = self.visual_editor_component();
+                let editor: Element<_> = row![
+                    container(text_editor).width(Length::FillPortion(1)),
+                    container(visual_editor).width(Length::FillPortion(1))
+                ]
+                .spacing(10)
+                .into();
+
+                let search_panel = self.search_panel_component();
+
+                let content = column![
+                    search_panel,
+                    editor,
+                    self.project_search_component(),
+                    self.lint_panel_component(),
+                    self.terminal_component(),
+                ]
+                .spacing(10);
+
+                let body = row![sidebar, content].spacing(10);
+
+                let page = column![
+                    file_menu,
+                    warning,
+                    dirty_warning,
+                    body,
+                    self.status_bar_component()
+                ]
+                .spacing(10);
+
+                let mut content: Element<_> = page.into();
+                if self.show_delete_confirm {
+                    let modal_content = container(
+                        column![
+                            text("Удалить выбранный файл?"),
+                            row![
+                                button("Да").on_press(Message::DeleteFile),
+                                button("Нет").on_press(Message::CancelDeleteFile)
+                            ]
+                            .spacing(5)
+                        ]
+                        .spacing(10),
+                    );
+                    content = Modal::new(content, modal_content)
+                        .on_blur(Message::CancelDeleteFile)
+                        .into();
+                }
+                if self.show_terminal_help {
+                    let help = container(scrollable(text(TERMINAL_HELP)))
+                        .width(Length::Fixed(400.0))
+                        .padding(10);
+                    content = Modal::new(content, help)
+                        .on_blur(Message::ShowTerminalHelp)
+                        .into();
+                }
+                if self.show_meta_dialog {
+                    let modal_content = container(
+                        column![
+                            text_input("Теги", &self.meta_tags).on_input(Message::MetaTagsChanged),
+                            text_input("Связи", &self.meta_links)
+                                .on_input(Message::MetaLinksChanged),
+                            text_input("Комментарий", &self.meta_comment)
+                                .on_input(Message::MetaCommentChanged),
+                            row![
+                                button("Сохранить").on_press(Message::SaveMeta),
+                                button("Отмена").on_press(Message::CloseMetaDialog)
+                            ]
+                            .spacing(5),
+                        ]
+                        .spacing(5),
+                    )
+                    .width(Length::Fixed(400.0))
+                    .padding(10);
+                    content = Modal::new(content, modal_content)
+                        .on_blur(Message::CloseMetaDialog)
+                        .into();
+                }
+
+                (Some(tabs.into()), content)
+            }
             Screen::VisualEditor { .. } => {
                 let sidebar = self.sidebar();
 
@@ -507,11 +619,11 @@ impl MulticodeApp {
                 .on_press(Message::SwitchViewMode(ViewMode::Schema))
                 .into()
         };
-        let both_btn: Element<_> = if self.view_mode == ViewMode::Both {
-            button("Оба").style(theme::Button::Primary).into()
+        let split_btn: Element<_> = if self.view_mode == ViewMode::Split {
+            button("Split").style(theme::Button::Primary).into()
         } else {
-            button("Оба")
-                .on_press(Message::SwitchViewMode(ViewMode::Both))
+            button("Split")
+                .on_press(Message::SwitchViewMode(ViewMode::Split))
                 .into()
         };
 
@@ -526,7 +638,7 @@ impl MulticodeApp {
             button(save_label).into()
         };
 
-        if matches!(&self.screen, Screen::TextEditor { .. }) {
+        if matches!(&self.screen, Screen::TextEditor { .. } | Screen::Split { .. }) {
             let autocomplete_btn: Element<_> = if self.active_tab.is_some() {
                 button("Автодополнить")
                     .on_press(Message::AutoComplete)
@@ -542,7 +654,7 @@ impl MulticodeApp {
             row![
                 code_btn,
                 schema_btn,
-                both_btn,
+                split_btn,
                 save_btn,
                 autocomplete_btn,
                 format_btn
@@ -550,7 +662,7 @@ impl MulticodeApp {
             .spacing(5)
             .into()
         } else {
-            row![code_btn, schema_btn, both_btn, save_btn]
+            row![code_btn, schema_btn, split_btn, save_btn]
                 .spacing(5)
                 .into()
         }

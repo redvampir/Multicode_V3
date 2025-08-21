@@ -82,7 +82,7 @@ impl MulticodeApp {
                 }
                 if !matches!(
                     self.screen,
-                    Screen::TextEditor { .. } | Screen::VisualEditor { .. }
+                    Screen::TextEditor { .. } | Screen::VisualEditor { .. } | Screen::Split { .. }
                 ) {
                     return Command::none();
                 }
@@ -94,6 +94,8 @@ impl MulticodeApp {
                             return self.handle_message(Message::SwitchToVisualEditor);
                         } else if c.eq_ignore_ascii_case("t") {
                             return self.handle_message(Message::SwitchToTextEditor);
+                        } else if c.eq_ignore_ascii_case("s") {
+                            return self.handle_message(Message::SwitchViewMode(ViewMode::Split));
                         }
                     }
                 }
@@ -299,6 +301,7 @@ impl MulticodeApp {
                     self.screen = match self.settings.editor_mode {
                         EditorMode::Text => Screen::TextEditor { root },
                         EditorMode::Visual => Screen::VisualEditor { root },
+                        EditorMode::Split => Screen::Split { root },
                     };
                 } else {
                     self.screen = Screen::ProjectPicker;
@@ -314,7 +317,14 @@ impl MulticodeApp {
                 match mode {
                     ViewMode::Code => self.handle_message(Message::SwitchToTextEditor),
                     ViewMode::Schema => self.handle_message(Message::SwitchToVisualEditor),
-                    ViewMode::Both => Command::none(),
+                    ViewMode::Split => {
+                        if let Some(root) = self.current_root_path() {
+                            self.screen = Screen::Split { root: root.clone() };
+                            self.settings.editor_mode = EditorMode::Split;
+                            return self.handle_message(Message::SaveSettings);
+                        }
+                        Command::none()
+                    }
                 }
             }
             Message::SwitchToTextEditor => {
@@ -340,6 +350,7 @@ impl MulticodeApp {
                     self.screen = match self.settings.editor_mode {
                         EditorMode::Text => Screen::TextEditor { root: root.clone() },
                         EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
+                        EditorMode::Split => Screen::Split { root: root.clone() },
                     };
                     multicode_core::meta::watch::spawn(self.sender.clone());
                     if let Some(entry) = self.settings.default_entry.clone() {
@@ -366,6 +377,7 @@ impl MulticodeApp {
                         self.screen = match self.settings.editor_mode {
                             EditorMode::Text => Screen::TextEditor { root: root.clone() },
                             EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
+                            EditorMode::Split => Screen::Split { root: root.clone() },
                         };
                         multicode_core::meta::watch::spawn(self.sender.clone());
                         return Command::batch([
@@ -382,6 +394,7 @@ impl MulticodeApp {
                 self.screen = match self.settings.editor_mode {
                     EditorMode::Text => Screen::TextEditor { root: root.clone() },
                     EditorMode::Visual => Screen::VisualEditor { root: root.clone() },
+                    EditorMode::Split => Screen::Split { root: root.clone() },
                 };
                 multicode_core::meta::watch::spawn(self.sender.clone());
                 if let Some(entry) = self.settings.default_entry.clone() {

@@ -80,6 +80,7 @@ pub enum Screen {
     ProjectPicker,
     TextEditor { root: PathBuf },
     VisualEditor { root: PathBuf },
+    Split { root: PathBuf },
     Diff(DiffView),
     Settings,
 }
@@ -134,7 +135,7 @@ pub struct TabDragState {
 pub enum ViewMode {
     Code,
     Schema,
-    Both,
+    Split,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -264,6 +265,7 @@ pub enum HotkeyField {
 pub enum EditorMode {
     Text,
     Visual,
+    Split,
 }
 
 impl Default for EditorMode {
@@ -444,13 +446,15 @@ impl MulticodeApp {
     }
 
     pub fn is_visual_mode(&self) -> bool {
-        matches!(self.screen, Screen::VisualEditor { .. })
+        matches!(self.screen, Screen::VisualEditor { .. } | Screen::Split { .. })
     }
 
     /// Возвращает путь к корню проекта, если он выбран
     pub fn current_root_path(&self) -> Option<PathBuf> {
         match &self.screen {
-            Screen::TextEditor { root } | Screen::VisualEditor { root } => Some(root.clone()),
+            Screen::TextEditor { root }
+            | Screen::VisualEditor { root }
+            | Screen::Split { root } => Some(root.clone()),
             Screen::Diff(_) => self.settings.last_folders.first().cloned(),
             Screen::ProjectPicker => None,
             Screen::Settings => self.settings.last_folders.first().cloned(),

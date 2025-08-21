@@ -577,9 +577,14 @@ mod tests {
 
     fn build_app(screen: Screen) -> MulticodeApp {
         let (sender, _) = broadcast::channel(1);
+        let view_mode = match screen {
+            Screen::VisualEditor { .. } => ViewMode::Schema,
+            Screen::Split { .. } => ViewMode::Split,
+            _ => ViewMode::Code,
+        };
         MulticodeApp {
             screen,
-            view_mode: ViewMode::Code,
+            view_mode,
             files: Vec::new(),
             tabs: Vec::new(),
             active_tab: None,
@@ -627,6 +632,11 @@ mod tests {
     #[test]
     fn visual_mode_check() {
         let app = build_app(Screen::VisualEditor {
+            root: PathBuf::new(),
+        });
+        assert!(app.is_visual_mode());
+
+        let app = build_app(Screen::Split {
             root: PathBuf::new(),
         });
         assert!(app.is_visual_mode());

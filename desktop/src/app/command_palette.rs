@@ -38,6 +38,11 @@ pub const COMMANDS: &[CommandItem] = &[
         title: "Switch to Visual",
         message: Message::SwitchToVisualEditor,
     },
+    CommandItem {
+        id: "switch_to_split",
+        title: "Switch to Split",
+        message: Message::SwitchViewMode(crate::app::ViewMode::Split),
+    },
 ];
 
 #[cfg(test)]
@@ -52,6 +57,8 @@ mod tests {
                 && matches!(c.message, Message::SwitchToTextEditor)));
         assert!(COMMANDS.iter().any(|c| c.id == "switch_to_visual_editor"
             && matches!(c.message, Message::SwitchToVisualEditor)));
+        assert!(COMMANDS.iter().any(|c| c.id == "switch_to_split"
+            && matches!(c.message, Message::SwitchViewMode(crate::app::ViewMode::Split))));
     }
 
     #[test]
@@ -63,5 +70,6 @@ mod tests {
             .collect();
         assert!(filtered.iter().any(|c| c.id == "switch_to_text_editor"));
         assert!(filtered.iter().any(|c| c.id == "switch_to_visual_editor"));
+        assert!(filtered.iter().any(|c| c.id == "switch_to_split"));
     }
 }
