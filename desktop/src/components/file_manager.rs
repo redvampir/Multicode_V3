@@ -84,6 +84,7 @@ fn filter_entries(entries: &[FileEntry], query: &str) -> Vec<FileEntry> {
                         Some(FileEntry {
                             path: e.path.clone(),
                             ty: EntryType::Dir,
+                            has_meta: false,
                             children,
                         })
                     } else {
@@ -122,6 +123,11 @@ pub fn view_entries(
                     .unwrap()
                     .to_string_lossy()
                     .to_string();
+                let name = if entry.has_meta {
+                    format!("{} ◆", name)
+                } else {
+                    name
+                };
                 let ext = entry
                     .path
                     .extension()

@@ -99,6 +99,7 @@ pub enum EntryType {
 pub struct FileEntry {
     pub path: PathBuf,
     pub ty: EntryType,
+    pub has_meta: bool,
     pub children: Vec<FileEntry>,
 }
 
