@@ -117,16 +117,30 @@ pub fn view_entries(
             });
         match &entry.ty {
             EntryType::File => {
-                let name = entry
-                    .path
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
-                let name = if entry.has_meta {
-                    format!("{} ◆", name)
+                let name = if let Some(name) = entry.path.file_name() {
+                    let name = name.to_string_lossy().to_string();
+                    if entry.has_meta {
+                        format!("{} ◆", name)
+                    } else {
+                        name
+                    }
                 } else {
-                    name
+                    rows.push(
+                        row![
+                            indent,
+                            fav_button,
+                            button(text("Ошибка"))
+                                .on_press(Message::FileError(format!(
+                                    "не удалось получить имя файла: {}",
+                                    entry.path.display()
+                                ))),
+                        ]
+                        .spacing(5)
+                        .align_items(Alignment::Center)
+                        .height(Length::Fixed(20.0))
+                        .into(),
+                    );
+                    continue;
                 };
                 let ext = entry
                     .path
@@ -156,12 +170,26 @@ pub fn view_entries(
                 rows.push(row);
             }
             EntryType::Dir => {
-                let name = entry
-                    .path
-                    .file_name()
-                    .unwrap()
-                    .to_string_lossy()
-                    .to_string();
+                let name = if let Some(name) = entry.path.file_name() {
+                    name.to_string_lossy().to_string()
+                } else {
+                    rows.push(
+                        row![
+                            indent,
+                            fav_button,
+                            button(text("Ошибка"))
+                                .on_press(Message::FileError(format!(
+                                    "не удалось получить имя каталога: {}",
+                                    entry.path.display()
+                                ))),
+                        ]
+                        .spacing(5)
+                        .align_items(Alignment::Center)
+                        .height(Length::Fixed(20.0))
+                        .into(),
+                    );
+                    continue;
+                };
                 let expanded = expanded_dirs.contains(&entry.path);
                 let icon = if expanded { "▼" } else { "▶" };
                 let content = row![text(icon), text(name)]

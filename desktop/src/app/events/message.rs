@@ -115,4 +115,5 @@ pub enum Message {
     ToggleCommandPalette,
     ExecuteCommand(String),
     SwitchViewMode(ViewMode),
+    FileError(String),
 }

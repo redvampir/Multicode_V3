@@ -85,9 +85,12 @@ impl MulticodeApp {
                     visit(&root, &tabs_meta)
                 })
                 .await
-                .unwrap()
+                .map_err(|e| e.to_string())
             },
-            Message::FilesLoaded,
+            |res| match res {
+                Ok(list) => Message::FilesLoaded(list),
+                Err(e) => Message::FileError(e),
+            },
         )
     }
 
