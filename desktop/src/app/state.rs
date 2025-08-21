@@ -101,7 +101,6 @@ pub struct MulticodeApp {
     pub(super) show_block_palette: bool,
     pub(super) palette_query: String,
     pub(super) palette_drag: Option<BlockInfo>,
-    pub(super) block_favorites: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
