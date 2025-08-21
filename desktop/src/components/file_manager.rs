@@ -7,8 +7,70 @@ use iced::widget::{button, column, row, scrollable, text, MouseArea, Space};
 use iced::{Alignment, Element, Length, theme};
 use once_cell::sync::Lazy;
 
+use std::sync::Mutex;
+
 use crate::app::events::Message;
 use crate::app::{EntryType, FileEntry};
+
+/// Trait implemented by plugins that want to react to file manager events.
+///
+/// All methods have default empty implementations so plugins can override
+/// only the events they are interested in.
+pub trait FileManagerPlugin: Send + Sync {
+    /// Called after a file has been opened successfully.
+    fn on_open(&self, _path: &Path) {}
+
+    /// Called after a new file has been created.
+    fn on_create(&self, _path: &Path) {}
+
+    /// Called after a file has been deleted.
+    fn on_delete(&self, _path: &Path) {}
+
+    /// Called after a file has been renamed.
+    fn on_rename(&self, _from: &Path, _to: &Path) {}
+}
+
+static FILE_MANAGER_PLUGINS: Lazy<Mutex<Vec<Box<dyn FileManagerPlugin>>>> =
+    Lazy::new(|| Mutex::new(Vec::new()));
+
+/// Register a plugin to receive file manager events.
+pub fn register_plugin<P: FileManagerPlugin + 'static>(plugin: P) {
+    if let Ok(mut plugins) = FILE_MANAGER_PLUGINS.lock() {
+        plugins.push(Box::new(plugin));
+    }
+}
+
+pub(crate) fn emit_open(path: &Path) {
+    if let Ok(plugins) = FILE_MANAGER_PLUGINS.lock() {
+        for p in plugins.iter() {
+            p.on_open(path);
+        }
+    }
+}
+
+pub(crate) fn emit_create(path: &Path) {
+    if let Ok(plugins) = FILE_MANAGER_PLUGINS.lock() {
+        for p in plugins.iter() {
+            p.on_create(path);
+        }
+    }
+}
+
+pub(crate) fn emit_delete(path: &Path) {
+    if let Ok(plugins) = FILE_MANAGER_PLUGINS.lock() {
+        for p in plugins.iter() {
+            p.on_delete(path);
+        }
+    }
+}
+
+pub(crate) fn emit_rename(from: &Path, to: &Path) {
+    if let Ok(plugins) = FILE_MANAGER_PLUGINS.lock() {
+        for p in plugins.iter() {
+            p.on_rename(from, to);
+        }
+    }
+}
 
 #[derive(Debug)]
 pub struct ContextMenu {
