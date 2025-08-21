@@ -474,7 +474,10 @@ impl MulticodeApp {
     }
 
     pub fn is_visual_mode(&self) -> bool {
-        matches!(self.screen, Screen::VisualEditor { .. } | Screen::Split { .. })
+        matches!(
+            self.screen,
+            Screen::VisualEditor { .. } | Screen::Split { .. }
+        )
     }
 
     /// Возвращает путь к корню проекта, если он выбран

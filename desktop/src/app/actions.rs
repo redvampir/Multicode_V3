@@ -21,6 +21,8 @@ impl Application for MulticodeApp {
             settings.add_recent_folder(path);
         }
         let (sender, _) = broadcast::channel(100);
+        let fav_files = settings.favorites.clone();
+        let block_favorites = settings.block_favorites.clone();
 
         let (screen, view_mode) = if let Some(path) = settings.last_folders.first().cloned() {
             match settings.editor_mode {
@@ -48,7 +50,7 @@ impl Application for MulticodeApp {
             create_target: CreateTarget::File,
             rename_file_name: String::new(),
             search_query: String::new(),
-            favorites: settings.favorites.clone(),
+            favorites: fav_files,
             query: String::new(),
             show_command_palette: false,
             log: Vec::new(),
@@ -82,6 +84,10 @@ impl Application for MulticodeApp {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
+
+            block_favorites,
+
+
         };
 
         let cmd = match &app.screen {
@@ -138,7 +144,7 @@ impl Application for MulticodeApp {
         }
     }
 
-fn view(&self) -> Element<Message> {
+    fn view(&self) -> Element<Message> {
         self.render()
     }
 }
