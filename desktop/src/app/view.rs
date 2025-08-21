@@ -455,7 +455,7 @@ impl MulticodeApp {
 }
 
 impl MulticodeApp {
-    fn loading_overlay(&self, content: Element<Message>) -> Element<Message> {
+    fn loading_overlay<'a>(&self, content: Element<'a, Message>) -> Element<'a, Message> {
         if self.loading {
             let overlay = container(text("Loading…"))
                 .width(Length::Fill)
