@@ -1,6 +1,6 @@
 use std::ops::Range;
 
-use chrono::NaiveDateTime;
+use chrono::DateTime;
 use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::svg::{Handle, Svg};
 use iced::widget::{
@@ -234,7 +234,7 @@ impl MulticodeApp {
                 .unwrap_or("")
                 .to_string();
             let settings = SyntaxSettings {
-                extension: ext,
+                extension: ext.clone(),
                 matches: self.search_results.clone(),
                 diagnostics: file
                     .diagnostics
@@ -256,7 +256,8 @@ impl MulticodeApp {
                         .map(|i| {
                             let ln = text(i.to_string());
                             if let Some(info) = file.blame.get(&i) {
-                                let date = NaiveDateTime::from_timestamp(info.time, 0)
+                                let date = DateTime::from_timestamp(info.time, 0)
+                                    .unwrap_or_default()
                                     .format("%Y-%m-%d")
                                     .to_string();
                                 Tooltip::new(
