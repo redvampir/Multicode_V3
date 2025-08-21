@@ -2,7 +2,7 @@ use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
 use crate::app::{
     command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField,
-    MulticodeApp, PendingAction, Screen, Tab, TabDragState,
+    MulticodeApp, PendingAction, Screen, Tab, TabDragState, ViewMode,
 };
 use crate::components::file_manager::ContextMenu;
 use chrono::Utc;
@@ -309,6 +309,14 @@ impl MulticodeApp {
                 self.screen = Screen::ProjectPicker;
                 Command::none()
             }
+            Message::SwitchViewMode(mode) => {
+                self.view_mode = mode;
+                match mode {
+                    ViewMode::Code => self.handle_message(Message::SwitchToTextEditor),
+                    ViewMode::Schema => self.handle_message(Message::SwitchToVisualEditor),
+                    ViewMode::Both => Command::none(),
+                }
+            }
             Message::SwitchToTextEditor => {
                 if let Some(root) = self.current_root_path() {
                     self.screen = Screen::TextEditor { root: root.clone() };
@@ -602,6 +610,7 @@ impl MulticodeApp {
                 }
                 Command::none()
             }
+            Message::NewFile => Command::none(),
             Message::SaveFile => {
                 if let Some(f) = self.current_file_mut() {
                     let path = f.path.clone();

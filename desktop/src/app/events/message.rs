@@ -2,7 +2,7 @@ use iced::{widget::text_editor, Event};
 use std::path::PathBuf;
 
 use crate::app::diff::DiffView;
-use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language};
+use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language, ViewMode};
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -27,6 +27,7 @@ pub enum Message {
     ToggleSearchPanel,
     AutoComplete,
     AutoFormat,
+    NewFile,
     SaveFile,
     FileSaved(Result<(), String>),
     NewFileNameChanged(String),
@@ -113,4 +114,5 @@ pub enum Message {
     ClearDiffError,
     ToggleCommandPalette,
     ExecuteCommand(String),
+    SwitchViewMode(ViewMode),
 }
