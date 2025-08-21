@@ -100,6 +100,14 @@ impl MulticodeApp {
                     }
                     return Command::none();
                 }
+                if modifiers.alt() && !modifiers.control() && !modifiers.shift() {
+                    if let keyboard::Key::Character(c) = &key {
+                        if c.eq_ignore_ascii_case("l") {
+                            self.settings.language = self.settings.language.next();
+                            return Command::none();
+                        }
+                    }
+                }
                 if let Screen::Diff(_) = self.screen {
                     let hotkeys = &self.settings.hotkeys;
                     if hotkeys.next_diff.matches(&key, modifiers) {

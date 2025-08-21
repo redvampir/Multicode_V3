@@ -2,6 +2,7 @@ use iced::widget::canvas::{self, Event, Frame, Geometry, Path, Program, Stroke, 
 use iced::{mouse, Point, Rectangle, Renderer, Theme, Vector};
 
 use multicode_core::BlockInfo;
+use crate::visual::translations::{Language, translate_kind};
 
 pub const BLOCK_WIDTH: f32 = 120.0;
 pub const BLOCK_HEIGHT: f32 = 40.0;
@@ -16,6 +17,7 @@ pub enum CanvasMessage {
 
 pub struct VisualCanvas<'a> {
     blocks: &'a [BlockInfo],
+    language: Language,
 }
 
 pub struct State {
@@ -47,8 +49,8 @@ impl Default for State {
 }
 
 impl<'a> VisualCanvas<'a> {
-    pub fn new(blocks: &'a [BlockInfo]) -> Self {
-        Self { blocks }
+    pub fn new(blocks: &'a [BlockInfo], language: Language) -> Self {
+        Self { blocks, language }
     }
 }
 
@@ -215,8 +217,14 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
             };
             frame.fill(&rect, color);
             frame.stroke(&rect, Stroke::default());
+            let label = block
+                .translations
+                .get(self.language.code())
+                .cloned()
+                .or_else(|| translate_kind(&block.kind, self.language).map(|s| s.to_string()))
+                .unwrap_or_else(|| block.kind.clone());
             frame.fill_text(Text {
-                content: block.kind.clone(),
+                content: label,
                 position: Point::new(block.x as f32 + 5.0, block.y as f32 + 20.0),
                 color: iced::Color::BLACK,
                 ..Default::default()
