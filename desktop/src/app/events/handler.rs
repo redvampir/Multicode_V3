@@ -1,12 +1,13 @@
 use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
 use crate::app::{
-    command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField,
-    MulticodeApp, PendingAction, Screen, Tab, TabDragState, ViewMode, EntryType,
+    command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, EntryType, Hotkey,
+    HotkeyField, MulticodeApp, PendingAction, Screen, Tab, TabDragState, ViewMode,
 };
 use crate::components::file_manager::{self, ContextMenu};
-use crate::editor::meta_integration::validate_meta_json;
 use crate::editor::autocomplete::{self, AutocompleteState};
+use crate::editor::meta_integration::validate_meta_json;
+use crate::visual::canvas::CanvasMessage;
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -40,6 +41,23 @@ fn push_with_limit(stack: &mut VecDeque<String>, value: String) {
 impl MulticodeApp {
     pub fn handle_message(&mut self, message: Message) -> Command<Message> {
         match message {
+            Message::CanvasEvent(event) => {
+                if let Some(tab) = self.current_file_mut() {
+                    match event {
+                        CanvasMessage::BlockDragged { index, position } => {
+                            if let Some(block) = tab.blocks.get_mut(index) {
+                                block.x = position.x as f64;
+                                block.y = position.y as f64;
+                                tab.dirty = true;
+                            }
+                        }
+                        CanvasMessage::BlockSelected(_)
+                        | CanvasMessage::Pan { .. }
+                        | CanvasMessage::Zoom { .. } => {}
+                    }
+                }
+                Command::none()
+            }
             Message::IcedEvent(Event::Keyboard(keyboard::Event::KeyPressed {
                 key,
                 modifiers,
@@ -176,8 +194,7 @@ impl MulticodeApp {
                             keyboard::key::Named::ArrowLeft => {
                                 return self.handle_message(Message::NavigateBack);
                             }
-                            keyboard::key::Named::ArrowRight
-                            | keyboard::key::Named::Enter => {
+                            keyboard::key::Named::ArrowRight | keyboard::key::Named::Enter => {
                                 return self.handle_message(Message::NavigateInto);
                             }
                             keyboard::key::Named::F2 => {
@@ -782,11 +799,7 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::AnalysisReady(path, version, blocks, diagnostics) => {
-                if let Some(tab) = self
-                    .tabs
-                    .iter_mut()
-                    .find(|t| t.path == path)
-                {
+                if let Some(tab) = self.tabs.iter_mut().find(|t| t.path == path) {
                     if tab.analysis_version == version {
                         tab.blocks = blocks;
                         tab.diagnostics = diagnostics;
@@ -1626,7 +1639,11 @@ impl MulticodeApp {
                     .as_ref()
                     .and_then(|p| entries.iter().position(|e| e == p))
                     .unwrap_or(0);
-                let new_idx = if idx + 1 >= entries.len() { idx } else { idx + 1 };
+                let new_idx = if idx + 1 >= entries.len() {
+                    idx
+                } else {
+                    idx + 1
+                };
                 self.selected_path = Some(entries[new_idx].clone());
                 Command::none()
             }

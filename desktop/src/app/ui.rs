@@ -1,3 +1,4 @@
+use iced::widget::canvas::Canvas;
 use iced::widget::svg::{Handle, Svg};
 use iced::widget::{
     button, checkbox, column, container, row, scrollable, text, text_input, MouseArea, Space,
@@ -8,6 +9,8 @@ use crate::app::diff::DiffView;
 use crate::app::events::Message;
 use crate::app::{command_palette::COMMANDS, MulticodeApp};
 use crate::modal::Modal;
+use crate::visual::canvas::{CanvasMessage, VisualCanvas};
+use multicode_core::BlockInfo;
 
 const OPEN_ICON: &[u8] = include_bytes!("../../assets/open.svg");
 const SAVE_ICON: &[u8] = include_bytes!("../../assets/save.svg");
@@ -191,20 +194,24 @@ impl MulticodeApp {
     }
 
     pub fn visual_editor_component(&self) -> Element<Message> {
-        let editor = container(text("visual editor stub"))
+        let blocks: &[BlockInfo] = self
+            .current_file()
+            .map(|f| f.blocks.as_slice())
+            .unwrap_or(&[]);
+        let canvas_widget = Canvas::new(VisualCanvas::new(blocks))
             .width(Length::Fill)
-            .height(Length::Fill)
-            .center_x()
-            .center_y();
+            .height(Length::Fill);
+        let canvas: Element<CanvasMessage> = canvas_widget.into();
+        let canvas = canvas.map(Message::CanvasEvent);
         if self.show_meta_panel {
             row![
-                editor.width(Length::FillPortion(3)),
+                container(canvas).width(Length::FillPortion(3)),
                 self.meta_panel_component()
             ]
             .spacing(5)
             .into()
         } else {
-            editor.into()
+            canvas
         }
     }
 
