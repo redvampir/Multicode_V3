@@ -256,9 +256,9 @@ impl MulticodeApp {
                         .map(|i| {
                             let ln = text(i.to_string());
                             if let Some(info) = file.blame.get(&i) {
-                                let date = NaiveDateTime::from_timestamp_opt(info.time, 0)
-                                    .map(|dt| dt.format("%Y-%m-%d").to_string())
-                                    .unwrap_or_default();
+                                let date = NaiveDateTime::from_timestamp(info.time, 0)
+                                    .format("%Y-%m-%d")
+                                    .to_string();
                                 Tooltip::new(
                                     ln,
                                     text(format!("{} – {}", info.author, date)),
