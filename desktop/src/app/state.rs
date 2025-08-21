@@ -468,4 +468,16 @@ impl MulticodeApp {
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_default()
     }
+
+    pub fn search_results(&self) -> &[(usize, Range<usize>)] {
+        &self.search_results
+    }
+
+    pub fn settings(&self) -> &UserSettings {
+        &self.settings
+    }
+
+    pub fn show_meta_panel(&self) -> bool {
+        self.show_meta_panel
+    }
 }
