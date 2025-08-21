@@ -619,8 +619,15 @@ impl MulticodeApp {
     }
 
     fn sidebar(&self) -> Element<Message> {
-        container(file_manager::file_tree(&self.files, &self.expanded_dirs))
-            .width(200)
+        let search = text_input("поиск", &self.search_query).on_input(Message::SearchChanged);
+        let tree = file_manager::file_tree(
+            &self.files,
+            &self.expanded_dirs,
+            &self.search_query,
+            &self.favorites,
+        );
+        column![search, container(tree).width(200)]
+            .spacing(5)
             .into()
     }
 }

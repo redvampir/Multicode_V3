@@ -1391,6 +1391,25 @@ impl MulticodeApp {
                 }
                 Command::none()
             }
+            Message::SearchChanged(q) => {
+                self.search_query = q;
+                Command::none()
+            }
+            Message::AddFavorite(path) => {
+                if !self.favorites.contains(&path) {
+                    self.favorites.push(path.clone());
+                    self.settings.favorites = self.favorites.clone();
+                    return Command::perform(self.settings.clone().save(), |_| {
+                        Message::SettingsSaved
+                    });
+                }
+                Command::none()
+            }
+            Message::RemoveFavorite(path) => {
+                self.favorites.retain(|p| p != &path);
+                self.settings.favorites = self.favorites.clone();
+                Command::perform(self.settings.clone().save(), |_| Message::SettingsSaved)
+            }
             Message::ShowContextMenu(path) => {
                 self.context_menu = Some(ContextMenu::new(path));
                 Command::none()
