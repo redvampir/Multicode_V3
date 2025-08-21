@@ -201,13 +201,15 @@ impl<'a> CodeEditor<'a> {
                         .map(|i| {
                             let ln = text(i.to_string());
                             if let Some(info) = file.blame.get(&i) {
-                                let date = DateTime::from_timestamp(info.time, 0)
-                                    .unwrap_or_default()
-                                    .format("%Y-%m-%d")
-                                    .to_string();
+                                let tooltip_text =
+                                    if let Some(dt) = DateTime::from_timestamp(info.time, 0) {
+                                        format!("{} – {}", info.author, dt.format("%Y-%m-%d"))
+                                    } else {
+                                        format!("{} – unknown date", info.author)
+                                    };
                                 Tooltip::new(
                                     ln,
-                                    text(format!("{} – {}", info.author, date)),
+                                    text(tooltip_text),
                                     tooltip::Position::FollowCursor,
                                 )
                                 .into()
