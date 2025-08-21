@@ -88,13 +88,13 @@ impl MulticodeApp {
                     }
                     PaletteMessage::ToggleFavorite(i) => {
                         if let Some(kind) = self.palette.get(i).map(|b| b.kind.clone()) {
-                            if let Some(pos) = self.block_favorites.iter().position(|k| k == &kind)
+                            if let Some(pos) =
+                                self.settings.block_favorites.iter().position(|k| k == &kind)
                             {
-                                self.block_favorites.remove(pos);
+                                self.settings.block_favorites.remove(pos);
                             } else {
-                                self.block_favorites.push(kind);
+                                self.settings.block_favorites.push(kind);
                             }
-                            self.settings.block_favorites = self.block_favorites.clone();
                             return self.handle_message(Message::SaveSettings);
                         }
                     }
