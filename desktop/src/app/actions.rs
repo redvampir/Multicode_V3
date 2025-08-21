@@ -6,7 +6,7 @@ use iced::{event, subscription, Application, Command, Element, Subscription, The
 use tokio::sync::broadcast;
 
 use super::events::Message;
-use super::{AppTheme, CreateTarget, EditorMode, MulticodeApp, Screen, UserSettings};
+use super::{AppTheme, CreateTarget, EditorMode, MulticodeApp, Screen, UserSettings, ViewMode};
 
 impl Application for MulticodeApp {
     type Executor = iced::executor::Default;
@@ -30,6 +30,7 @@ impl Application for MulticodeApp {
             } else {
                 Screen::ProjectPicker
             },
+            view_mode: ViewMode::Code,
             files: Vec::new(),
             tabs: Vec::new(),
             active_tab: None,

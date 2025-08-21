@@ -11,6 +11,7 @@ mod view;
 pub use state::{
     AppTheme, CreateTarget, Diagnostic, EditorMode, EntryType, FileEntry, Hotkey, HotkeyField,
     Hotkeys, Language, MulticodeApp, PendingAction, Screen, Tab, TabDragState, UserSettings,
+    ViewMode,
 };
 
 use iced::Application;

@@ -10,7 +10,7 @@ use iced::{alignment, theme, Element, Length};
 
 use super::events::Message;
 use super::ui::THEME_SET;
-use super::{AppTheme, CreateTarget, HotkeyField, Language, MulticodeApp, Screen};
+use super::{AppTheme, CreateTarget, HotkeyField, Language, MulticodeApp, Screen, ViewMode};
 use crate::components::file_manager;
 
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
@@ -493,21 +493,26 @@ impl MulticodeApp {
     }
 
     fn mode_bar(&self) -> Element<Message> {
-        let text_btn: Element<_> = if self.is_visual_mode() {
-            button("Text").on_press(Message::SwitchToTextEditor).into()
-        } else if matches!(self.screen, Screen::TextEditor { .. }) {
-            button("Text").style(theme::Button::Primary).into()
+        let code_btn: Element<_> = if self.view_mode == ViewMode::Code {
+            button("Код").style(theme::Button::Primary).into()
         } else {
-            button("Text").into()
-        };
-        let visual_btn: Element<_> = if self.is_visual_mode() {
-            button("Visual").style(theme::Button::Primary).into()
-        } else if matches!(self.screen, Screen::TextEditor { .. }) {
-            button("Visual")
-                .on_press(Message::SwitchToVisualEditor)
+            button("Код")
+                .on_press(Message::SwitchViewMode(ViewMode::Code))
                 .into()
+        };
+        let schema_btn: Element<_> = if self.view_mode == ViewMode::Schema {
+            button("Схема").style(theme::Button::Primary).into()
         } else {
-            button("Visual").into()
+            button("Схема")
+                .on_press(Message::SwitchViewMode(ViewMode::Schema))
+                .into()
+        };
+        let both_btn: Element<_> = if self.view_mode == ViewMode::Both {
+            button("Оба").style(theme::Button::Primary).into()
+        } else {
+            button("Оба")
+                .on_press(Message::SwitchViewMode(ViewMode::Both))
+                .into()
         };
 
         let save_label = if self.is_dirty() {
@@ -534,11 +539,20 @@ impl MulticodeApp {
             } else {
                 button("Форматировать").into()
             };
-            row![text_btn, visual_btn, save_btn, autocomplete_btn, format_btn]
+            row![
+                code_btn,
+                schema_btn,
+                both_btn,
+                save_btn,
+                autocomplete_btn,
+                format_btn
+            ]
+            .spacing(5)
+            .into()
+        } else {
+            row![code_btn, schema_btn, both_btn, save_btn]
                 .spacing(5)
                 .into()
-        } else {
-            row![text_btn, visual_btn, save_btn].spacing(5).into()
         }
     }
 

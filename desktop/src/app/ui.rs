@@ -164,7 +164,13 @@ impl MulticodeApp {
                 .width(Length::Fixed(16.0))
                 .height(Length::Fixed(16.0));
             let lint_btn = button("Lint").on_press(Message::RunLint);
+            let new_btn = button("Новый").on_press(Message::NewFile);
+            let palette_btn = button("Командная палитра").on_press(Message::ToggleCommandPalette);
+            let settings_btn = button("Настройки").on_press(Message::OpenSettings);
             row![
+                new_btn,
+                palette_btn,
+                settings_btn,
                 button(open_icon).on_press(Message::PickFile),
                 button(save_icon).on_press(Message::SaveFile),
                 button(format_icon).on_press(Message::AutoFormat),
@@ -557,8 +563,7 @@ impl MulticodeApp {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{CreateTarget, MulticodeApp, Screen, UserSettings};
-    use super::*;
+    use super::super::{CreateTarget, MulticodeApp, Screen, UserSettings, ViewMode};
     use crate::components::file_manager::ContextMenu;
     use std::collections::HashSet;
     use std::path::PathBuf;
@@ -574,6 +579,7 @@ mod tests {
         let (sender, _) = broadcast::channel(1);
         MulticodeApp {
             screen,
+            view_mode: ViewMode::Code,
             files: Vec::new(),
             tabs: Vec::new(),
             active_tab: None,

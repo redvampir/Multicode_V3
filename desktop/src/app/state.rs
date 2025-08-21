@@ -14,6 +14,7 @@ use crate::components::file_manager::ContextMenu;
 #[derive(Debug)]
 pub struct MulticodeApp {
     pub(super) screen: Screen,
+    pub(super) view_mode: ViewMode,
     pub(super) files: Vec<FileEntry>,
     pub(super) tabs: Vec<Tab>,
     /// индекс активной вкладки
@@ -127,6 +128,13 @@ pub struct TabDragState {
     pub index: usize,
     pub start: f32,
     pub current: f32,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ViewMode {
+    Code,
+    Schema,
+    Both,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
