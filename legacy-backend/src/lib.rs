@@ -44,6 +44,9 @@ pub struct BlockInfo {
     pub x: f64,
     pub y: f64,
     pub ai: Option<AiNote>,
+    /// Optional tags associated with the block.
+    #[serde(default)]
+    pub tags: Vec<String>,
     #[serde(default)]
     pub links: Vec<String>,
 }
