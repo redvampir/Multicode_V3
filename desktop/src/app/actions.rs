@@ -74,6 +74,7 @@ impl Application for MulticodeApp {
             meta_tags: String::new(),
             meta_links: String::new(),
             meta_comment: String::new(),
+            autocomplete: None,
             show_meta_panel: false,
             tab_drag: None,
         };

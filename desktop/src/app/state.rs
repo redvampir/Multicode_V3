@@ -10,6 +10,7 @@ use tokio::{fs, process::Child, sync::broadcast};
 
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
+use crate::editor::autocomplete::AutocompleteState;
 
 mod serde_color {
     use iced::Color;
@@ -92,6 +93,7 @@ pub struct MulticodeApp {
     pub(super) meta_tags: String,
     pub(super) meta_links: String,
     pub(super) meta_comment: String,
+    pub(super) autocomplete: Option<AutocompleteState>,
     pub(super) show_meta_panel: bool,
     pub(super) tab_drag: Option<TabDragState>,
 }
@@ -505,6 +507,10 @@ impl MulticodeApp {
 
     pub fn search_results(&self) -> &[(usize, Range<usize>)] {
         &self.search_results
+    }
+
+    pub fn autocomplete(&self) -> Option<&AutocompleteState> {
+        self.autocomplete.as_ref()
     }
 
     pub fn settings(&self) -> &UserSettings {
