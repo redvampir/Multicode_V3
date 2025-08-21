@@ -5,6 +5,7 @@ use crate::app::diff::DiffView;
 use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language, ViewMode};
 use crate::editor::EditorTheme;
 use crate::visual::canvas::CanvasMessage;
+use crate::visual::palette::PaletteMessage;
 use multicode_core::BlockInfo;
 
 #[derive(Debug, Clone)]
@@ -133,4 +134,5 @@ pub enum Message {
     NavigateInto,
     NavigateBack,
     CanvasEvent(CanvasMessage),
+    PaletteEvent(PaletteMessage),
 }

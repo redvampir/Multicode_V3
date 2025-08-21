@@ -10,6 +10,7 @@ use crate::app::events::Message;
 use crate::app::{command_palette::COMMANDS, MulticodeApp};
 use crate::modal::Modal;
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
+use crate::visual::palette::{BlockPalette, PaletteMessage};
 use multicode_core::BlockInfo;
 
 const OPEN_ICON: &[u8] = include_bytes!("../../assets/open.svg");
@@ -301,6 +302,23 @@ impl MulticodeApp {
             .into()
     }
 
+    pub fn block_palette_modal<'a>(&'a self, content: Element<'a, Message>) -> Element<'a, Message> {
+        if !self.show_block_palette {
+            return content;
+        }
+        let pal: Element<_> = BlockPalette::new(
+            &self.palette,
+            &self.block_favorites,
+            &self.palette_query,
+            self.settings.language,
+        )
+        .view()
+        .map(Message::PaletteEvent);
+        Modal::new(content, pal)
+            .on_blur(Message::PaletteEvent(PaletteMessage::Close))
+            .into()
+    }
+
     pub fn shortcuts_settings_component(&self) -> Element<Message> {
         let items = COMMANDS
             .iter()
@@ -393,6 +411,11 @@ mod tests {
             autocomplete: None,
             show_meta_panel: false,
             tab_drag: None,
+            palette: Vec::new(),
+            show_block_palette: false,
+            palette_query: String::new(),
+            palette_drag: None,
+            block_favorites: Vec::new(),
         }
     }
 
