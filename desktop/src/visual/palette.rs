@@ -35,7 +35,7 @@ impl PaletteBlock {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum PaletteMessage {
     SearchChanged(String),
     StartDrag(usize),
@@ -194,4 +194,127 @@ impl<'a> BlockPalette<'a> {
 
 fn matches_block(block: &PaletteBlock, q: &str) -> bool {
     block.lower_en.contains(q) || block.lower_ru.contains(q) || block.lower_kind.contains(q)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use iced::advanced::{
+        clipboard,
+        layout::{Layout, Node},
+        renderer::Null,
+        widget::Tree,
+        Shell,
+        Widget,
+    };
+    use iced::event::Event;
+    use iced::mouse;
+    use iced::widget::Space;
+    use iced::{Length, Point, Rectangle, Size, Theme};
+    use std::collections::{HashMap, HashSet};
+
+    fn make_block(kind: &str, en: &str, ru: &str) -> PaletteBlock {
+        let mut translations = HashMap::new();
+        translations.insert("en".to_string(), en.to_string());
+        translations.insert("ru".to_string(), ru.to_string());
+        PaletteBlock::new(BlockInfo {
+            visual_id: String::new(),
+            node_id: None,
+            kind: kind.to_string(),
+            translations,
+            range: (0, 0),
+            anchors: vec![],
+            x: 0.0,
+            y: 0.0,
+            ai: None,
+            tags: vec![],
+            links: vec![],
+        })
+    }
+
+    #[test]
+    fn matches_block_case_insensitive() {
+        let block = make_block("Loop", "Repeat", "Повторение");
+        assert!(matches_block(&block, &"RePeAt".to_lowercase()));
+        assert!(matches_block(&block, &"ПОВТОР".to_lowercase()));
+        assert!(matches_block(&block, &"LoOp".to_lowercase()));
+        assert!(!matches_block(&block, &"unknown".to_string()));
+    }
+
+    #[test]
+    fn filter_indices_favorites_and_categories() {
+        let blocks = vec![
+            make_block("Arithmetic", "Add", "Сложение"),
+            make_block("Loop", "Repeat", "Повторение"),
+        ];
+        let categories = vec![
+            ("Arithmetic".to_string(), vec![0]),
+            ("Loops".to_string(), vec![1]),
+        ];
+        let favorites = vec!["Loop".to_string()];
+        let palette = BlockPalette::new(&blocks, &categories, &favorites, "", Language::English);
+        let indices = palette.filter_indices();
+        assert_eq!(indices, vec![0, 1]);
+
+        let index_set: HashSet<_> = indices.iter().copied().collect();
+        let fav_blocks: Vec<_> = indices
+            .iter()
+            .copied()
+            .filter(|i| favorites.contains(&blocks[*i].info.kind))
+            .collect();
+        assert_eq!(fav_blocks, vec![1]);
+
+        let mut cat_map = Vec::new();
+        for (cat, cat_indices) in categories.iter() {
+            let cat_blocks: Vec<_> = cat_indices
+                .iter()
+                .copied()
+                .filter(|i| index_set.contains(i))
+                .collect();
+            if !cat_blocks.is_empty() {
+                cat_map.push((cat.clone(), cat_blocks));
+            }
+        }
+        assert_eq!(
+            cat_map,
+            vec![
+                ("Arithmetic".to_string(), vec![0]),
+                ("Loops".to_string(), vec![1]),
+            ]
+        );
+    }
+
+    #[test]
+    fn start_drag_message_on_press() {
+        let content = Space::new(Length::Fixed(10.0), Length::Fixed(10.0));
+        let mut widget = MouseArea::new(content).on_press(PaletteMessage::StartDrag(0));
+        let renderer = Null::new();
+        let mut tree =
+            Tree::new(&widget as &dyn Widget<PaletteMessage, Theme, Null>);
+        let node = Node::new(Size::new(10.0, 10.0));
+        let layout = Layout::new(&node);
+
+        let mut messages = Vec::new();
+        let mut shell = Shell::new(&mut messages);
+        let mut cb = clipboard::Null;
+        let cursor = mouse::Cursor::Available(Point { x: 1.0, y: 1.0 });
+
+        widget.on_event(
+            &mut tree,
+            Event::Mouse(mouse::Event::ButtonPressed(mouse::Button::Left)),
+            layout,
+            cursor,
+            &renderer,
+            &mut cb,
+            &mut shell,
+            &Rectangle {
+                x: 0.0,
+                y: 0.0,
+                width: 10.0,
+                height: 10.0,
+            },
+        );
+
+        assert_eq!(messages, vec![PaletteMessage::StartDrag(0)]);
+    }
 }
