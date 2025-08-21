@@ -2,9 +2,9 @@ use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
 use crate::app::{
     command_palette::COMMANDS, diff::DiffView, Diagnostic, EditorMode, Hotkey, HotkeyField,
-    MulticodeApp, PendingAction, Screen, Tab, TabDragState, ViewMode,
+    MulticodeApp, PendingAction, Screen, Tab, TabDragState, ViewMode, EntryType,
 };
-use crate::components::file_manager::ContextMenu;
+use crate::components::file_manager::{self, ContextMenu};
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -110,11 +110,29 @@ impl MulticodeApp {
                     }
                 }
                 if !modifiers.control() && !modifiers.alt() && !modifiers.shift() {
-                    if let keyboard::Key::Named(keyboard::key::Named::F2) = key.clone() {
-                        return self.handle_message(Message::RenameFile);
-                    }
-                    if let keyboard::Key::Named(keyboard::key::Named::Delete) = key.clone() {
-                        return self.handle_message(Message::RequestDeleteFile);
+                    if let keyboard::Key::Named(named) = &key {
+                        match named {
+                            keyboard::key::Named::ArrowUp => {
+                                return self.handle_message(Message::NavigateUp);
+                            }
+                            keyboard::key::Named::ArrowDown => {
+                                return self.handle_message(Message::NavigateDown);
+                            }
+                            keyboard::key::Named::ArrowLeft => {
+                                return self.handle_message(Message::NavigateBack);
+                            }
+                            keyboard::key::Named::ArrowRight
+                            | keyboard::key::Named::Enter => {
+                                return self.handle_message(Message::NavigateInto);
+                            }
+                            keyboard::key::Named::F2 => {
+                                return self.handle_message(Message::RenameFile);
+                            }
+                            keyboard::key::Named::Delete => {
+                                return self.handle_message(Message::RequestDeleteFile);
+                            }
+                            _ => {}
+                        }
                     }
                 }
                 for (id, hk) in &self.settings.shortcuts {
@@ -413,6 +431,7 @@ impl MulticodeApp {
             }
             Message::FilesLoaded(list) => {
                 self.files = list;
+                self.selected_path = self.files.first().map(|e| e.path.clone());
                 Command::none()
             }
             Message::FileError(e) => {
@@ -543,6 +562,7 @@ impl MulticodeApp {
             }
             Message::SelectFile(path) => {
                 self.context_menu = None;
+                self.selected_path = Some(path.clone());
                 if let Some(idx) = self.tabs.iter().position(|f| f.path == path) {
                     self.active_tab = Some(idx);
                     self.search_results.clear();
@@ -1412,8 +1432,74 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::ToggleDir(path) => {
+                self.selected_path = Some(path.clone());
                 if !self.expanded_dirs.remove(&path) {
                     self.expanded_dirs.insert(path);
+                }
+                Command::none()
+            }
+            Message::NavigateUp => {
+                let entries = file_manager::flatten_visible_paths(
+                    &self.files,
+                    &self.expanded_dirs,
+                    &self.search_query,
+                );
+                if entries.is_empty() {
+                    return Command::none();
+                }
+                let idx = self
+                    .selected_path
+                    .as_ref()
+                    .and_then(|p| entries.iter().position(|e| e == p))
+                    .unwrap_or(0);
+                let new_idx = if idx == 0 { 0 } else { idx - 1 };
+                self.selected_path = Some(entries[new_idx].clone());
+                Command::none()
+            }
+            Message::NavigateDown => {
+                let entries = file_manager::flatten_visible_paths(
+                    &self.files,
+                    &self.expanded_dirs,
+                    &self.search_query,
+                );
+                if entries.is_empty() {
+                    return Command::none();
+                }
+                let idx = self
+                    .selected_path
+                    .as_ref()
+                    .and_then(|p| entries.iter().position(|e| e == p))
+                    .unwrap_or(0);
+                let new_idx = if idx + 1 >= entries.len() { idx } else { idx + 1 };
+                self.selected_path = Some(entries[new_idx].clone());
+                Command::none()
+            }
+            Message::NavigateInto => {
+                if let Some(path) = self.selected_path.clone() {
+                    if let Some(entry) = file_manager::find_entry(&self.files, &path) {
+                        match entry.ty {
+                            EntryType::Dir => {
+                                if !self.expanded_dirs.contains(&path) {
+                                    self.expanded_dirs.insert(path);
+                                } else if let Some(child) = entry.children.first() {
+                                    self.selected_path = Some(child.path.clone());
+                                }
+                            }
+                            EntryType::File => {
+                                return self.handle_message(Message::SelectFile(path));
+                            }
+                        }
+                    }
+                }
+                Command::none()
+            }
+            Message::NavigateBack => {
+                if let Some(path) = self.selected_path.clone() {
+                    if self.expanded_dirs.remove(&path) {
+                        // collapsed
+                    } else if let Some(parent) = path.parent() {
+                        self.selected_path = Some(parent.to_path_buf());
+                    }
                 }
                 Command::none()
             }

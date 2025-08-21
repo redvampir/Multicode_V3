@@ -56,6 +56,7 @@ pub struct MulticodeApp {
     pub(super) settings: UserSettings,
     pub(super) expanded_dirs: HashSet<PathBuf>,
     pub(super) context_menu: Option<ContextMenu>,
+    pub(super) selected_path: Option<PathBuf>,
     /// отображать подтверждение перезаписи файла
     pub(super) show_create_file_confirm: bool,
     /// отображать подтверждение удаления файла

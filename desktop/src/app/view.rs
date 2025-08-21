@@ -751,6 +751,7 @@ impl MulticodeApp {
             &self.expanded_dirs,
             &self.search_query,
             &self.favorites,
+            &self.selected_path,
         );
         column![search, container(tree).width(200)]
             .spacing(5)

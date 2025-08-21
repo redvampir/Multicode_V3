@@ -116,4 +116,8 @@ pub enum Message {
     ExecuteCommand(String),
     SwitchViewMode(ViewMode),
     FileError(String),
+    NavigateUp,
+    NavigateDown,
+    NavigateInto,
+    NavigateBack,
 }
