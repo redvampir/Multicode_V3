@@ -1587,6 +1587,7 @@ dependencies = [
  "iced",
  "once_cell",
  "pulldown-cmark",
+ "regex",
  "rfd",
  "serde",
  "serde_json",

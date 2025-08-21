@@ -1,40 +1,16 @@
-use std::ops::Range;
-
 use chrono::DateTime;
-use iced::advanced::text::highlighter::{self, Highlighter};
+use iced::advanced::text::highlighter;
 use iced::widget::{
     button, column, container, row, scrollable, text, text_editor,
     tooltip::{self, Tooltip},
     Column,
 };
 use iced::{theme, Alignment, Color, Element, Length};
-use once_cell::sync::Lazy;
-use syntect::easy::HighlightLines;
-use syntect::highlighting::ThemeSet;
-use syntect::parsing::SyntaxSet;
 
 use crate::app::events::Message;
 use crate::app::MulticodeApp;
 
-static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
-pub static THEME_SET: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
-
-fn load_highlighting(
-    extension: &str,
-    theme: &str,
-) -> (
-    &'static syntect::parsing::SyntaxReference,
-    &'static syntect::highlighting::Theme,
-) {
-    let syntax = SYNTAX_SET
-        .find_syntax_by_extension(extension)
-        .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
-    let theme = THEME_SET
-        .themes
-        .get(theme)
-        .unwrap_or(&THEME_SET.themes["InspiredGitHub"]);
-    (syntax, theme)
-}
+use super::syntax_highlighter::{SyntaxHighlighter, SyntaxSettings, SyntaxColors};
 
 pub(super) fn markdown_preview(content: &str) -> Column<'static, Message> {
     use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
@@ -84,80 +60,6 @@ pub(super) fn markdown_preview(content: &str) -> Column<'static, Message> {
     column(elements).spacing(5)
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub struct SyntaxSettings {
-    pub extension: String,
-    pub matches: Vec<(usize, Range<usize>)>,
-    pub diagnostics: Vec<(usize, Range<usize>)>,
-    pub theme: String,
-    pub match_color: Color,
-    pub diagnostic_color: Color,
-}
-
-pub struct SyntectHighlighter {
-    settings: SyntaxSettings,
-    highlighter: HighlightLines<'static>,
-    current_line: usize,
-}
-
-impl Highlighter for SyntectHighlighter {
-    type Settings = SyntaxSettings;
-    type Highlight = Color;
-    type Iterator<'a> = std::vec::IntoIter<(Range<usize>, Color)>;
-
-    fn new(settings: &Self::Settings) -> Self {
-        let (syntax, theme) = load_highlighting(&settings.extension, &settings.theme);
-        Self {
-            settings: settings.clone(),
-            highlighter: HighlightLines::new(syntax, theme),
-            current_line: 0,
-        }
-    }
-
-    fn update(&mut self, new_settings: &Self::Settings) {
-        let (syntax, theme) = load_highlighting(&new_settings.extension, &new_settings.theme);
-        self.highlighter = HighlightLines::new(syntax, theme);
-        self.settings = new_settings.clone();
-        self.current_line = 0;
-    }
-
-    fn change_line(&mut self, line: usize) {
-        self.current_line = line;
-    }
-
-    fn highlight_line(&mut self, line: &str) -> Self::Iterator<'_> {
-        let mut res = Vec::new();
-        if let Ok(ranges) = self.highlighter.highlight_line(line, &SYNTAX_SET) {
-            let mut start = 0;
-            for (style, text) in ranges {
-                let len = text.len();
-                let color = Color::from_rgb(
-                    style.foreground.r as f32 / 255.0,
-                    style.foreground.g as f32 / 255.0,
-                    style.foreground.b as f32 / 255.0,
-                );
-                res.push((start..start + len, color));
-                start += len;
-            }
-        }
-        for (line_idx, range) in &self.settings.matches {
-            if *line_idx == self.current_line {
-                res.push((range.clone(), self.settings.match_color));
-            }
-        }
-        for (line_idx, range) in &self.settings.diagnostics {
-            if *line_idx == self.current_line {
-                res.push((range.clone(), self.settings.diagnostic_color));
-            }
-        }
-        self.current_line += 1;
-        res.into_iter()
-    }
-
-    fn current_line(&self) -> usize {
-        self.current_line
-    }
-}
 
 pub struct CodeEditor<'a> {
     app: &'a MulticodeApp,
@@ -176,6 +78,11 @@ impl<'a> CodeEditor<'a> {
                 .and_then(|e| e.to_str())
                 .unwrap_or("")
                 .to_string();
+            let colors = SyntaxColors::for_theme(
+                &self.app.settings().syntect_theme,
+                self.app.settings().match_color,
+                self.app.settings().diagnostic_color,
+            );
             let settings = SyntaxSettings {
                 extension: ext.clone(),
                 matches: self.app.search_results().to_vec(),
@@ -185,11 +92,10 @@ impl<'a> CodeEditor<'a> {
                     .map(|d| (d.line, d.range.clone()))
                     .collect(),
                 theme: self.app.settings().syntect_theme.clone(),
-                match_color: self.app.settings().match_color,
-                diagnostic_color: self.app.settings().diagnostic_color,
+                colors,
             };
             let editor = text_editor(&file.editor)
-                .highlight::<SyntectHighlighter>(settings, |c, _| highlighter::Format {
+                .highlight::<SyntaxHighlighter>(settings, |c, _| highlighter::Format {
                     color: Some(*c),
                     font: None,
                 })
