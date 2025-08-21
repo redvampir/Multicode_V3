@@ -22,7 +22,6 @@ impl Application for MulticodeApp {
         }
         let (sender, _) = broadcast::channel(100);
         let fav_files = settings.favorites.clone();
-        let block_favorites = settings.block_favorites.clone();
 
         let (screen, view_mode) = if let Some(path) = settings.last_folders.first().cloned() {
             match settings.editor_mode {
@@ -84,10 +83,6 @@ impl Application for MulticodeApp {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
-
-            block_favorites,
-
-
         };
 
         let cmd = match &app.screen {
