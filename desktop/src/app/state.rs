@@ -145,6 +145,8 @@ pub struct Tab {
     pub diagnostics: Vec<Diagnostic>,
     pub blocks: Vec<BlockInfo>,
     pub meta: Option<VisualMeta>,
+    pub undo_stack: Vec<String>,
+    pub redo_stack: Vec<String>,
 }
 
 #[derive(Debug)]
