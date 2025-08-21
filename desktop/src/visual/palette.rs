@@ -181,7 +181,11 @@ impl<'a> BlockPalette<'a> {
         }
 
         let list = scrollable(col.spacing(5)).height(Length::Fixed(300.0));
-        column![search, list].spacing(10).into()
+        let content = column![search, list].spacing(10);
+
+        MouseArea::new(content)
+            .on_press(PaletteMessage::Close)
+            .into()
     }
 }
 

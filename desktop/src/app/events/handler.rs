@@ -100,6 +100,7 @@ impl MulticodeApp {
                     }
                     PaletteMessage::Close => {
                         self.show_block_palette = false;
+                        self.palette_query.clear();
                     }
                 }
                 Command::none()
@@ -109,6 +110,11 @@ impl MulticodeApp {
                 modifiers,
                 ..
             })) => {
+                if self.show_block_palette {
+                    if let keyboard::Key::Named(keyboard::key::Named::Escape) = key {
+                        return self.handle_message(Message::PaletteEvent(PaletteMessage::Close));
+                    }
+                }
                 if let Some(id) = self.shortcut_capture.take() {
                     let key_str = match key {
                         keyboard::Key::Character(c) => c.to_string().to_uppercase(),
