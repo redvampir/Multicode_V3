@@ -180,7 +180,7 @@ impl MulticodeApp {
                         .on_blur(Message::CloseMetaDialog)
                         .into();
                 }
-                (Some(tabs), content)
+                (Some(tabs.into()), content)
             }
             Screen::VisualEditor { .. } => {
                 let sidebar = self.sidebar();
