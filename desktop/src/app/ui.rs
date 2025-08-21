@@ -368,7 +368,7 @@ impl MulticodeApp {
         }
     }
 
-    pub fn diff_component(&self, diff: &DiffView) -> Element<Message> {
+    pub fn diff_component<'a>(&self, diff: &'a DiffView) -> Element<'a, Message> {
         let toggle = checkbox("Игнорировать пробелы", diff.ignore_whitespace)
             .on_toggle(Message::ToggleDiffIgnoreWhitespace);
         column![toggle, diff.view()].spacing(5).into()
@@ -491,7 +491,7 @@ impl MulticodeApp {
         .into()
     }
 
-    pub fn error_modal(&self, content: Element<Message>) -> Element<Message> {
+    pub fn error_modal<'a>(&self, content: Element<'a, Message>) -> Element<'a, Message> {
         if let Some(err) = &self.diff_error {
             let modal_content = container(
                 column![
@@ -509,7 +509,7 @@ impl MulticodeApp {
         }
     }
 
-    pub fn command_palette_modal(&self, content: Element<Message>) -> Element<Message> {
+    pub fn command_palette_modal<'a>(&self, content: Element<'a, Message>) -> Element<'a, Message> {
         if !self.show_command_palette {
             return content;
         }
