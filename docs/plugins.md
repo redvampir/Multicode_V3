@@ -17,6 +17,25 @@ pub trait Plugin: Send + Sync {
 `BlockDescriptor` описывает тип блока, который предоставляет плагин: идентификатор
 вида, человекочитаемую метку и версию реализации.
 
+## События файлового менеджера
+
+Помимо расширения системы новыми блоками, плагины могут реагировать на события
+файлового менеджера. Для этого следует реализовать трейт `FileManagerPlugin`:
+
+```rust
+use std::path::Path;
+
+pub trait FileManagerPlugin: Send + Sync {
+    fn on_open(&self, path: &Path) {}
+    fn on_create(&self, path: &Path) {}
+    fn on_delete(&self, path: &Path) {}
+    fn on_rename(&self, from: &Path, to: &Path) {}
+}
+```
+
+Методы вызываются после соответствующих операций и позволяют добавлять
+кастомное поведение при открытии, создании, удалении и переименовании файлов.
+
 ## WebAssembly плагины
 
 Backend может загружать плагины, собранные в WebAssembly, через

@@ -599,6 +599,7 @@ impl MulticodeApp {
                     .unwrap_or_default();
                 let blame_path = path.clone();
                 let meta = meta::read_all(&content).into_iter().next();
+                file_manager::emit_open(&path);
                 self.tabs.push(Tab {
                     path,
                     content,
@@ -756,6 +757,7 @@ impl MulticodeApp {
             }
             Message::FileCreated(Ok(path)) => {
                 self.log.push(format!("создан {}", path.display()));
+                file_manager::emit_create(&path);
                 self.new_file_name.clear();
                 self.tabs.push(Tab {
                     path: path.clone(),
@@ -831,7 +833,9 @@ impl MulticodeApp {
             Message::FileRenamed(Ok(path)) => {
                 self.log.push(format!("переименовано в {}", path.display()));
                 if let Some(i) = self.active_tab {
+                    let old = self.tabs[i].path.clone();
                     self.tabs[i].path = path.clone();
+                    file_manager::emit_rename(&old, &path);
                 }
                 self.rename_file_name.clear();
                 return self.load_files(self.current_root_path().unwrap());
@@ -872,6 +876,7 @@ impl MulticodeApp {
             }
             Message::FileDeleted(Ok(path)) => {
                 self.log.push(format!("удален {}", path.display()));
+                file_manager::emit_delete(&path);
                 if let Some(idx) = self.tabs.iter().position(|f| f.path == path) {
                     self.tabs.remove(idx);
                     if let Some(active) = self.active_tab {
