@@ -21,16 +21,19 @@ impl Application for MulticodeApp {
         }
         let (sender, _) = broadcast::channel(100);
 
+        let (screen, view_mode) = if let Some(path) = settings.last_folders.first().cloned() {
+            match settings.editor_mode {
+                EditorMode::Text => (Screen::TextEditor { root: path }, ViewMode::Code),
+                EditorMode::Visual => (Screen::VisualEditor { root: path }, ViewMode::Schema),
+                EditorMode::Split => (Screen::Split { root: path }, ViewMode::Split),
+            }
+        } else {
+            (Screen::ProjectPicker, ViewMode::Code)
+        };
+
         let mut app = MulticodeApp {
-            screen: if let Some(path) = settings.last_folders.first().cloned() {
-                match settings.editor_mode {
-                    EditorMode::Text => Screen::TextEditor { root: path },
-                    EditorMode::Visual => Screen::VisualEditor { root: path },
-                }
-            } else {
-                Screen::ProjectPicker
-            },
-            view_mode: ViewMode::Code,
+            screen,
+            view_mode,
             files: Vec::new(),
             tabs: Vec::new(),
             active_tab: None,
@@ -75,7 +78,9 @@ impl Application for MulticodeApp {
         };
 
         let cmd = match &app.screen {
-            Screen::TextEditor { root } | Screen::VisualEditor { root } => {
+            Screen::TextEditor { root }
+            | Screen::VisualEditor { root }
+            | Screen::Split { root } => {
                 let mut cmds = vec![app.load_files(root.clone())];
                 if let Some(entry) = app.settings.default_entry.clone() {
                     cmds.push(app.handle_message(Message::SelectFile(entry)));
@@ -99,7 +104,7 @@ impl Application for MulticodeApp {
     fn subscription(&self) -> Subscription<Message> {
         if matches!(
             self.screen,
-            Screen::TextEditor { .. } | Screen::VisualEditor { .. }
+            Screen::TextEditor { .. } | Screen::VisualEditor { .. } | Screen::Split { .. }
         ) {
             let rx = self.sender.subscribe();
             let core = subscription::run_with_id(
