@@ -2,6 +2,7 @@ use std::ops::Range;
 
 use iced::advanced::text::highlighter::Highlighter;
 use iced::Color;
+use std::collections::HashMap;
 use once_cell::sync::Lazy;
 use regex::Regex;
 use syntect::easy::HighlightLines;
@@ -49,6 +50,7 @@ pub struct SyntaxHighlighter {
     settings: SyntaxSettings,
     highlighter: HighlightLines<'static>,
     current_line: usize,
+    cache: HashMap<usize, Vec<(Range<usize>, Color)>>,
 }
 
 fn load_highlighting(
@@ -79,6 +81,7 @@ impl Highlighter for SyntaxHighlighter {
             settings: settings.clone(),
             highlighter: HighlightLines::new(syntax, theme),
             current_line: 0,
+            cache: HashMap::new(),
         }
     }
 
@@ -87,6 +90,7 @@ impl Highlighter for SyntaxHighlighter {
         self.highlighter = HighlightLines::new(syntax, theme);
         self.settings = new_settings.clone();
         self.current_line = 0;
+        self.cache.clear();
     }
 
     fn change_line(&mut self, line: usize) {
@@ -94,20 +98,25 @@ impl Highlighter for SyntaxHighlighter {
     }
 
     fn highlight_line(&mut self, line: &str) -> Self::Iterator<'_> {
-        let mut res = Vec::new();
-        if let Ok(ranges) = self.highlighter.highlight_line(line, &SYNTAX_SET) {
-            let mut start = 0;
-            for (style, text) in ranges {
-                let len = text.len();
-                let color = Color::from_rgb(
-                    style.foreground.r as f32 / 255.0,
-                    style.foreground.g as f32 / 255.0,
-                    style.foreground.b as f32 / 255.0,
-                );
-                res.push((start..start + len, color));
-                start += len;
+        let mut res = if let Some(cached) = self.cache.get(&self.current_line) {
+            cached.clone()
+        } else {
+            let mut tmp = Vec::new();
+            if let Ok(ranges) = self.highlighter.highlight_line(line, &SYNTAX_SET) {
+                let mut start = 0;
+                for (style, text) in ranges {
+                    let len = text.len();
+                    let color = Color::from_rgb(
+                        style.foreground.r as f32 / 255.0,
+                        style.foreground.g as f32 / 255.0,
+                        style.foreground.b as f32 / 255.0,
+                    );
+                    tmp.push((start..start + len, color));
+                    start += len;
+                }
             }
-        }
+            tmp
+        };
         if let Some(pos) = META_REGEX.find(line).map(|m| m.start()) {
             res.push((pos..line.len(), self.settings.colors.meta_color));
         }
@@ -120,6 +129,9 @@ impl Highlighter for SyntaxHighlighter {
             if *line_idx == self.current_line {
                 res.push((range.clone(), self.settings.colors.diagnostic_color));
             }
+        }
+        if !self.cache.contains_key(&self.current_line) {
+            self.cache.insert(self.current_line, res.clone());
         }
         self.current_line += 1;
         res.into_iter()

@@ -2,7 +2,7 @@ use directories::ProjectDirs;
 use iced::{widget::text_editor, Color};
 use multicode_core::{git, meta::VisualMeta, BlockInfo};
 use serde::{Deserialize, Serialize};
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -145,8 +145,9 @@ pub struct Tab {
     pub diagnostics: Vec<Diagnostic>,
     pub blocks: Vec<BlockInfo>,
     pub meta: Option<VisualMeta>,
-    pub undo_stack: Vec<String>,
-    pub redo_stack: Vec<String>,
+    pub undo_stack: VecDeque<String>,
+    pub redo_stack: VecDeque<String>,
+    pub analysis_version: u64,
 }
 
 #[derive(Debug)]

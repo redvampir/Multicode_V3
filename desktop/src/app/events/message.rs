@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::app::diff::DiffView;
 use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language, ViewMode};
+use multicode_core::BlockInfo;
 use crate::editor::EditorTheme;
 
 #[derive(Debug, Clone)]
@@ -20,6 +21,7 @@ pub enum Message {
     FileContentEdited(text_editor::Action),
     Undo,
     Redo,
+    AnalysisReady(PathBuf, u64, Vec<BlockInfo>, Vec<Diagnostic>),
     SearchTermChanged(String),
     ReplaceTermChanged(String),
     Find,
