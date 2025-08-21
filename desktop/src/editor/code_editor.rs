@@ -18,6 +18,23 @@ use crate::app::MulticodeApp;
 static SYNTAX_SET: Lazy<SyntaxSet> = Lazy::new(SyntaxSet::load_defaults_newlines);
 pub static THEME_SET: Lazy<ThemeSet> = Lazy::new(ThemeSet::load_defaults);
 
+fn load_highlighting(
+    extension: &str,
+    theme: &str,
+) -> (
+    &'static syntect::parsing::SyntaxReference,
+    &'static syntect::highlighting::Theme,
+) {
+    let syntax = SYNTAX_SET
+        .find_syntax_by_extension(extension)
+        .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
+    let theme = THEME_SET
+        .themes
+        .get(theme)
+        .unwrap_or(&THEME_SET.themes["InspiredGitHub"]);
+    (syntax, theme)
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct SyntaxSettings {
     pub extension: String,
@@ -38,13 +55,7 @@ impl Highlighter for SyntectHighlighter {
     type Iterator<'a> = std::vec::IntoIter<(Range<usize>, Color)>;
 
     fn new(settings: &Self::Settings) -> Self {
-        let syntax = SYNTAX_SET
-            .find_syntax_by_extension(&settings.extension)
-            .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
-        let theme = THEME_SET
-            .themes
-            .get(&settings.theme)
-            .unwrap_or(&THEME_SET.themes["InspiredGitHub"]);
+        let (syntax, theme) = load_highlighting(&settings.extension, &settings.theme);
         Self {
             settings: settings.clone(),
             highlighter: HighlightLines::new(syntax, theme),
@@ -53,13 +64,7 @@ impl Highlighter for SyntectHighlighter {
     }
 
     fn update(&mut self, new_settings: &Self::Settings) {
-        let syntax = SYNTAX_SET
-            .find_syntax_by_extension(&new_settings.extension)
-            .unwrap_or_else(|| SYNTAX_SET.find_syntax_plain_text());
-        let theme = THEME_SET
-            .themes
-            .get(&new_settings.theme)
-            .unwrap_or(&THEME_SET.themes["InspiredGitHub"]);
+        let (syntax, theme) = load_highlighting(&new_settings.extension, &new_settings.theme);
         self.highlighter = HighlightLines::new(syntax, theme);
         self.settings = new_settings.clone();
         self.current_line = 0;
