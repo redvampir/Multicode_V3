@@ -1,5 +1,5 @@
 use iced::widget::canvas::{self, Event, Frame, Geometry, Path, Program, Stroke, Text};
-use iced::{mouse, Point, Rectangle, Renderer, Theme, Vector};
+use iced::{keyboard::{self, key}, mouse, Point, Rectangle, Renderer, Theme, Vector};
 
 use multicode_core::BlockInfo;
 use crate::visual::translations::{Language, translate_kind};
@@ -13,6 +13,8 @@ pub enum CanvasMessage {
     Zoom { factor: f32, center: Point },
     BlockSelected(Option<usize>),
     BlockDragged { index: usize, position: Point },
+    Dropped { position: Point },
+    TogglePalette,
 }
 
 pub struct VisualCanvas<'a> {
@@ -72,6 +74,14 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
         cursor: mouse::Cursor,
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
         match event {
+            Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => {
+                if key == keyboard::Key::Named(key::Named::Space) {
+                    return (
+                        canvas::event::Status::Captured,
+                        Some(CanvasMessage::TogglePalette),
+                    );
+                }
+            }
             Event::Mouse(mouse::Event::WheelScrolled { delta }) => {
                 if let Some(pos) = cursor.position_in(bounds) {
                     let y = match delta {
@@ -139,8 +149,10 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                                 (pos.x - state.offset.x) / state.scale,
                                 (pos.y - state.offset.y) / state.scale,
                             );
-                            let new_pos =
-                                Point::new(canvas_pos.x - drag.grab.x, canvas_pos.y - drag.grab.y);
+                            let new_pos = Point::new(
+                                canvas_pos.x - drag.grab.x,
+                                canvas_pos.y - drag.grab.y,
+                            );
                             return (
                                 canvas::event::Status::Captured,
                                 Some(CanvasMessage::BlockDragged {
@@ -149,6 +161,15 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                                 }),
                             );
                         }
+                    } else if let Some(pos) = cursor.position_in(bounds) {
+                        let canvas_pos = Point::new(
+                            (pos.x - state.offset.x) / state.scale,
+                            (pos.y - state.offset.y) / state.scale,
+                        );
+                        return (
+                            canvas::event::Status::Captured,
+                            Some(CanvasMessage::Dropped { position: canvas_pos }),
+                        );
                     }
                 }
                 mouse::Button::Right => {

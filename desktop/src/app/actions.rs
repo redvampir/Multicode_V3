@@ -7,6 +7,7 @@ use tokio::sync::broadcast;
 
 use super::events::Message;
 use super::{AppTheme, CreateTarget, EditorMode, MulticodeApp, Screen, UserSettings, ViewMode};
+use multicode_core::{parse_blocks, BlockInfo};
 
 impl Application for MulticodeApp {
     type Executor = iced::executor::Default;
@@ -77,6 +78,11 @@ impl Application for MulticodeApp {
             autocomplete: None,
             show_meta_panel: false,
             tab_drag: None,
+            palette: load_palette(),
+            show_block_palette: false,
+            palette_query: String::new(),
+            palette_drag: None,
+            block_favorites: Vec::new(),
         };
 
         let cmd = match &app.screen {
@@ -133,7 +139,15 @@ impl Application for MulticodeApp {
         }
     }
 
-    fn view(&self) -> Element<Message> {
+fn view(&self) -> Element<Message> {
         self.render()
     }
+}
+
+fn load_palette() -> Vec<BlockInfo> {
+    let src = r#"
+fn add(a: i32, b: i32) -> i32 { a + b }
+fn mul(a: i32, b: i32) -> i32 { a * b }
+"#;
+    parse_blocks(src.to_string(), "rust".into()).unwrap_or_default()
 }

@@ -8,6 +8,7 @@ use crate::components::file_manager::{self, ContextMenu};
 use crate::editor::autocomplete::{self, AutocompleteState};
 use crate::editor::meta_integration::validate_meta_json;
 use crate::visual::canvas::CanvasMessage;
+use crate::visual::palette::PaletteMessage;
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -42,18 +43,51 @@ impl MulticodeApp {
     pub fn handle_message(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::CanvasEvent(event) => {
-                if let Some(tab) = self.current_file_mut() {
-                    match event {
-                        CanvasMessage::BlockDragged { index, position } => {
+                match event {
+                    CanvasMessage::BlockDragged { index, position } => {
+                        if let Some(tab) = self.current_file_mut() {
                             if let Some(block) = tab.blocks.get_mut(index) {
                                 block.x = position.x as f64;
                                 block.y = position.y as f64;
                                 tab.dirty = true;
                             }
                         }
-                        CanvasMessage::BlockSelected(_)
-                        | CanvasMessage::Pan { .. }
-                        | CanvasMessage::Zoom { .. } => {}
+                    }
+                    CanvasMessage::Dropped { position } => {
+                        if let Some(mut block) = self.palette_drag.take() {
+                            block.x = position.x as f64;
+                            block.y = position.y as f64;
+                            if let Some(tab) = self.current_file_mut() {
+                                tab.blocks.push(block);
+                                tab.dirty = true;
+                            }
+                        }
+                    }
+                    CanvasMessage::TogglePalette => {
+                        self.show_block_palette = !self.show_block_palette;
+                        if !self.show_block_palette {
+                            self.palette_query.clear();
+                        }
+                    }
+                    CanvasMessage::BlockSelected(_)
+                    | CanvasMessage::Pan { .. }
+                    | CanvasMessage::Zoom { .. } => {}
+                }
+                Command::none()
+            }
+            Message::PaletteEvent(ev) => {
+                match ev {
+                    PaletteMessage::SearchChanged(q) => {
+                        self.palette_query = q;
+                    }
+                    PaletteMessage::StartDrag(i) => {
+                        if let Some(block) = self.palette.get(i).cloned() {
+                            self.palette_drag = Some(block);
+                            self.show_block_palette = false;
+                        }
+                    }
+                    PaletteMessage::Close => {
+                        self.show_block_palette = false;
                     }
                 }
                 Command::none()

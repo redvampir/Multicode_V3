@@ -97,6 +97,11 @@ pub struct MulticodeApp {
     pub(super) autocomplete: Option<AutocompleteState>,
     pub(super) show_meta_panel: bool,
     pub(super) tab_drag: Option<TabDragState>,
+    pub(super) palette: Vec<BlockInfo>,
+    pub(super) show_block_palette: bool,
+    pub(super) palette_query: String,
+    pub(super) palette_drag: Option<BlockInfo>,
+    pub(super) block_favorites: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
