@@ -36,6 +36,10 @@ pub struct MulticodeApp {
     pub(super) create_target: CreateTarget,
     /// новое имя при переименовании
     pub(super) rename_file_name: String,
+    /// фильтр файлового менеджера
+    pub(super) search_query: String,
+    /// избранные файлы и директории
+    pub(super) favorites: Vec<PathBuf>,
     pub(super) query: String,
     pub(super) show_command_palette: bool,
     pub(super) log: Vec<String>,
@@ -343,6 +347,8 @@ pub struct UserSettings {
     pub show_toolbar: bool,
     #[serde(default)]
     pub show_markdown_preview: bool,
+    #[serde(default)]
+    pub favorites: Vec<PathBuf>,
 }
 
 impl Default for UserSettings {
@@ -360,6 +366,7 @@ impl Default for UserSettings {
             show_status_bar: true,
             show_toolbar: true,
             show_markdown_preview: false,
+            favorites: Vec::new(),
         }
     }
 }

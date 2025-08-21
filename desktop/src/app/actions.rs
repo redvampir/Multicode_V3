@@ -2,9 +2,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 
 use iced::futures::stream;
-use iced::{
-    event, subscription, Application, Command, Element, Subscription, Theme,
-};
+use iced::{event, subscription, Application, Command, Element, Subscription, Theme};
 use tokio::sync::broadcast;
 
 use super::events::Message;
@@ -44,6 +42,8 @@ impl Application for MulticodeApp {
             new_directory_name: String::new(),
             create_target: CreateTarget::File,
             rename_file_name: String::new(),
+            search_query: String::new(),
+            favorites: settings.favorites.clone(),
             query: String::new(),
             show_command_palette: false,
             log: Vec::new(),

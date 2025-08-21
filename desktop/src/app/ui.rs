@@ -586,6 +586,8 @@ mod tests {
             new_directory_name: String::new(),
             create_target: CreateTarget::File,
             rename_file_name: String::new(),
+            search_query: String::new(),
+            favorites: Vec::new(),
             query: String::new(),
             show_command_palette: false,
             log: Vec::new(),
