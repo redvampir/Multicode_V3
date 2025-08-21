@@ -3,8 +3,9 @@ use std::path::PathBuf;
 
 use crate::app::diff::DiffView;
 use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language, ViewMode};
-use multicode_core::BlockInfo;
 use crate::editor::EditorTheme;
+use crate::visual::canvas::CanvasMessage;
+use multicode_core::BlockInfo;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -131,4 +132,5 @@ pub enum Message {
     NavigateDown,
     NavigateInto,
     NavigateBack,
+    CanvasEvent(CanvasMessage),
 }
