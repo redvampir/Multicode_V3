@@ -415,6 +415,10 @@ impl MulticodeApp {
                 self.files = list;
                 Command::none()
             }
+            Message::FileError(e) => {
+                self.log.push(format!("ошибка файла: {e}"));
+                Command::none()
+            }
             Message::DefaultEntryPicked(path) => {
                 if let Some(p) = path {
                     self.settings.default_entry = Some(p.clone());
