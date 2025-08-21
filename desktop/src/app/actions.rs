@@ -3,7 +3,7 @@ use std::path::PathBuf;
 
 use iced::futures::stream;
 use iced::{
-    application, event, subscription, Application, Command, Element, Settings, Subscription, Theme,
+    event, subscription, Application, Command, Element, Subscription, Theme,
 };
 use tokio::sync::broadcast;
 

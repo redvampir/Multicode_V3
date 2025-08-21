@@ -23,7 +23,7 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
-use tokio::process::{Child, Command as TokioCommand};
+use tokio::process::Command as TokioCommand;
 
 impl MulticodeApp {
     pub fn handle_message(&mut self, message: Message) -> Command<Message> {

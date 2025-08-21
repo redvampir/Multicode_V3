@@ -2,7 +2,7 @@ use crate::modal::Modal;
 use iced::widget::{
     button, checkbox, column, container, pick_list, row, scrollable,
     svg::{Handle, Svg},
-    text, text_editor, text_input,
+    text, text_input,
     tooltip::{self, Tooltip},
     Space,
 };
