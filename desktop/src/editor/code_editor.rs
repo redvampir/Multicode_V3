@@ -41,6 +41,8 @@ pub struct SyntaxSettings {
     pub matches: Vec<(usize, Range<usize>)>,
     pub diagnostics: Vec<(usize, Range<usize>)>,
     pub theme: String,
+    pub match_color: Color,
+    pub diagnostic_color: Color,
 }
 
 pub struct SyntectHighlighter {
@@ -91,12 +93,12 @@ impl Highlighter for SyntectHighlighter {
         }
         for (line_idx, range) in &self.settings.matches {
             if *line_idx == self.current_line {
-                res.push((range.clone(), Color::from_rgb(1.0, 1.0, 0.0)));
+                res.push((range.clone(), self.settings.match_color));
             }
         }
         for (line_idx, range) in &self.settings.diagnostics {
             if *line_idx == self.current_line {
-                res.push((range.clone(), Color::from_rgb(1.0, 0.0, 0.0)));
+                res.push((range.clone(), self.settings.diagnostic_color));
             }
         }
         self.current_line += 1;
@@ -134,6 +136,8 @@ impl<'a> CodeEditor<'a> {
                     .map(|d| (d.line, d.range.clone()))
                     .collect(),
                 theme: self.app.settings().syntect_theme.clone(),
+                match_color: self.app.settings().match_color,
+                diagnostic_color: self.app.settings().diagnostic_color,
             };
             let editor = text_editor(&file.editor)
                 .highlight::<SyntectHighlighter>(settings, |c, _| highlighter::Format {

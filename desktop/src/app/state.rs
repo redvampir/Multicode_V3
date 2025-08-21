@@ -1,5 +1,5 @@
 use directories::ProjectDirs;
-use iced::widget::text_editor;
+use iced::{widget::text_editor, Color};
 use multicode_core::{git, meta::VisualMeta, BlockInfo};
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};
@@ -10,6 +10,26 @@ use tokio::{fs, process::Child, sync::broadcast};
 
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
+
+mod serde_color {
+    use iced::Color;
+    use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+    pub fn serialize<S>(color: &Color, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        [color.r, color.g, color.b].serialize(serializer)
+    }
+
+    pub fn deserialize<'de, D>(deserializer: D) -> Result<Color, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let [r, g, b] = <[f32; 3]>::deserialize(deserializer)?;
+        Ok(Color::from_rgb(r, g, b))
+    }
+}
 
 #[derive(Debug)]
 pub struct MulticodeApp {
@@ -333,6 +353,14 @@ fn default_true() -> bool {
     true
 }
 
+fn default_match_color() -> Color {
+    Color::from_rgb(1.0, 1.0, 0.0)
+}
+
+fn default_diagnostic_color() -> Color {
+    Color::from_rgb(1.0, 0.0, 0.0)
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserSettings {
     #[serde(default)]
@@ -349,6 +377,10 @@ pub struct UserSettings {
     pub theme: AppTheme,
     #[serde(default = "default_syntect_theme")]
     pub syntect_theme: String,
+    #[serde(default = "default_match_color", with = "serde_color")]
+    pub match_color: Color,
+    #[serde(default = "default_diagnostic_color", with = "serde_color")]
+    pub diagnostic_color: Color,
     #[serde(default)]
     pub language: Language,
     #[serde(default)]
@@ -373,6 +405,8 @@ impl Default for UserSettings {
             editor_mode: EditorMode::Text,
             theme: AppTheme::default(),
             syntect_theme: default_syntect_theme(),
+            match_color: default_match_color(),
+            diagnostic_color: default_diagnostic_color(),
             language: Language::default(),
             show_line_numbers: true,
             show_status_bar: true,
