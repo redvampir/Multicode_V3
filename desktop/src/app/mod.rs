@@ -13,6 +13,7 @@ pub use state::{
     Hotkeys, Language, MulticodeApp, PendingAction, Screen, Tab, TabDragState, UserSettings,
 };
 
+use iced::Application;
 use iced::Settings;
 use std::path::PathBuf;
 
