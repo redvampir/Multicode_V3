@@ -5,6 +5,7 @@ use crate::app::{
     MulticodeApp, PendingAction, Screen, Tab, TabDragState, ViewMode, EntryType,
 };
 use crate::components::file_manager::{self, ContextMenu};
+use crate::editor::meta_integration::validate_meta_json;
 use crate::editor::autocomplete::{self, AutocompleteState};
 use chrono::Utc;
 use iced::widget::{
@@ -650,6 +651,7 @@ impl MulticodeApp {
                     .unwrap_or_default();
                 let blame_path = path.clone();
                 let meta = meta::read_all(&content).into_iter().next();
+                let diagnostics = validate_meta_json(&content);
                 file_manager::emit_open(&path);
                 self.tabs.push(Tab {
                     path,
@@ -657,7 +659,7 @@ impl MulticodeApp {
                     editor,
                     dirty: false,
                     blame: HashMap::new(),
-                    diagnostics: Vec::new(),
+                    diagnostics,
                     blocks,
                     meta,
                     undo_stack: Vec::new(),
@@ -699,6 +701,7 @@ impl MulticodeApp {
                             f.blocks.clear();
                         }
                     }
+                    f.diagnostics = validate_meta_json(&f.content);
                     if is_edit {
                         f.dirty = true;
                     }
