@@ -17,6 +17,8 @@ pub enum Message {
     SelectFile(PathBuf),
     FileLoaded(Result<(PathBuf, String), String>),
     FileContentEdited(text_editor::Action),
+    Undo,
+    Redo,
     SearchTermChanged(String),
     ReplaceTermChanged(String),
     Find,

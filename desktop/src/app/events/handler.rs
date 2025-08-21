@@ -147,6 +147,8 @@ impl MulticodeApp {
                             "n" => return self.handle_message(Message::CreateFile),
                             "s" => return self.handle_message(Message::SaveFile),
                             "f" => return self.handle_message(Message::ToggleSearchPanel),
+                            "z" => return self.handle_message(Message::Undo),
+                            "y" => return self.handle_message(Message::Redo),
                             _ => {}
                         }
                     }
@@ -658,6 +660,8 @@ impl MulticodeApp {
                     diagnostics: Vec::new(),
                     blocks,
                     meta,
+                    undo_stack: Vec::new(),
+                    redo_stack: Vec::new(),
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 self.rename_file_name.clear();
@@ -681,6 +685,10 @@ impl MulticodeApp {
             Message::FileContentEdited(action) => {
                 if let Some(f) = self.current_file_mut() {
                     let is_edit = action.is_edit();
+                    if is_edit {
+                        f.undo_stack.push(f.content.clone());
+                        f.redo_stack.clear();
+                    }
                     f.editor.perform(action);
                     f.content = f.editor.text();
                     if let Some(lang) = detect_lang(&f.path) {
@@ -692,6 +700,46 @@ impl MulticodeApp {
                         }
                     }
                     if is_edit {
+                        f.dirty = true;
+                    }
+                }
+                Command::none()
+            }
+            Message::Undo => {
+                if let Some(f) = self.current_file_mut() {
+                    if let Some(prev) = f.undo_stack.pop() {
+                        f.redo_stack.push(f.content.clone());
+                        f.content = prev;
+                        f.editor = Content::with_text(&f.content);
+                        if let Some(lang) = detect_lang(&f.path) {
+                            if let Some(bs) =
+                                blocks::parse_blocks(f.content.clone(), lang.to_string())
+                            {
+                                f.blocks = bs;
+                            } else {
+                                f.blocks.clear();
+                            }
+                        }
+                        f.dirty = true;
+                    }
+                }
+                Command::none()
+            }
+            Message::Redo => {
+                if let Some(f) = self.current_file_mut() {
+                    if let Some(next) = f.redo_stack.pop() {
+                        f.undo_stack.push(f.content.clone());
+                        f.content = next;
+                        f.editor = Content::with_text(&f.content);
+                        if let Some(lang) = detect_lang(&f.path) {
+                            if let Some(bs) =
+                                blocks::parse_blocks(f.content.clone(), lang.to_string())
+                            {
+                                f.blocks = bs;
+                            } else {
+                                f.blocks.clear();
+                            }
+                        }
                         f.dirty = true;
                     }
                 }
@@ -721,6 +769,8 @@ impl MulticodeApp {
                     let content = meta::upsert(&f.content, &meta);
                     f.content = content.clone();
                     f.editor = Content::with_text(&f.content);
+                    f.undo_stack.clear();
+                    f.redo_stack.clear();
                     f.meta = Some(meta);
                     return Command::perform(
                         async move {
@@ -817,6 +867,8 @@ impl MulticodeApp {
                     diagnostics: Vec::new(),
                     blocks: Vec::new(),
                     meta: None,
+                    undo_stack: Vec::new(),
+                    redo_stack: Vec::new(),
                 });
                 self.active_tab = Some(self.tabs.len() - 1);
                 return self.load_files(self.current_root_path().unwrap());
