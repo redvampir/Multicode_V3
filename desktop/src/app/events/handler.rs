@@ -81,15 +81,18 @@ impl MulticodeApp {
                         self.palette_query = q;
                     }
                     PaletteMessage::StartDrag(i) => {
-                        if let Some(block) = self.palette.get(i).cloned() {
+                        if let Some(block) = self.palette.get(i).map(|b| b.info.clone()) {
                             self.palette_drag = Some(block);
                             self.show_block_palette = false;
                         }
                     }
                     PaletteMessage::ToggleFavorite(i) => {
-                        if let Some(kind) = self.palette.get(i).map(|b| b.kind.clone()) {
-                            if let Some(pos) =
-                                self.settings.block_favorites.iter().position(|k| k == &kind)
+                        if let Some(kind) = self.palette.get(i).map(|b| b.info.kind.clone()) {
+                            if let Some(pos) = self
+                                .settings
+                                .block_favorites
+                                .iter()
+                                .position(|k| k == &kind)
                             {
                                 self.settings.block_favorites.remove(pos);
                             } else {

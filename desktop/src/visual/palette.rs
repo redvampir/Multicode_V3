@@ -6,6 +6,36 @@ use super::translations::Language;
 use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
+pub struct PaletteBlock {
+    pub info: BlockInfo,
+    lower_en: String,
+    lower_ru: String,
+    lower_kind: String,
+}
+
+impl PaletteBlock {
+    pub fn new(info: BlockInfo) -> Self {
+        let lower_en = info
+            .translations
+            .get("en")
+            .map(|s| s.to_lowercase())
+            .unwrap_or_default();
+        let lower_ru = info
+            .translations
+            .get("ru")
+            .map(|s| s.to_lowercase())
+            .unwrap_or_default();
+        let lower_kind = info.kind.to_lowercase();
+        Self {
+            info,
+            lower_en,
+            lower_ru,
+            lower_kind,
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
 pub enum PaletteMessage {
     SearchChanged(String),
     StartDrag(usize),
@@ -34,7 +64,7 @@ fn category_title(cat: &str, lang: Language) -> String {
 }
 
 pub struct BlockPalette<'a> {
-    blocks: &'a [BlockInfo],
+    blocks: &'a [PaletteBlock],
     categories: &'a [(String, Vec<usize>)],
     favorites: &'a [String],
     query: &'a str,
@@ -43,7 +73,7 @@ pub struct BlockPalette<'a> {
 
 impl<'a> BlockPalette<'a> {
     pub fn new(
-        blocks: &'a [BlockInfo],
+        blocks: &'a [PaletteBlock],
         categories: &'a [(String, Vec<usize>)],
         favorites: &'a [String],
         query: &'a str,
@@ -84,7 +114,7 @@ impl<'a> BlockPalette<'a> {
             let fav_blocks: Vec<_> = indices
                 .iter()
                 .copied()
-                .filter(|i| self.favorites.contains(&self.blocks[*i].kind))
+                .filter(|i| self.favorites.contains(&self.blocks[*i].info.kind))
                 .collect();
             if !fav_blocks.is_empty() {
                 let title = if self.language == Language::Russian {
@@ -95,11 +125,12 @@ impl<'a> BlockPalette<'a> {
                 col = col.push(text(title));
                 for i in fav_blocks {
                     let name = self.blocks[i]
+                        .info
                         .translations
                         .get(self.language.code())
                         .cloned()
-                        .unwrap_or_else(|| self.blocks[i].kind.clone());
-                    let fav = self.favorites.contains(&self.blocks[i].kind);
+                        .unwrap_or_else(|| self.blocks[i].info.kind.clone());
+                    let fav = self.favorites.contains(&self.blocks[i].info.kind);
                     let star = if fav { "★" } else { "☆" };
                     let star_txt = text(star);
                     let star_txt = if fav {
@@ -128,11 +159,12 @@ impl<'a> BlockPalette<'a> {
                 col = col.push(text(category_title(cat, self.language)));
                 for i in cat_blocks {
                     let name = self.blocks[i]
+                        .info
                         .translations
                         .get(self.language.code())
                         .cloned()
-                        .unwrap_or_else(|| self.blocks[i].kind.clone());
-                    let fav = self.favorites.contains(&self.blocks[i].kind);
+                        .unwrap_or_else(|| self.blocks[i].info.kind.clone());
+                    let fav = self.favorites.contains(&self.blocks[i].info.kind);
                     let star = if fav { "★" } else { "☆" };
                     let star_txt = text(star);
                     let star_txt = if fav {
@@ -160,16 +192,6 @@ impl<'a> BlockPalette<'a> {
     }
 }
 
-fn matches_block(block: &BlockInfo, q: &str) -> bool {
-    let en = block
-        .translations
-        .get("en")
-        .map(|s| s.to_lowercase())
-        .unwrap_or_default();
-    let ru = block
-        .translations
-        .get("ru")
-        .map(|s| s.to_lowercase())
-        .unwrap_or_default();
-    en.contains(q) || ru.contains(q) || block.kind.to_lowercase().contains(q)
+fn matches_block(block: &PaletteBlock, q: &str) -> bool {
+    block.lower_en.contains(q) || block.lower_ru.contains(q) || block.lower_kind.contains(q)
 }

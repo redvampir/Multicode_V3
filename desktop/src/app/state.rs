@@ -11,6 +11,7 @@ use tokio::{fs, process::Child, sync::broadcast};
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
 use crate::editor::{AutocompleteState, EditorSettings};
+use crate::visual::palette::PaletteBlock;
 use crate::visual::translations::Language;
 
 mod serde_color {
@@ -97,7 +98,7 @@ pub struct MulticodeApp {
     pub(super) autocomplete: Option<AutocompleteState>,
     pub(super) show_meta_panel: bool,
     pub(super) tab_drag: Option<TabDragState>,
-    pub(super) palette: Vec<BlockInfo>,
+    pub(super) palette: Vec<PaletteBlock>,
     pub(super) palette_categories: Vec<(String, Vec<usize>)>,
     pub(super) show_block_palette: bool,
     pub(super) palette_query: String,

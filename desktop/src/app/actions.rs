@@ -7,8 +7,8 @@ use tokio::sync::broadcast;
 
 use super::events::Message;
 use super::{AppTheme, CreateTarget, EditorMode, MulticodeApp, Screen, UserSettings, ViewMode};
-use multicode_core::{parse_blocks, BlockInfo};
-use crate::visual::palette::DEFAULT_CATEGORY;
+use crate::visual::palette::{PaletteBlock, DEFAULT_CATEGORY};
+use multicode_core::parse_blocks;
 
 impl Application for MulticodeApp {
     type Executor = iced::executor::Default;
@@ -147,18 +147,19 @@ impl Application for MulticodeApp {
     }
 }
 
-fn load_palette() -> (Vec<BlockInfo>, Vec<(String, Vec<usize>)>) {
+fn load_palette() -> (Vec<PaletteBlock>, Vec<(String, Vec<usize>)>) {
     let src = r#"
 fn add(a: i32, b: i32) -> i32 { a + b }
 fn mul(a: i32, b: i32) -> i32 { a * b }
 "#;
-    let blocks = parse_blocks(src.to_string(), "rust".into()).unwrap_or_default();
+    let blocks_raw = parse_blocks(src.to_string(), "rust".into()).unwrap_or_default();
+    let blocks: Vec<PaletteBlock> = blocks_raw.into_iter().map(PaletteBlock::new).collect();
     let mut map: BTreeMap<String, Vec<usize>> = BTreeMap::new();
     for (i, block) in blocks.iter().enumerate() {
-        if block.tags.is_empty() {
+        if block.info.tags.is_empty() {
             map.entry(DEFAULT_CATEGORY.to_string()).or_default().push(i);
         } else {
-            for tag in &block.tags {
+            for tag in &block.info.tags {
                 map.entry(tag.clone()).or_default().push(i);
             }
         }
