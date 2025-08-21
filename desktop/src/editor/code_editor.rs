@@ -7,7 +7,7 @@ use iced::widget::{
     tooltip::{self, Tooltip},
     Column,
 };
-use iced::{Alignment, Color, Element, Length};
+use iced::{theme, Alignment, Color, Element, Length};
 use once_cell::sync::Lazy;
 use syntect::easy::HighlightLines;
 use syntect::highlighting::ThemeSet;
@@ -233,7 +233,26 @@ impl<'a> CodeEditor<'a> {
                 editor.height(Length::Fill).into()
             };
 
-            let editor_column = column![editor_view];
+            let mut editor_column = column![editor_view];
+            if let Some(ac) = self.app.autocomplete() {
+                let items = ac.suggestions.iter().enumerate().fold(
+                    column![]
+                        .spacing(2),
+                    |col, (i, s)| {
+                        let t = if i == ac.selected {
+                            text(&s.label)
+                                .style(theme::Text::Color(Color::from_rgb(0.3, 0.3, 1.0)))
+                        } else {
+                            text(&s.label)
+                        };
+                        col.push(t)
+                    },
+                );
+                let popup = container(items)
+                    .padding(5)
+                    .style(theme::Container::Box);
+                editor_column = editor_column.push(popup);
+            }
             if self.app.settings().show_markdown_preview && ext == "md" {
                 let preview =
                     scrollable(markdown_preview(&file.content)).width(Length::FillPortion(1));

@@ -5,6 +5,7 @@ use crate::app::{
     MulticodeApp, PendingAction, Screen, Tab, TabDragState, ViewMode, EntryType,
 };
 use crate::components::file_manager::{self, ContextMenu};
+use crate::editor::autocomplete::{self, AutocompleteState};
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -85,6 +86,47 @@ impl MulticodeApp {
                     Screen::TextEditor { .. } | Screen::VisualEditor { .. } | Screen::Split { .. }
                 ) {
                     return Command::none();
+                }
+                if self.autocomplete.is_some() {
+                    if !modifiers.control() && !modifiers.alt() {
+                        let mut accept: Option<String> = None;
+                        {
+                            let ac = self.autocomplete.as_mut().unwrap();
+                            match key {
+                                keyboard::Key::Named(keyboard::key::Named::Enter)
+                                | keyboard::Key::Named(keyboard::key::Named::Tab) => {
+                                    if let Some(s) = ac.current() {
+                                        accept = Some(s.insert.clone());
+                                    }
+                                }
+                                keyboard::Key::Named(keyboard::key::Named::ArrowDown) => {
+                                    ac.next();
+                                    return Command::none();
+                                }
+                                keyboard::Key::Named(keyboard::key::Named::ArrowUp) => {
+                                    ac.prev();
+                                    return Command::none();
+                                }
+                                keyboard::Key::Named(keyboard::key::Named::Escape) => {
+                                    self.autocomplete = None;
+                                    return Command::none();
+                                }
+                                _ => {}
+                            }
+                        }
+                        if let Some(text) = accept {
+                            if let Some(f) = self.current_file_mut() {
+                                let insert = Arc::new(text);
+                                f.editor.perform(text_editor::Action::Edit(
+                                    text_editor::Edit::Paste(insert),
+                                ));
+                                f.content = f.editor.text();
+                                f.dirty = true;
+                            }
+                            self.autocomplete = None;
+                            return Command::none();
+                        }
+                    }
                 }
                 if modifiers.control() && modifiers.shift() && !modifiers.alt() {
                     if let keyboard::Key::Character(c) = &key {
@@ -521,19 +563,26 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::AutoComplete => {
-                if let Some(f) = self.current_file_mut() {
-                    if let Some(lang) = detect_lang(&f.path) {
-                        if let Some(tree) = parser::parse(&f.content, lang, None) {
-                            let blocks = parser::parse_to_blocks(&tree);
-                            if let Some(s) = blocks
-                                .iter()
-                                .find(|b| b.kind.starts_with("Function/Define"))
-                            {
-                                f.content.push_str(&format!("\n{}", s.kind));
-                                f.editor = Content::with_text(&f.content);
-                                f.dirty = true;
-                            }
-                        }
+                self.autocomplete = None;
+                if let Some((_line, column, line_text, content)) = self.current_file().map(|f| {
+                    let (l, c) = f.editor.cursor_position();
+                    let lt = f
+                        .editor
+                        .lines()
+                        .nth(l)
+                        .map(|line| line.to_string())
+                        .unwrap_or_default();
+                    (l, c, lt, f.editor.text())
+                }) {
+                    let prefix = line_text[..column]
+                        .chars()
+                        .rev()
+                        .take_while(|ch| ch.is_alphanumeric() || *ch == '_')
+                        .collect::<Vec<_>>();
+                    let prefix: String = prefix.into_iter().rev().collect();
+                    let suggestions = autocomplete::suggestions(&content, &prefix);
+                    if !suggestions.is_empty() {
+                        self.autocomplete = Some(AutocompleteState::new(suggestions));
                     }
                 }
                 Command::none()
