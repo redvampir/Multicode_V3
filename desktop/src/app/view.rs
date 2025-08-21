@@ -9,8 +9,8 @@ use iced::widget::{
 use iced::{alignment, theme, Element, Length};
 
 use super::events::Message;
-use super::ui::THEME_SET;
 use super::{AppTheme, CreateTarget, HotkeyField, Language, MulticodeApp, Screen, ViewMode};
+use crate::editor::{CodeEditor, THEME_SET};
 use crate::components::file_manager;
 
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
@@ -109,7 +109,7 @@ impl MulticodeApp {
                     Space::with_width(Length::Shrink).into()
                 };
 
-                let editor: Element<_> = self.text_editor_component();
+                let editor: Element<_> = CodeEditor::new(self).view();
 
                 let search_panel = self.search_panel_component();
 
@@ -213,7 +213,7 @@ impl MulticodeApp {
                     Space::with_width(Length::Shrink).into()
                 };
 
-                let text_editor = self.text_editor_component();
+                let text_editor = CodeEditor::new(self).view();
                 let visual_editor = self.visual_editor_component();
                 let editor: Element<_> = row![
                     container(text_editor).width(Length::FillPortion(1)),
