@@ -11,6 +11,7 @@ use tokio::{fs, process::Child, sync::broadcast};
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
 use crate::editor::{AutocompleteState, EditorSettings};
+use crate::visual::translations::Language;
 
 mod serde_color {
     use iced::Color;
@@ -323,31 +324,6 @@ impl fmt::Display for AppTheme {
             AppTheme::Light => write!(f, "Light"),
             AppTheme::Dark => write!(f, "Dark"),
             AppTheme::HighContrast => write!(f, "High Contrast"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum Language {
-    English,
-    Russian,
-}
-
-impl Language {
-    pub const ALL: [Language; 2] = [Language::English, Language::Russian];
-}
-
-impl Default for Language {
-    fn default() -> Self {
-        Language::English
-    }
-}
-
-impl fmt::Display for Language {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            Language::English => write!(f, "English"),
-            Language::Russian => write!(f, "Русский"),
         }
     }
 }

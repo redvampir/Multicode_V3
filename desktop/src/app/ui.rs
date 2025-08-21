@@ -198,7 +198,7 @@ impl MulticodeApp {
             .current_file()
             .map(|f| f.blocks.as_slice())
             .unwrap_or(&[]);
-        let canvas_widget = Canvas::new(VisualCanvas::new(blocks))
+        let canvas_widget = Canvas::new(VisualCanvas::new(blocks, self.settings.language))
             .width(Length::Fill)
             .height(Length::Fill);
         let canvas: Element<CanvasMessage> = canvas_widget.into();

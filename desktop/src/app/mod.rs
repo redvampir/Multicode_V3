@@ -10,9 +10,9 @@ mod view;
 
 pub use state::{
     AppTheme, CreateTarget, Diagnostic, EditorMode, EntryType, FileEntry, Hotkey, HotkeyField,
-    Hotkeys, Language, MulticodeApp, PendingAction, Screen, Tab, TabDragState, UserSettings,
-    ViewMode,
+    Hotkeys, MulticodeApp, PendingAction, Screen, Tab, TabDragState, UserSettings, ViewMode,
 };
+pub use crate::visual::translations::Language;
 
 use iced::Application;
 use iced::Settings;
