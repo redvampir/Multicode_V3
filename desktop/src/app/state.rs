@@ -10,7 +10,7 @@ use tokio::{fs, process::Child, sync::broadcast};
 
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
-use crate::editor::autocomplete::AutocompleteState;
+use crate::editor::{AutocompleteState, EditorSettings};
 
 mod serde_color {
     use iced::Color;
@@ -303,10 +303,11 @@ impl Default for EditorMode {
 pub enum AppTheme {
     Light,
     Dark,
+    HighContrast,
 }
 
 impl AppTheme {
-    pub const ALL: [AppTheme; 2] = [AppTheme::Light, AppTheme::Dark];
+    pub const ALL: [AppTheme; 3] = [AppTheme::Light, AppTheme::Dark, AppTheme::HighContrast];
 }
 
 impl Default for AppTheme {
@@ -320,6 +321,7 @@ impl fmt::Display for AppTheme {
         match self {
             AppTheme::Light => write!(f, "Light"),
             AppTheme::Dark => write!(f, "Dark"),
+            AppTheme::HighContrast => write!(f, "High Contrast"),
         }
     }
 }
@@ -381,6 +383,8 @@ pub struct UserSettings {
     pub theme: AppTheme,
     #[serde(default = "default_syntect_theme")]
     pub syntect_theme: String,
+    #[serde(default)]
+    pub editor: EditorSettings,
     #[serde(default = "default_match_color", with = "serde_color")]
     pub match_color: Color,
     #[serde(default = "default_diagnostic_color", with = "serde_color")]
@@ -409,6 +413,7 @@ impl Default for UserSettings {
             editor_mode: EditorMode::Text,
             theme: AppTheme::default(),
             syntect_theme: default_syntect_theme(),
+            editor: EditorSettings::default(),
             match_color: default_match_color(),
             diagnostic_color: default_diagnostic_color(),
             language: Language::default(),

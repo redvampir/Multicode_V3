@@ -3,6 +3,7 @@ use std::path::PathBuf;
 
 use crate::app::diff::DiffView;
 use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language, ViewMode};
+use crate::editor::EditorTheme;
 
 #[derive(Debug, Clone)]
 pub enum Message {
@@ -87,6 +88,12 @@ pub enum Message {
     ThemeSelected(AppTheme),
     SyntectThemeSelected(String),
     LanguageSelected(Language),
+    FontSizeChanged(String),
+    TabWidthChanged(String),
+    ToggleAutoIndent(bool),
+    ToggleLineWrapping(bool),
+    ToggleHighlightCurrentLine(bool),
+    EditorThemeSelected(EditorTheme),
     ToggleLineNumbers(bool),
     ToggleStatusBar(bool),
     ToggleToolbar(bool),

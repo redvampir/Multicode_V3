@@ -223,6 +223,34 @@ impl MulticodeApp {
                 self.settings.language = lang;
                 Command::none()
             }
+            Message::FontSizeChanged(value) => {
+                if let Ok(v) = value.parse() {
+                    self.settings.editor.font_size = v;
+                }
+                Command::none()
+            }
+            Message::TabWidthChanged(value) => {
+                if let Ok(v) = value.parse() {
+                    self.settings.editor.tab_width = v;
+                }
+                Command::none()
+            }
+            Message::ToggleAutoIndent(val) => {
+                self.settings.editor.auto_indent = val;
+                Command::none()
+            }
+            Message::ToggleLineWrapping(val) => {
+                self.settings.editor.line_wrapping = val;
+                Command::none()
+            }
+            Message::ToggleHighlightCurrentLine(val) => {
+                self.settings.editor.highlight_current_line = val;
+                Command::none()
+            }
+            Message::EditorThemeSelected(theme) => {
+                self.settings.editor.theme = theme;
+                Command::none()
+            }
             Message::ToggleLineNumbers(value) => {
                 self.settings.show_line_numbers = value;
                 Command::none()

@@ -10,7 +10,7 @@ use iced::{alignment, theme, Element, Length};
 
 use super::events::Message;
 use super::{AppTheme, CreateTarget, HotkeyField, Language, MulticodeApp, Screen, ViewMode};
-use crate::editor::{CodeEditor, THEME_SET};
+use crate::editor::{CodeEditor, EditorTheme, THEME_SET};
 use crate::components::file_manager;
 
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
@@ -483,6 +483,53 @@ impl MulticodeApp {
                         text("Предпросмотр Markdown"),
                         checkbox("", self.settings.show_markdown_preview)
                             .on_toggle(Message::ToggleMarkdownPreview),
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Размер шрифта"),
+                        text_input(
+                            "",
+                            &self.settings.editor.font_size.to_string()
+                        )
+                        .on_input(Message::FontSizeChanged)
+                        .width(Length::Fixed(50.0)),
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Ширина табуляции"),
+                        text_input(
+                            "",
+                            &self.settings.editor.tab_width.to_string()
+                        )
+                        .on_input(Message::TabWidthChanged)
+                        .width(Length::Fixed(50.0)),
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Автоотступы"),
+                        checkbox("", self.settings.editor.auto_indent)
+                            .on_toggle(Message::ToggleAutoIndent),
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Перенос строк"),
+                        checkbox("", self.settings.editor.line_wrapping)
+                            .on_toggle(Message::ToggleLineWrapping),
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Подсветка строки"),
+                        checkbox("", self.settings.editor.highlight_current_line)
+                            .on_toggle(Message::ToggleHighlightCurrentLine),
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Тема редактора"),
+                        pick_list(
+                            &EditorTheme::ALL[..],
+                            Some(self.settings.editor.theme),
+                            Message::EditorThemeSelected
+                        ),
                     ]
                     .spacing(10),
                     row![

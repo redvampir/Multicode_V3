@@ -129,6 +129,7 @@ impl Application for MulticodeApp {
         match self.settings.theme {
             AppTheme::Light => Theme::Light,
             AppTheme::Dark => Theme::Dark,
+            AppTheme::HighContrast => Theme::Dark,
         }
     }
 
