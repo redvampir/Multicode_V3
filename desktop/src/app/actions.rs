@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{BTreeMap, HashSet};
 use std::path::PathBuf;
 
 use iced::futures::stream;
@@ -8,6 +8,7 @@ use tokio::sync::broadcast;
 use super::events::Message;
 use super::{AppTheme, CreateTarget, EditorMode, MulticodeApp, Screen, UserSettings, ViewMode};
 use multicode_core::{parse_blocks, BlockInfo};
+use crate::visual::palette::DEFAULT_CATEGORY;
 
 impl Application for MulticodeApp {
     type Executor = iced::executor::Default;
@@ -22,6 +23,7 @@ impl Application for MulticodeApp {
         }
         let (sender, _) = broadcast::channel(100);
         let fav_files = settings.favorites.clone();
+        let (palette, palette_categories) = load_palette();
 
         let (screen, view_mode) = if let Some(path) = settings.last_folders.first().cloned() {
             match settings.editor_mode {
@@ -79,7 +81,8 @@ impl Application for MulticodeApp {
             autocomplete: None,
             show_meta_panel: false,
             tab_drag: None,
-            palette: load_palette(),
+            palette,
+            palette_categories,
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
@@ -144,10 +147,21 @@ impl Application for MulticodeApp {
     }
 }
 
-fn load_palette() -> Vec<BlockInfo> {
+fn load_palette() -> (Vec<BlockInfo>, Vec<(String, Vec<usize>)>) {
     let src = r#"
 fn add(a: i32, b: i32) -> i32 { a + b }
 fn mul(a: i32, b: i32) -> i32 { a * b }
 "#;
-    parse_blocks(src.to_string(), "rust".into()).unwrap_or_default()
+    let blocks = parse_blocks(src.to_string(), "rust".into()).unwrap_or_default();
+    let mut map: BTreeMap<String, Vec<usize>> = BTreeMap::new();
+    for (i, block) in blocks.iter().enumerate() {
+        if block.tags.is_empty() {
+            map.entry(DEFAULT_CATEGORY.to_string()).or_default().push(i);
+        } else {
+            for tag in &block.tags {
+                map.entry(tag.clone()).or_default().push(i);
+            }
+        }
+    }
+    (blocks, map.into_iter().collect())
 }

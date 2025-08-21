@@ -98,6 +98,7 @@ pub struct MulticodeApp {
     pub(super) show_meta_panel: bool,
     pub(super) tab_drag: Option<TabDragState>,
     pub(super) palette: Vec<BlockInfo>,
+    pub(super) palette_categories: Vec<(String, Vec<usize>)>,
     pub(super) show_block_palette: bool,
     pub(super) palette_query: String,
     pub(super) palette_drag: Option<BlockInfo>,

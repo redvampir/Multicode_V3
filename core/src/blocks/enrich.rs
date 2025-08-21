@@ -35,6 +35,7 @@ pub fn enrich_blocks(blocks: Vec<Block>, content: &str) -> Vec<BlockInfo> {
                 x: pos.map(|m| m.x).unwrap_or(0.0),
                 y: pos.map(|m| m.y).unwrap_or(0.0),
                 ai: pos.and_then(|m| m.ai.clone()),
+                tags: pos.map(|m| m.tags.clone()).unwrap_or_default(),
                 links: pos.map(|m| m.links.clone()).unwrap_or_default(),
             }
         })

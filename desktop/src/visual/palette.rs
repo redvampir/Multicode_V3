@@ -3,6 +3,7 @@ use iced::{theme, Color, Element, Length};
 use multicode_core::BlockInfo;
 
 use super::translations::Language;
+use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
 pub enum PaletteMessage {
@@ -12,62 +13,29 @@ pub enum PaletteMessage {
     Close,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum BlockCategory {
-    Arithmetic,
-    Conditional,
-    Loops,
-    Variables,
-    Functions,
-}
+pub const DEFAULT_CATEGORY: &str = "Other";
 
-impl BlockCategory {
-    pub const ALL: [BlockCategory; 5] = [
-        BlockCategory::Arithmetic,
-        BlockCategory::Conditional,
-        BlockCategory::Loops,
-        BlockCategory::Variables,
-        BlockCategory::Functions,
-    ];
-
-    pub fn title(self, lang: Language) -> &'static str {
-        match (self, lang) {
-            (BlockCategory::Arithmetic, Language::Russian) => "Арифметика",
-            (BlockCategory::Conditional, Language::Russian) => "Условия",
-            (BlockCategory::Loops, Language::Russian) => "Циклы",
-            (BlockCategory::Variables, Language::Russian) => "Переменные",
-            (BlockCategory::Functions, Language::Russian) => "Функции",
-            (BlockCategory::Arithmetic, Language::English) => "Arithmetic",
-            (BlockCategory::Conditional, Language::English) => "Condition",
-            (BlockCategory::Loops, Language::English) => "Loops",
-            (BlockCategory::Variables, Language::English) => "Variables",
-            (BlockCategory::Functions, Language::English) => "Functions",
-        }
-    }
-
-    pub fn matches(self, kind: &str) -> bool {
-        match (self, kind) {
-            (BlockCategory::Arithmetic, "Add")
-            | (BlockCategory::Arithmetic, "Subtract")
-            | (BlockCategory::Arithmetic, "Multiply")
-            | (BlockCategory::Arithmetic, "Divide") => true,
-            (BlockCategory::Conditional, "If")
-            | (BlockCategory::Conditional, "ElseIf")
-            | (BlockCategory::Conditional, "Else") => true,
-            (BlockCategory::Loops, "For")
-            | (BlockCategory::Loops, "While")
-            | (BlockCategory::Loops, "Loop") => true,
-            (BlockCategory::Variables, "Set") | (BlockCategory::Variables, "Get") => true,
-            (BlockCategory::Functions, "Define")
-            | (BlockCategory::Functions, "Call")
-            | (BlockCategory::Functions, "Return") => true,
-            _ => false,
-        }
+fn category_title(cat: &str, lang: Language) -> String {
+    match (cat, lang) {
+        ("Arithmetic", Language::Russian) => "Арифметика".into(),
+        ("Conditional", Language::Russian) | ("Condition", Language::Russian) => "Условия".into(),
+        ("Loops", Language::Russian) | ("Loop", Language::Russian) => "Циклы".into(),
+        ("Variables", Language::Russian) | ("Variable", Language::Russian) => "Переменные".into(),
+        ("Functions", Language::Russian) | ("Function", Language::Russian) => "Функции".into(),
+        ("Other", Language::Russian) => "Прочее".into(),
+        ("Arithmetic", Language::English) => "Arithmetic".into(),
+        ("Conditional", Language::English) | ("Condition", Language::English) => "Condition".into(),
+        ("Loops", Language::English) | ("Loop", Language::English) => "Loops".into(),
+        ("Variables", Language::English) | ("Variable", Language::English) => "Variables".into(),
+        ("Functions", Language::English) | ("Function", Language::English) => "Functions".into(),
+        ("Other", Language::English) => "Other".into(),
+        _ => cat.to_string(),
     }
 }
 
 pub struct BlockPalette<'a> {
     blocks: &'a [BlockInfo],
+    categories: &'a [(String, Vec<usize>)],
     favorites: &'a [String],
     query: &'a str,
     language: Language,
@@ -76,12 +44,14 @@ pub struct BlockPalette<'a> {
 impl<'a> BlockPalette<'a> {
     pub fn new(
         blocks: &'a [BlockInfo],
+        categories: &'a [(String, Vec<usize>)],
         favorites: &'a [String],
         query: &'a str,
         language: Language,
     ) -> Self {
         Self {
             blocks,
+            categories,
             favorites,
             query,
             language,
@@ -107,6 +77,7 @@ impl<'a> BlockPalette<'a> {
         let search = text_input("search", self.query).on_input(PaletteMessage::SearchChanged);
 
         let indices = self.filter_indices();
+        let index_set: HashSet<_> = indices.iter().copied().collect();
         let mut col = column![];
 
         if !self.favorites.is_empty() {
@@ -147,14 +118,14 @@ impl<'a> BlockPalette<'a> {
             }
         }
 
-        for cat in BlockCategory::ALL.iter().copied() {
-            let cat_blocks: Vec<_> = indices
+        for (cat, cat_indices) in self.categories.iter() {
+            let cat_blocks: Vec<_> = cat_indices
                 .iter()
                 .copied()
-                .filter(|i| cat.matches(&self.blocks[*i].kind))
+                .filter(|i| index_set.contains(i))
                 .collect();
             if !cat_blocks.is_empty() {
-                col = col.push(text(cat.title(self.language)));
+                col = col.push(text(category_title(cat, self.language)));
                 for i in cat_blocks {
                     let name = self.blocks[i]
                         .translations

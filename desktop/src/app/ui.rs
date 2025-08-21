@@ -308,6 +308,7 @@ impl MulticodeApp {
         }
         let pal: Element<_> = BlockPalette::new(
             &self.palette,
+            &self.palette_categories,
             &self.settings.block_favorites,
             &self.palette_query,
             self.settings.language,
@@ -412,6 +413,7 @@ mod tests {
             show_meta_panel: false,
             tab_drag: None,
             palette: Vec::new(),
+            palette_categories: Vec::new(),
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
