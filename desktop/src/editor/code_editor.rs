@@ -36,7 +36,7 @@ fn load_highlighting(
     (syntax, theme)
 }
 
-fn markdown_preview(content: &str) -> Column<Element<Message>> {
+pub(super) fn markdown_preview(content: &str) -> Column<'static, Message> {
     use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
 
     let parser = Parser::new(content);
