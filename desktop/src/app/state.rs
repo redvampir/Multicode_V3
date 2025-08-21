@@ -101,7 +101,6 @@ pub struct MulticodeApp {
     pub(super) show_block_palette: bool,
     pub(super) palette_query: String,
     pub(super) palette_drag: Option<BlockInfo>,
-    pub(super) block_favorites: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -383,6 +382,8 @@ pub struct UserSettings {
     pub show_markdown_preview: bool,
     #[serde(default)]
     pub favorites: Vec<PathBuf>,
+    #[serde(default)]
+    pub block_favorites: Vec<String>,
 }
 
 impl Default for UserSettings {
@@ -404,6 +405,7 @@ impl Default for UserSettings {
             show_toolbar: true,
             show_markdown_preview: false,
             favorites: Vec::new(),
+            block_favorites: Vec::new(),
         }
     }
 }

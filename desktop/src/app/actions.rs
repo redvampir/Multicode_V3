@@ -82,7 +82,6 @@ impl Application for MulticodeApp {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
-            block_favorites: Vec::new(),
         };
 
         let cmd = match &app.screen {
