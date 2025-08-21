@@ -1,13 +1,14 @@
-use iced::widget::{column, scrollable, text, text_input, MouseArea};
-use iced::{Element, Length};
+use iced::widget::{column, row, scrollable, text, text_input, MouseArea};
+use iced::{theme, Color, Element, Length};
 use multicode_core::BlockInfo;
 
-use super::translations::{Language};
+use super::translations::Language;
 
 #[derive(Debug, Clone)]
 pub enum PaletteMessage {
     SearchChanged(String),
     StartDrag(usize),
+    ToggleFavorite(usize),
     Close,
 }
 
@@ -122,14 +123,25 @@ impl<'a> BlockPalette<'a> {
                 };
                 col = col.push(text(title));
                 for i in fav_blocks {
-                    let name = self
-                        .blocks[i]
+                    let name = self.blocks[i]
                         .translations
                         .get(self.language.code())
                         .cloned()
                         .unwrap_or_else(|| self.blocks[i].kind.clone());
+                    let fav = self.favorites.contains(&self.blocks[i].kind);
+                    let star = if fav { "★" } else { "☆" };
+                    let star_txt = text(star);
+                    let star_txt = if fav {
+                        star_txt.style(theme::Text::Color(Color::from_rgb(1.0, 0.8, 0.0)))
+                    } else {
+                        star_txt
+                    };
                     col = col.push(
-                        MouseArea::new(text(name)).on_press(PaletteMessage::StartDrag(i)),
+                        row![
+                            MouseArea::new(star_txt).on_press(PaletteMessage::ToggleFavorite(i)),
+                            MouseArea::new(text(name)).on_press(PaletteMessage::StartDrag(i)),
+                        ]
+                        .spacing(5),
                     );
                 }
             }
@@ -144,14 +156,25 @@ impl<'a> BlockPalette<'a> {
             if !cat_blocks.is_empty() {
                 col = col.push(text(cat.title(self.language)));
                 for i in cat_blocks {
-                    let name = self
-                        .blocks[i]
+                    let name = self.blocks[i]
                         .translations
                         .get(self.language.code())
                         .cloned()
                         .unwrap_or_else(|| self.blocks[i].kind.clone());
+                    let fav = self.favorites.contains(&self.blocks[i].kind);
+                    let star = if fav { "★" } else { "☆" };
+                    let star_txt = text(star);
+                    let star_txt = if fav {
+                        star_txt.style(theme::Text::Color(Color::from_rgb(1.0, 0.8, 0.0)))
+                    } else {
+                        star_txt
+                    };
                     col = col.push(
-                        MouseArea::new(text(name)).on_press(PaletteMessage::StartDrag(i)),
+                        row![
+                            MouseArea::new(star_txt).on_press(PaletteMessage::ToggleFavorite(i)),
+                            MouseArea::new(text(name)).on_press(PaletteMessage::StartDrag(i)),
+                        ]
+                        .spacing(5),
                     );
                 }
             }
@@ -175,4 +198,3 @@ fn matches_block(block: &BlockInfo, q: &str) -> bool {
         .unwrap_or_default();
     en.contains(q) || ru.contains(q) || block.kind.to_lowercase().contains(q)
 }
-

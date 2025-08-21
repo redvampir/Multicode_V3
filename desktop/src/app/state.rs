@@ -383,6 +383,8 @@ pub struct UserSettings {
     pub show_markdown_preview: bool,
     #[serde(default)]
     pub favorites: Vec<PathBuf>,
+    #[serde(default)]
+    pub block_favorites: Vec<String>,
 }
 
 impl Default for UserSettings {
@@ -404,6 +406,7 @@ impl Default for UserSettings {
             show_toolbar: true,
             show_markdown_preview: false,
             favorites: Vec::new(),
+            block_favorites: Vec::new(),
         }
     }
 }
@@ -472,7 +475,10 @@ impl MulticodeApp {
     }
 
     pub fn is_visual_mode(&self) -> bool {
-        matches!(self.screen, Screen::VisualEditor { .. } | Screen::Split { .. })
+        matches!(
+            self.screen,
+            Screen::VisualEditor { .. } | Screen::Split { .. }
+        )
     }
 
     /// Возвращает путь к корню проекта, если он выбран
