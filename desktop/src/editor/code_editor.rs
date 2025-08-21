@@ -5,6 +5,7 @@ use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::{
     button, column, container, row, scrollable, text, text_editor,
     tooltip::{self, Tooltip},
+    Column,
 };
 use iced::{Alignment, Color, Element, Length};
 use once_cell::sync::Lazy;
@@ -33,6 +34,54 @@ fn load_highlighting(
         .get(theme)
         .unwrap_or(&THEME_SET.themes["InspiredGitHub"]);
     (syntax, theme)
+}
+
+fn markdown_preview(content: &str) -> Column<Element<Message>> {
+    use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
+
+    let parser = Parser::new(content);
+    let mut elements: Vec<Element<Message>> = Vec::new();
+    let mut buf = String::new();
+    let mut heading = None;
+
+    for event in parser {
+        match event {
+            Event::Start(Tag::Heading(level, _, _)) => {
+                buf.clear();
+                heading = Some(level);
+            }
+            Event::End(Tag::Heading(_, _, _)) => {
+                let size = match heading.unwrap_or(HeadingLevel::H1) {
+                    HeadingLevel::H1 => 30.0,
+                    HeadingLevel::H2 => 26.0,
+                    HeadingLevel::H3 => 22.0,
+                    _ => 20.0,
+                };
+                elements.push(text(buf.clone()).size(size).into());
+                buf.clear();
+                heading = None;
+            }
+            Event::Start(Tag::Paragraph) => buf.clear(),
+            Event::End(Tag::Paragraph) => {
+                elements.push(text(buf.clone()).into());
+                buf.clear();
+            }
+            Event::Start(Tag::Item) => buf.push_str("• "),
+            Event::End(Tag::Item) => {
+                elements.push(text(buf.clone()).into());
+                buf.clear();
+            }
+            Event::Text(t) | Event::Code(t) => buf.push_str(&t),
+            Event::SoftBreak | Event::HardBreak => buf.push('\n'),
+            _ => {}
+        }
+    }
+
+    if !buf.is_empty() {
+        elements.push(text(buf).into());
+    }
+
+    column(elements).spacing(5)
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -184,47 +233,8 @@ impl<'a> CodeEditor<'a> {
 
             let editor_column = column![editor_view];
             if self.app.settings().show_markdown_preview && ext == "md" {
-                use pulldown_cmark::{Event, HeadingLevel, Parser, Tag};
-                let parser = Parser::new(&file.content);
-                let mut elements: Vec<Element<Message>> = Vec::new();
-                let mut buf = String::new();
-                let mut heading = None;
-                for event in parser {
-                    match event {
-                        Event::Start(Tag::Heading(level, _, _)) => {
-                            buf.clear();
-                            heading = Some(level);
-                        }
-                        Event::End(Tag::Heading(_, _, _)) => {
-                            let size = match heading.unwrap_or(HeadingLevel::H1) {
-                                HeadingLevel::H1 => 30.0,
-                                HeadingLevel::H2 => 26.0,
-                                HeadingLevel::H3 => 22.0,
-                                _ => 20.0,
-                            };
-                            elements.push(text(buf.clone()).size(size).into());
-                            buf.clear();
-                            heading = None;
-                        }
-                        Event::Start(Tag::Paragraph) => buf.clear(),
-                        Event::End(Tag::Paragraph) => {
-                            elements.push(text(buf.clone()).into());
-                            buf.clear();
-                        }
-                        Event::Start(Tag::Item) => buf.push_str("• "),
-                        Event::End(Tag::Item) => {
-                            elements.push(text(buf.clone()).into());
-                            buf.clear();
-                        }
-                        Event::Text(t) | Event::Code(t) => buf.push_str(&t),
-                        Event::SoftBreak | Event::HardBreak => buf.push('\n'),
-                        _ => {}
-                    }
-                }
-                if !buf.is_empty() {
-                    elements.push(text(buf).into());
-                }
-                let preview = scrollable(column(elements).spacing(5)).width(Length::FillPortion(1));
+                let preview =
+                    scrollable(markdown_preview(&file.content)).width(Length::FillPortion(1));
                 let main = row![editor_column.width(Length::FillPortion(1)), preview].spacing(5);
                 if self.app.show_meta_panel() {
                     row![
