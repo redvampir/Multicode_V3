@@ -25,6 +25,8 @@
 - **актуальность** — возраст использованных данных, измеряемый в днях;
 - **востребованность** — частота обращений к узлу за отчётный период.
 
+Каждый узел задаёт собственный `confidence_threshold`, который сравнивается с `quality_metrics.credibility` и определяет, можно ли использовать результат без дополнительной проверки.
+
 ```rust
 struct QualityMetrics {
     credibility: f32,    // 0..1
@@ -43,14 +45,20 @@ struct QualityMetrics {
     "credibility": 0.95,
     "recency_days": 7,
     "demand": 42
-  }
+  },
+  "reasoning_chain": [
+    "fetch sources",
+    "aggregate signals"
+  ],
+  "uncertainty_score": 0.05,
+  "metadata": { "schema": "1.0" }
 }
 ```
 
-Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` — объект с числовыми метриками; отсутствующие показатели опускаются.
+Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` — объект с числовыми метриками; отсутствующие показатели опускаются. `reasoning_chain` фиксирует этапы вывода, а `uncertainty_score` отражает уровень сомнения (`0` — полная уверенность). `metadata.schema` указывает версию формата.
 
 После выполнения `analyze()` узел анализа всегда передаёт рассчитанные
-`QualityMetrics` в связанный `MemoryNode`, например через метод
+`QualityMetrics` и `uncertainty_score` в связанный `MemoryNode`, например через метод
 `push_metrics()`.
 
 Каждый узел должен проверять `cancel_token` перед длительными вычислениями и
@@ -103,6 +111,7 @@ source: "https://example.org"
 | `id` | string | да | Уникальный идентификатор шаблона. |
 | `analysis_type` | string | да | Тип создаваемого узла. |
 | `links` | array&lt;string&gt; | нет, по умолчанию `[]` | Список связей с другими узлами, сериализуется массивом строк. |
+| `confidence_threshold` | number | нет | Минимальная допустимая `credibility` для принятия результата. |
 | `draft_content` | string | нет | Черновое содержимое узла. |
 | `metadata` | object | да | Дополнительные метаданные в формате ключ‑значение. Должно содержать поле `schema`. |
 
@@ -111,6 +120,7 @@ struct NodeTemplate {
     id: String,
     analysis_type: String,
     links: Vec<String>,
+    confidence_threshold: f32,
     draft_content: String,
     metadata: HashMap<String, String>,
 }
@@ -125,10 +135,11 @@ struct NodeTemplate {
 | `id` | `id` |
 | `analysis_type` | `analysis_type` |
 | `links` | `links` |
+| `confidence_threshold` | `confidence_threshold` |
 | `metadata` | `metadata` |
 | `draft_content` | — |
 
-Поля `status`, `confidence_threshold`, `reasoning_chain` и `uncertainty_score` в шаблон не входят, поскольку задаются или вычисляются после ревью.
+Поля `status`, `reasoning_chain` и `uncertainty_score` в шаблон не входят, поскольку задаются или вычисляются после ревью.
 
 **Пример (JSON)**
 

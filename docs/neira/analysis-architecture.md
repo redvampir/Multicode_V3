@@ -32,7 +32,7 @@
 
 ## API узлов
 
-Трейт `AnalysisNode` задаёт минимальный контракт для всех реализаций. Метод `analyze` возвращает структуру `AnalysisResult` с метриками качества и текстовым объяснением, а `explain` выдаёт краткое описание логики узла. Дополнительно интерфейс предоставляет текущий `status` и связи `links`. Регистрация конкретных реализаций производится через `NodeRegistry`.
+Трейт `AnalysisNode` задаёт минимальный контракт для всех реализаций. Метод `analyze` возвращает структуру `AnalysisResult` с метриками качества, оценкой неопределённости и цепочкой рассуждений, а `explain` выдаёт краткое описание логики узла. Дополнительно интерфейс предоставляет текущий `status`, связи `links` и порог `confidence_threshold`, при котором результат считается пригодным к использованию. Регистрация конкретных реализаций производится через `NodeRegistry`.
 
 ```rust
 pub trait AnalysisNode {
@@ -40,12 +40,13 @@ pub trait AnalysisNode {
     fn analysis_type(&self) -> &str;
     fn status(&self) -> NodeStatus;
     fn links(&self) -> &[String];
+    fn confidence_threshold(&self) -> f32;
     fn analyze(&self, input: &str) -> AnalysisResult;
     fn explain(&self) -> String;
 }
 ```
 
-Тип `AnalysisResult` содержит идентификатор, основной текстовый вывод, статус выполнения, метрики качества, цепочку рассуждений, ссылки и текстовое объяснение. Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` передаётся как структура `QualityMetrics { credibility, recency_days, demand }`, где `credibility` лежит в диапазоне `0..1`, `recency_days` измеряется в днях, а `demand` отражает количество запросов. Поле `metadata.schema` фиксирует версию схемы результата.
+Тип `AnalysisResult` содержит идентификатор, основной текстовый вывод, статус выполнения, метрики качества, цепочку рассуждений, показатель неопределённости, ссылки и текстовое объяснение. Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` передаётся как структура `QualityMetrics { credibility, recency_days, demand }`, где `credibility` лежит в диапазоне `0..1`, `recency_days` измеряется в днях, а `demand` отражает количество запросов. Поле `uncertainty_score` числом в диапазоне `0..1` характеризует риск ошибки (`0` — полная уверенность). Поле `metadata.schema` фиксирует версию схемы результата.
 
 ```rust
 pub struct AnalysisResult {
@@ -54,6 +55,7 @@ pub struct AnalysisResult {
     pub status: NodeStatus,
     pub quality_metrics: QualityMetrics,
     pub reasoning_chain: Vec<String>,
+    pub uncertainty_score: f32,
     pub explanation: String,
     pub links: Vec<String>,
     pub metadata: AnalysisMetadata,
@@ -93,25 +95,33 @@ impl AnalysisNode for ComplexityNode {
     fn analysis_type(&self) -> &str { "ComplexityNode" }
     fn status(&self) -> NodeStatus { NodeStatus::Active }
     fn links(&self) -> &[String] { &[] }
+    fn confidence_threshold(&self) -> f32 { 0.75 }
     fn analyze(&self, input: &str) -> AnalysisResult {
-        let score = compute_complexity(input);
+        let (cyclo, cognitive) = compute_complexity(input);
+        let credibility = assess_sources(&[cyclo, cognitive]);
+        let reasoning_chain = vec![
+            format!("cyclomatic: {}", cyclo),
+            format!("cognitive: {}", cognitive),
+            "aggregate metrics".into(),
+        ];
         AnalysisResult {
             id: self.id().into(),
-            output: score.to_string(),
+            output: format!("{};{}", cyclo, cognitive),
             status: NodeStatus::Active,
             quality_metrics: QualityMetrics {
-                credibility: 0.0,
+                credibility,
                 recency_days: 0,
                 demand: 0,
             },
-            reasoning_chain: vec!["compute cyclomatic complexity".into()],
-            explanation: String::from("Оценка цикломатической сложности"),
+            reasoning_chain,
+            uncertainty_score: 1.0 - credibility,
+            explanation: String::from("Комплексная оценка сложности"),
             links: vec![],
             metadata: AnalysisMetadata { schema: "1.0".into() },
         }
     }
     fn explain(&self) -> String {
-        "Оценивает цикломатическую сложность кода".into()
+        "Собирает несколько метрик сложности и проверяет источники".into()
     }
 }
 
