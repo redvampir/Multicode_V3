@@ -45,18 +45,24 @@ pub trait AnalysisNode {
 }
 ```
 
-Тип `AnalysisResult` содержит идентификатор, основной текстовый вывод, статус выполнения, метрики качества, цепочку рассуждений, ссылки и текстовое объяснение. Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` передаётся как объект, где каждая метрика представлена числовым значением. Поле `metadata.schema` фиксирует версию схемы результата.
+Тип `AnalysisResult` содержит идентификатор, основной текстовый вывод, статус выполнения, метрики качества, цепочку рассуждений, ссылки и текстовое объяснение. Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` передаётся как структура `QualityMetrics { credibility, recency_days, demand }`, где `credibility` лежит в диапазоне `0..1`, `recency_days` измеряется в днях, а `demand` отражает количество запросов. Поле `metadata.schema` фиксирует версию схемы результата.
 
 ```rust
 pub struct AnalysisResult {
     pub id: String,
     pub output: String,
     pub status: NodeStatus,
-    pub quality_metrics: HashMap<String, f32>,
+    pub quality_metrics: QualityMetrics,
     pub reasoning_chain: Vec<String>,
     pub explanation: String,
     pub links: Vec<String>,
     pub metadata: AnalysisMetadata,
+}
+
+pub struct QualityMetrics {
+    pub credibility: f32,   // 0..1
+    pub recency_days: u32,  // возраст данных
+    pub demand: u32,        // число запросов
 }
 
 pub struct AnalysisMetadata {
@@ -79,7 +85,6 @@ AnalysisNode
 ## Пример расширения на Rust
 
 ```rust
-use std::collections::HashMap;
 
 pub struct ComplexityNode;
 
@@ -94,7 +99,11 @@ impl AnalysisNode for ComplexityNode {
             id: self.id().into(),
             output: score.to_string(),
             status: NodeStatus::Active,
-            quality_metrics: HashMap::from([(String::from("score"), score)]),
+            quality_metrics: QualityMetrics {
+                credibility: 0.0,
+                recency_days: 0,
+                demand: 0,
+            },
             reasoning_chain: vec!["compute cyclomatic complexity".into()],
             explanation: String::from("Оценка цикломатической сложности"),
             links: vec![],
