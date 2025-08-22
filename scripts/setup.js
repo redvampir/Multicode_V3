@@ -31,8 +31,8 @@ async function pathExists(p) {
   }
 }
 
-async function getWorkspaceDirs(rootDir, patterns) {
-  const dirs = [];
+async function getWorkspaceDirs(rootDir, patterns, log = console.log) {
+  const tasks = [];
   for (const pattern of patterns) {
     if (pattern.endsWith('/*')) {
       const base = pattern.slice(0, -2);
@@ -41,21 +41,37 @@ async function getWorkspaceDirs(rootDir, patterns) {
       const entries = await fsp.readdir(baseDir);
       for (const entry of entries) {
         const wsDir = path.join(baseDir, entry);
-        if (
-          (await pathExists(path.join(wsDir, 'package.json')))
-          && (await fsp.stat(wsDir)).isDirectory()
-        ) {
-          dirs.push(wsDir);
-        }
+        tasks.push(
+          (async () => {
+            try {
+              const stat = await fsp.stat(wsDir);
+              if (!stat.isDirectory()) return null;
+              await fsp.readFile(path.join(wsDir, 'package.json'), 'utf8');
+              return wsDir;
+            } catch (err) {
+              log(`Failed to read package.json in ${wsDir}: ${err.message}`);
+              return null;
+            }
+          })()
+        );
       }
     } else {
       const wsDir = path.join(rootDir, pattern);
-      if (await pathExists(path.join(wsDir, 'package.json'))) {
-        dirs.push(wsDir);
-      }
+      tasks.push(
+        (async () => {
+          try {
+            await fsp.readFile(path.join(wsDir, 'package.json'), 'utf8');
+            return wsDir;
+          } catch (err) {
+            log(`Failed to read package.json in ${wsDir}: ${err.message}`);
+            return null;
+          }
+        })()
+      );
     }
   }
-  return dirs;
+  const results = await Promise.all(tasks);
+  return results.filter(Boolean);
 }
 
 function ensureRustupDistServer(log) {
@@ -87,7 +103,7 @@ async function main() {
     await runRustCommand('rustc', ['--version'], log);
     const pkgPath = path.join(rootDir, 'package.json');
     const rootPkg = JSON.parse(await fsp.readFile(pkgPath, 'utf8'));
-    const workspaces = await getWorkspaceDirs(rootDir, rootPkg.workspaces || []);
+    const workspaces = await getWorkspaceDirs(rootDir, rootPkg.workspaces || [], log);
     workspaces.unshift(rootDir);
 
     const missing = {};
