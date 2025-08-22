@@ -1535,6 +1535,10 @@ impl MulticodeApp {
                 self.show_terminal_help = !self.show_terminal_help;
                 Command::none()
             }
+            Message::LogLevelSelected(level) => {
+                self.min_log_level = level;
+                Command::none()
+            }
             Message::OpenDiff(left, right, ignore_ws) => {
                 self.loading = true;
                 let left_path = left.clone();

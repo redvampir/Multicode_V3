@@ -1,13 +1,14 @@
 use iced::widget::canvas::Canvas;
 use iced::widget::svg::{Handle, Svg};
 use iced::widget::{
-    button, checkbox, column, container, row, scrollable, text, text_input, MouseArea, Space,
+    button, checkbox, column, container, pick_list, row, scrollable, text, text_input, MouseArea,
+    Space,
 };
 use iced::{Element, Length};
 
 use crate::app::diff::DiffView;
 use crate::app::events::Message;
-use crate::app::{command_palette::COMMANDS, format_log, MulticodeApp};
+use crate::app::{command_palette::COMMANDS, format_log, LogLevel, MulticodeApp};
 use crate::modal::Modal;
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::palette::{BlockPalette, PaletteMessage};
@@ -243,8 +244,10 @@ impl MulticodeApp {
             return Space::with_height(Length::Shrink).into();
         }
         let output = scrollable(column(
-            self.log
+            self
+                .log
                 .iter()
+                .filter(|e| e.level >= self.min_log_level)
                 .map(|e| text(format_log(e, self.settings.language)).into())
                 .collect::<Vec<Element<Message>>>(),
         ))
@@ -257,9 +260,22 @@ impl MulticodeApp {
         let help_btn = button("Справка").on_press(Message::ShowTerminalHelp);
         let translate_btn = button("Перевести")
             .on_press(Message::LanguageSelected(self.settings.language.next()));
+        let level_pick = pick_list(
+            &LogLevel::ALL[..],
+            Some(self.min_log_level),
+            Message::LogLevelSelected,
+        );
         column![
             output,
-            row![input, clear_btn, stop_btn, help_btn, translate_btn].spacing(5)
+            row![
+                input,
+                clear_btn,
+                stop_btn,
+                help_btn,
+                translate_btn,
+                level_pick
+            ]
+            .spacing(5)
         ]
         .spacing(5)
         .into()
@@ -348,7 +364,7 @@ impl MulticodeApp {
 
 #[cfg(test)]
 mod tests {
-    use super::super::{CreateTarget, MulticodeApp, Screen, UserSettings, ViewMode};
+    use super::super::{CreateTarget, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
     use crate::components::file_manager::ContextMenu;
     use std::collections::HashSet;
     use std::path::PathBuf;
@@ -387,6 +403,7 @@ mod tests {
             query: String::new(),
             show_command_palette: false,
             log: Vec::new(),
+            min_log_level: LogLevel::Info,
             project_search_results: Vec::new(),
             goto_line: None,
             show_terminal: false,

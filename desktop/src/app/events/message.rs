@@ -2,7 +2,9 @@ use iced::{widget::text_editor, Event};
 use std::path::PathBuf;
 
 use crate::app::diff::DiffView;
-use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language, ViewMode};
+use crate::app::{
+    AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language, LogLevel, ViewMode,
+};
 use crate::editor::EditorTheme;
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::palette::PaletteMessage;
@@ -117,6 +119,7 @@ pub enum Message {
     TerminalCmdChanged(String),
     RunTerminalCmd(String),
     ShowTerminalHelp,
+    LogLevelSelected(LogLevel),
     OpenDiff(PathBuf, PathBuf, bool),
     OpenGitDiff(PathBuf, String, bool),
     DiffLoaded(Result<DiffView, String>),
