@@ -1,6 +1,7 @@
 pub mod blocks;
 pub mod canvas;
 pub mod palette;
+pub mod serialization;
 pub mod translations;
 
 #[cfg(test)]
