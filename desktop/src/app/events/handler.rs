@@ -64,6 +64,12 @@ impl MulticodeApp {
                             }
                         }
                     }
+                    CanvasMessage::ConnectionCreated(conn) => {
+                        if let Some(tab) = self.current_file_mut() {
+                            tab.connections.push(conn);
+                            tab.dirty = true;
+                        }
+                    }
                     CanvasMessage::TogglePalette => {
                         self.show_block_palette = !self.show_block_palette;
                         if !self.show_block_palette {
@@ -781,6 +787,7 @@ impl MulticodeApp {
                     blame: HashMap::new(),
                     diagnostics,
                     blocks,
+                    connections: Vec::new(),
                     meta,
                     undo_stack: VecDeque::new(),
                     redo_stack: VecDeque::new(),
@@ -1008,6 +1015,7 @@ impl MulticodeApp {
                     blame: HashMap::new(),
                     diagnostics: Vec::new(),
                     blocks: Vec::new(),
+                    connections: Vec::new(),
                     meta: None,
                     undo_stack: VecDeque::new(),
                     redo_stack: VecDeque::new(),

@@ -10,16 +10,7 @@ use multicode_core::BlockInfo;
 
 pub const BLOCK_WIDTH: f32 = 120.0;
 pub const BLOCK_HEIGHT: f32 = 40.0;
-
-#[derive(Debug, Clone)]
-pub enum CanvasMessage {
-    Pan { delta: Vector },
-    Zoom { factor: f32, center: Point },
-    BlockSelected(Option<usize>),
-    BlockDragged { index: usize, position: Point },
-    Dropped { position: Point },
-    TogglePalette,
-}
+const PORT_RADIUS: f32 = 5.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataType {
@@ -35,6 +26,17 @@ pub struct Connection {
     pub data_type: DataType,
 }
 
+#[derive(Debug, Clone)]
+pub enum CanvasMessage {
+    Pan { delta: Vector },
+    Zoom { factor: f32, center: Point },
+    BlockSelected(Option<usize>),
+    BlockDragged { index: usize, position: Point },
+    Dropped { position: Point },
+    TogglePalette,
+    ConnectionCreated(Connection),
+}
+
 pub struct VisualCanvas<'a> {
     blocks: &'a [BlockInfo],
     connections: &'a [Connection],
@@ -46,6 +48,7 @@ pub struct State {
     scale: f32,
     selected: Option<usize>,
     drag: Option<Drag>,
+    connection: Option<ConnectionDrag>,
     panning: bool,
     last_cursor: Point,
     connections: RefCell<Vec<PreparedConnection>>,
@@ -57,6 +60,16 @@ pub struct State {
 struct Drag {
     index: usize,
     grab: Vector,
+}
+
+#[derive(Debug, Clone)]
+struct ConnectionDrag {
+    from_block: usize,
+    from_port: usize,
+    start: Point,
+    current: Point,
+    hover: Option<(usize, usize)>,
+    data_type: DataType,
 }
 
 #[derive(Clone)]
@@ -73,6 +86,7 @@ impl Default for State {
             scale: 1.0,
             selected: None,
             drag: None,
+            connection: None,
             panning: false,
             last_cursor: Point::ORIGIN,
             connections: RefCell::new(Vec::new()),
@@ -99,6 +113,23 @@ fn contains(block: &BlockInfo, pos: Point) -> bool {
         && pos.y <= block.y as f32 + BLOCK_HEIGHT
 }
 
+fn find_port(blocks: &[BlockInfo], pos: Point, output: bool) -> Option<(usize, usize, Point)> {
+    for (bi, block) in blocks.iter().enumerate() {
+        for (pi, port) in block.ports.iter().enumerate() {
+            let port_pos = Point::new((block.x + port.x) as f32, (block.y + port.y) as f32);
+            let dx = pos.x - port_pos.x;
+            let dy = pos.y - port_pos.y;
+            if dx * dx + dy * dy <= PORT_RADIUS * PORT_RADIUS {
+                let is_output = port.x >= (BLOCK_WIDTH - PORT_RADIUS * 2.0) as f64;
+                if is_output == output {
+                    return Some((bi, pi, port_pos));
+                }
+            }
+        }
+    }
+    None
+}
+
 impl State {
     fn update_connections(&self, blocks: &[BlockInfo], connections: &[Connection]) {
         let current_blocks: Vec<(f64, f64)> = blocks.iter().map(|b| (b.x, b.y)).collect();
@@ -110,10 +141,9 @@ impl State {
                 if let (Some(from_block), Some(to_block)) =
                     (blocks.get(c.from.0), blocks.get(c.to.0))
                 {
-                    if let (Some(from_port), Some(to_port)) = (
-                        from_block.ports.get(c.from.1),
-                        to_block.ports.get(c.to.1),
-                    ) {
+                    if let (Some(from_port), Some(to_port)) =
+                        (from_block.ports.get(c.from.1), to_block.ports.get(c.to.1))
+                    {
                         let start = Point::new(
                             (from_block.x + from_port.x) as f32,
                             (from_block.y + from_port.y) as f32,
@@ -183,6 +213,21 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                                 (pos.x - state.offset.x) / state.scale,
                                 (pos.y - state.offset.y) / state.scale,
                             );
+                            if state.connection.is_none() {
+                                if let Some((b, p, start)) =
+                                    find_port(self.blocks, canvas_pos, true)
+                                {
+                                    state.connection = Some(ConnectionDrag {
+                                        from_block: b,
+                                        from_port: p,
+                                        start,
+                                        current: start,
+                                        hover: None,
+                                        data_type: DataType::Number,
+                                    });
+                                    return (canvas::event::Status::Captured, None);
+                                }
+                            }
                             if let Some((idx, block)) = self
                                 .blocks
                                 .iter()
@@ -219,6 +264,21 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
             }
             Event::Mouse(mouse::Event::ButtonReleased(button)) => match button {
                 mouse::Button::Left => {
+                    if let Some(conn) = state.connection.take() {
+                        if let Some((to_block, to_port)) = conn.hover {
+                            let connection = Connection {
+                                from: (conn.from_block, conn.from_port),
+                                to: (to_block, to_port),
+                                data_type: conn.data_type,
+                            };
+                            return (
+                                canvas::event::Status::Captured,
+                                Some(CanvasMessage::ConnectionCreated(connection)),
+                            );
+                        } else {
+                            return (canvas::event::Status::Captured, None);
+                        }
+                    }
                     if let Some(drag) = state.drag.take() {
                         if let Some(pos) = cursor.position_in(bounds) {
                             let canvas_pos = Point::new(
@@ -267,6 +327,16 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                             Some(CanvasMessage::Pan { delta }),
                         );
                     }
+                    if let Some(conn) = state.connection.as_mut() {
+                        let canvas_pos = Point::new(
+                            (pos.x - state.offset.x) / state.scale,
+                            (pos.y - state.offset.y) / state.scale,
+                        );
+                        conn.current = canvas_pos;
+                        conn.hover =
+                            find_port(self.blocks, canvas_pos, false).map(|(b, p, _)| (b, p));
+                        return (canvas::event::Status::Captured, None);
+                    }
                     if let Some(drag) = state.drag.as_ref() {
                         let canvas_pos = Point::new(
                             (pos.x - state.offset.x) / state.scale,
@@ -311,6 +381,25 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                 .with_color(connection.color)
                 .with_width(2.0);
             frame.stroke(&path, stroke);
+        }
+        drop(connections);
+
+        if let Some(conn) = state.connection.as_ref() {
+            let path = Path::line(conn.start, conn.current);
+            let stroke = Stroke::default()
+                .with_color(Color::from_rgb(0.0, 0.0, 0.8))
+                .with_width(2.0);
+            frame.stroke(&path, stroke);
+            if let Some((b, p)) = conn.hover {
+                if let Some(block) = self.blocks.get(b) {
+                    if let Some(port) = block.ports.get(p) {
+                        let point =
+                            Point::new((block.x + port.x) as f32, (block.y + port.y) as f32);
+                        let circle = Path::circle(point, PORT_RADIUS);
+                        frame.fill(&circle, Color::from_rgba(0.0, 1.0, 0.0, 0.5));
+                    }
+                }
+            }
         }
 
         for (i, block) in self.blocks.iter().enumerate() {

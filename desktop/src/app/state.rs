@@ -1,3 +1,4 @@
+use crate::visual::canvas::Connection;
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use iced::{widget::text_editor, Color};
@@ -205,6 +206,7 @@ pub struct Tab {
     pub blame: HashMap<usize, git::BlameLine>,
     pub diagnostics: Vec<Diagnostic>,
     pub blocks: Vec<BlockInfo>,
+    pub connections: Vec<Connection>,
     pub meta: Option<VisualMeta>,
     pub undo_stack: VecDeque<String>,
     pub redo_stack: VecDeque<String>,
