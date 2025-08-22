@@ -160,12 +160,38 @@ impl MainUI {
     }
 }
 
+fn load_palette_with_lang(src: &str, lang: &str) -> Vec<BlockInfo> {
+    match parse_blocks(src.to_string(), lang.into()) {
+        Some(blocks) => blocks,
+        None => {
+            eprintln!("не удалось разобрать исходный код палитры");
+            Vec::new()
+        }
+    }
+}
+
+fn load_palette_from(src: &str) -> Vec<BlockInfo> {
+    load_palette_with_lang(src, "rust")
+}
+
 fn load_palette() -> Vec<BlockInfo> {
     let src = r#"
 fn add(a: i32, b: i32) -> i32 { a + b }
 fn mul(a: i32, b: i32) -> i32 { a * b }
 "#;
-    parse_blocks(src.to_string(), "rust".into()).unwrap_or_default()
+    load_palette_from(src)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn load_palette_handles_corrupted_source() {
+        let bad_src = "foo bar";
+        let palette = load_palette_with_lang(bad_src, "invalid");
+        assert!(palette.is_empty());
+    }
 }
 
 impl Sandbox for MainUI {
