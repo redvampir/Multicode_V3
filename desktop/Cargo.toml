@@ -19,3 +19,6 @@ pulldown-cmark = "0.9"
 regex = "1"
 
 # app modules: state, actions, view
+
+[dev-dependencies]
+tempfile = "3"
