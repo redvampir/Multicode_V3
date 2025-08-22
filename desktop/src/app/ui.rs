@@ -200,7 +200,10 @@ impl MulticodeApp {
             .current_file()
             .map(|f| f.blocks.as_slice())
             .unwrap_or(&[]);
-        let connections: &[Connection] = &[];
+        let connections: &[Connection] = self
+            .current_file()
+            .map(|f| f.connections.as_slice())
+            .unwrap_or(&[]);
         let canvas_widget = Canvas::new(VisualCanvas::new(
             blocks,
             connections,
