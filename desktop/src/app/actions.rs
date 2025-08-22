@@ -6,7 +6,7 @@ use iced::{event, subscription, Application, Command, Element, Subscription, The
 use tokio::sync::broadcast;
 
 use super::events::Message;
-use super::{AppTheme, CreateTarget, EditorMode, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
+use super::{AppTheme, CreateTarget, EditorMode, LogLevel, MulticodeApp, Screen, UserSettings};
 use crate::visual::palette::{PaletteBlock, DEFAULT_CATEGORY};
 use multicode_core::parse_blocks;
 
@@ -25,14 +25,15 @@ impl Application for MulticodeApp {
         let fav_files = settings.favorites.clone();
         let (palette, palette_categories) = load_palette();
 
-        let (screen, view_mode) = if let Some(path) = settings.last_folders.first().cloned() {
+        let view_mode = settings.last_view_mode;
+        let screen = if let Some(path) = settings.last_folders.first().cloned() {
             match settings.editor_mode {
-                EditorMode::Text => (Screen::TextEditor { root: path }, ViewMode::Code),
-                EditorMode::Visual => (Screen::VisualEditor { root: path }, ViewMode::Schema),
-                EditorMode::Split => (Screen::Split { root: path }, ViewMode::Split),
+                EditorMode::Text => Screen::TextEditor { root: path },
+                EditorMode::Visual => Screen::VisualEditor { root: path },
+                EditorMode::Split => Screen::Split { root: path },
             }
         } else {
-            (Screen::ProjectPicker, ViewMode::Code)
+            Screen::ProjectPicker
         };
 
         let mut app = MulticodeApp {

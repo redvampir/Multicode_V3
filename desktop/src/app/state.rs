@@ -220,7 +220,7 @@ pub struct TabDragState {
     pub current: f32,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum ViewMode {
     Code,
     Schema,
@@ -398,6 +398,10 @@ fn default_true() -> bool {
     true
 }
 
+fn default_view_mode() -> ViewMode {
+    ViewMode::Code
+}
+
 fn default_match_color() -> Color {
     Color::from_rgb(1.0, 1.0, 0.0)
 }
@@ -418,6 +422,8 @@ pub struct UserSettings {
     pub shortcuts: HashMap<String, Hotkey>,
     #[serde(default)]
     pub editor_mode: EditorMode,
+    #[serde(default = "default_view_mode")]
+    pub last_view_mode: ViewMode,
     #[serde(default)]
     pub theme: AppTheme,
     #[serde(default = "default_syntect_theme")]
@@ -452,6 +458,7 @@ impl Default for UserSettings {
             hotkeys: Hotkeys::default(),
             shortcuts: HashMap::new(),
             editor_mode: EditorMode::Text,
+            last_view_mode: ViewMode::Code,
             theme: AppTheme::default(),
             syntect_theme: default_syntect_theme(),
             editor: EditorSettings::default(),
@@ -509,6 +516,10 @@ impl UserSettings {
 }
 
 impl MulticodeApp {
+    pub fn view_mode(&self) -> ViewMode {
+        self.view_mode
+    }
+
     pub fn current_file(&self) -> Option<&Tab> {
         self.active_tab.and_then(|i| self.tabs.get(i))
     }
@@ -571,5 +582,15 @@ impl MulticodeApp {
 
     pub fn show_meta_panel(&self) -> bool {
         self.show_meta_panel
+    }
+}
+
+impl Drop for MulticodeApp {
+    fn drop(&mut self) {
+        self.settings.last_view_mode = self.view_mode;
+        if let Ok(rt) = tokio::runtime::Runtime::new() {
+            let settings = self.settings.clone();
+            rt.block_on(settings.save());
+        }
     }
 }

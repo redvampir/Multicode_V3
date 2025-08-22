@@ -511,6 +511,7 @@ impl MulticodeApp {
             }
             Message::SwitchViewMode(mode) => {
                 self.view_mode = mode;
+                self.settings.last_view_mode = mode;
                 match mode {
                     ViewMode::Code => self.handle_message(Message::SwitchToTextEditor),
                     ViewMode::Schema => self.handle_message(Message::SwitchToVisualEditor),
