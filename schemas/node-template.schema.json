@@ -4,13 +4,19 @@
   "title": "NodeTemplate",
   "type": "object",
   "additionalProperties": false,
-  "required": ["id", "analysis_type", "links", "draft_content", "metadata"],
+  "required": ["id", "analysis_type", "metadata"],
   "properties": {
     "id": { "type": "string" },
     "analysis_type": { "type": "string" },
     "links": {
       "type": "array",
-      "items": { "type": "string" }
+      "items": { "type": "string" },
+      "default": []
+    },
+    "confidence_threshold": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
     },
     "draft_content": { "type": "string" },
     "metadata": {
