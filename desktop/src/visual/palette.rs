@@ -226,6 +226,7 @@ mod tests {
             anchors: vec![],
             x: 0.0,
             y: 0.0,
+            ports: vec![],
             ai: None,
             tags: vec![],
             links: vec![],

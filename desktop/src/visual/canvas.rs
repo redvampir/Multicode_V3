@@ -30,8 +30,8 @@ pub enum DataType {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Connection {
-    pub from: usize,
-    pub to: usize,
+    pub from: (usize, usize),
+    pub to: (usize, usize),
     pub data_type: DataType,
 }
 
@@ -107,21 +107,28 @@ impl State {
         if *last_blocks != current_blocks || *last_connections != connections {
             let mut prepared = Vec::new();
             for c in connections {
-                if let (Some(from), Some(to)) = (blocks.get(c.from), blocks.get(c.to)) {
-                    let start = Point::new(
-                        from.x as f32 + BLOCK_WIDTH / 2.0,
-                        from.y as f32 + BLOCK_HEIGHT / 2.0,
-                    );
-                    let end = Point::new(
-                        to.x as f32 + BLOCK_WIDTH / 2.0,
-                        to.y as f32 + BLOCK_HEIGHT / 2.0,
-                    );
-                    let color = match c.data_type {
-                        DataType::Number => Color::from_rgb(0.0, 0.0, 0.8),
-                        DataType::Boolean => Color::from_rgb(0.0, 0.6, 0.0),
-                        DataType::Text => Color::from_rgb(1.0, 0.5, 0.0),
-                    };
-                    prepared.push(PreparedConnection { start, end, color });
+                if let (Some(from_block), Some(to_block)) =
+                    (blocks.get(c.from.0), blocks.get(c.to.0))
+                {
+                    if let (Some(from_port), Some(to_port)) = (
+                        from_block.ports.get(c.from.1),
+                        to_block.ports.get(c.to.1),
+                    ) {
+                        let start = Point::new(
+                            (from_block.x + from_port.x) as f32,
+                            (from_block.y + from_port.y) as f32,
+                        );
+                        let end = Point::new(
+                            (to_block.x + to_port.x) as f32,
+                            (to_block.y + to_port.y) as f32,
+                        );
+                        let color = match c.data_type {
+                            DataType::Number => Color::from_rgb(0.0, 0.0, 0.8),
+                            DataType::Boolean => Color::from_rgb(0.0, 0.6, 0.0),
+                            DataType::Text => Color::from_rgb(1.0, 0.5, 0.0),
+                        };
+                        prepared.push(PreparedConnection { start, end, color });
+                    }
                 }
             }
             *self.connections.borrow_mut() = prepared;
