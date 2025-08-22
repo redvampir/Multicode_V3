@@ -13,6 +13,7 @@ use crate::components::file_manager::ContextMenu;
 use crate::editor::{AutocompleteState, EditorSettings};
 use crate::visual::palette::PaletteBlock;
 use crate::visual::translations::Language;
+use super::log_translations::LogMessage;
 
 mod serde_color {
     use iced::Color;
@@ -31,6 +32,38 @@ mod serde_color {
     {
         let [r, g, b] = <[f32; 3]>::deserialize(deserializer)?;
         Ok(Color::from_rgb(r, g, b))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum LogLevel {
+    Info,
+    Error,
+}
+
+#[derive(Debug, Clone)]
+pub struct LogEntry {
+    pub level: LogLevel,
+    pub message_key: LogMessage,
+    pub args: Vec<String>,
+}
+
+impl LogEntry {
+    pub fn new(message_key: LogMessage, args: Vec<String>) -> Self {
+        let level = message_key.level();
+        Self {
+            level,
+            message_key,
+            args,
+        }
+    }
+
+    pub fn raw(message: String) -> Self {
+        Self {
+            level: LogLevel::Info,
+            message_key: LogMessage::Raw,
+            args: vec![message],
+        }
     }
 }
 
@@ -66,7 +99,7 @@ pub struct MulticodeApp {
     pub(super) favorites: Vec<PathBuf>,
     pub(super) query: String,
     pub(super) show_command_palette: bool,
-    pub(super) log: Vec<String>,
+    pub(super) log: Vec<LogEntry>,
     /// результаты поиска по проекту
     pub(super) project_search_results: Vec<(PathBuf, usize, String)>,
     /// строка для перехода после открытия файла
