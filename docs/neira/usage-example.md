@@ -9,6 +9,8 @@
 5. **ActionNode** — выполняет команду (генерация кода, вывод данных и т.д.).
 6. **Ответ** — результат возвращается пользователю вместе с трассировкой.
 
+Трассировка оперирует идентификаторами узлов.
+
 ```bash
 # запрос
 curl -X POST http://localhost:4000/interact \
@@ -19,9 +21,9 @@ curl -X POST http://localhost:4000/interact \
 {
   "reply": "Задачи: [\"task1\", \"task2\"]",
   "trace": [
-    {"node": "AnalysisNode/main", "status": "ok"},
-    {"node": "MemoryNode/tasks", "status": "hit"},
-    {"node": "ActionNode/list", "result": ["task1", "task2"]}
+    {"id": "AnalysisNode/main", "status": "ok"},
+    {"id": "MemoryNode/tasks", "status": "hit"},
+    {"id": "ActionNode/list", "result": ["task1", "task2"]}
   ]
 }
 ```
