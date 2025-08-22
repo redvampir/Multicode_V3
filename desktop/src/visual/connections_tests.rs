@@ -1,53 +1,28 @@
-#[derive(Debug, PartialEq)]
-enum PortDirection {
-    In,
-    Out,
-}
-
-#[derive(Debug, PartialEq)]
-enum DataType {
-    Integer,
-    Text,
-}
-
-#[derive(Debug)]
-struct Port {
-    direction: PortDirection,
-    data: DataType,
-}
-
-fn can_connect(from: &Port, to: &Port) -> Result<(), &'static str> {
-    match (&from.direction, &to.direction) {
-        (PortDirection::Out, PortDirection::In) => {
-            if from.data == to.data {
-                Ok(())
-            } else {
-                Err("data type mismatch")
-            }
-        }
-        (PortDirection::Out, PortDirection::Out) | (PortDirection::In, PortDirection::In) |
-        (PortDirection::In, PortDirection::Out) => Err("incompatible ports"),
-    }
-}
+use super::connections::{Connection, ConnectionError, DataType, PortType};
 
 #[test]
 fn connects_matching_ports() {
-    let from = Port { direction: PortDirection::Out, data: DataType::Integer };
-    let to = Port { direction: PortDirection::In, data: DataType::Integer };
-    assert!(can_connect(&from, &to).is_ok());
+    let conn = Connection::new(
+        (0, 0, PortType::Out, DataType::Number),
+        (1, 0, PortType::In, DataType::Number),
+    );
+    assert!(conn.is_ok());
 }
 
 #[test]
 fn fails_on_mismatched_data() {
-    let from = Port { direction: PortDirection::Out, data: DataType::Integer };
-    let to = Port { direction: PortDirection::In, data: DataType::Text };
-    assert!(can_connect(&from, &to).is_err());
+    let conn = Connection::new(
+        (0, 0, PortType::Out, DataType::Number),
+        (1, 0, PortType::In, DataType::Text),
+    );
+    assert_eq!(conn, Err(ConnectionError::DataTypeMismatch));
 }
 
 #[test]
 fn fails_on_wrong_port_direction() {
-    let from = Port { direction: PortDirection::In, data: DataType::Integer };
-    let to = Port { direction: PortDirection::In, data: DataType::Integer };
-    assert!(can_connect(&from, &to).is_err());
+    let conn = Connection::new(
+        (0, 0, PortType::In, DataType::Number),
+        (1, 0, PortType::In, DataType::Number),
+    );
+    assert_eq!(conn, Err(ConnectionError::PortMismatch));
 }
-
