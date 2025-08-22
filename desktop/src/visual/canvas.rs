@@ -1,8 +1,11 @@
 use iced::widget::canvas::{self, Event, Frame, Geometry, Path, Program, Stroke, Text};
-use iced::{keyboard::{self, key}, mouse, Point, Rectangle, Renderer, Theme, Vector};
+use iced::{
+    keyboard::{self, key},
+    mouse, Color, Point, Rectangle, Renderer, Theme, Vector,
+};
 
+use crate::visual::translations::{translate_kind, Language};
 use multicode_core::BlockInfo;
-use crate::visual::translations::{Language, translate_kind};
 
 pub const BLOCK_WIDTH: f32 = 120.0;
 pub const BLOCK_HEIGHT: f32 = 40.0;
@@ -17,8 +20,23 @@ pub enum CanvasMessage {
     TogglePalette,
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum DataType {
+    Number,
+    Boolean,
+    Text,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct Connection {
+    pub from: usize,
+    pub to: usize,
+    pub data_type: DataType,
+}
+
 pub struct VisualCanvas<'a> {
     blocks: &'a [BlockInfo],
+    connections: &'a [Connection],
     language: Language,
 }
 
@@ -51,8 +69,12 @@ impl Default for State {
 }
 
 impl<'a> VisualCanvas<'a> {
-    pub fn new(blocks: &'a [BlockInfo], language: Language) -> Self {
-        Self { blocks, language }
+    pub fn new(blocks: &'a [BlockInfo], connections: &'a [Connection], language: Language) -> Self {
+        Self {
+            blocks,
+            connections,
+            language,
+        }
     }
 }
 
@@ -149,10 +171,8 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                                 (pos.x - state.offset.x) / state.scale,
                                 (pos.y - state.offset.y) / state.scale,
                             );
-                            let new_pos = Point::new(
-                                canvas_pos.x - drag.grab.x,
-                                canvas_pos.y - drag.grab.y,
-                            );
+                            let new_pos =
+                                Point::new(canvas_pos.x - drag.grab.x, canvas_pos.y - drag.grab.y);
                             return (
                                 canvas::event::Status::Captured,
                                 Some(CanvasMessage::BlockDragged {
@@ -168,7 +188,9 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                         );
                         return (
                             canvas::event::Status::Captured,
-                            Some(CanvasMessage::Dropped { position: canvas_pos }),
+                            Some(CanvasMessage::Dropped {
+                                position: canvas_pos,
+                            }),
                         );
                     }
                 }
@@ -225,6 +247,30 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
 
         frame.translate(state.offset);
         frame.scale(state.scale);
+
+        for connection in self.connections {
+            if let (Some(from), Some(to)) = (
+                self.blocks.get(connection.from),
+                self.blocks.get(connection.to),
+            ) {
+                let start = Point::new(
+                    from.x as f32 + BLOCK_WIDTH / 2.0,
+                    from.y as f32 + BLOCK_HEIGHT / 2.0,
+                );
+                let end = Point::new(
+                    to.x as f32 + BLOCK_WIDTH / 2.0,
+                    to.y as f32 + BLOCK_HEIGHT / 2.0,
+                );
+                let color = match connection.data_type {
+                    DataType::Number => Color::from_rgb(0.0, 0.0, 0.8),
+                    DataType::Boolean => Color::from_rgb(0.0, 0.6, 0.0),
+                    DataType::Text => Color::from_rgb(1.0, 0.5, 0.0),
+                };
+                let path = Path::line(start, end);
+                let stroke = Stroke::default().with_color(color).with_width(2.0);
+                frame.stroke(&path, stroke);
+            }
+        }
 
         for (i, block) in self.blocks.iter().enumerate() {
             let rect = Path::rectangle(

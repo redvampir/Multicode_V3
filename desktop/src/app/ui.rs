@@ -10,7 +10,7 @@ use crate::app::diff::DiffView;
 use crate::app::events::Message;
 use crate::app::{command_palette::COMMANDS, format_log, Language, LogLevel, MulticodeApp};
 use crate::modal::Modal;
-use crate::visual::canvas::{CanvasMessage, VisualCanvas};
+use crate::visual::canvas::{CanvasMessage, Connection, VisualCanvas};
 use crate::visual::palette::{BlockPalette, PaletteMessage};
 use multicode_core::BlockInfo;
 
@@ -200,9 +200,14 @@ impl MulticodeApp {
             .current_file()
             .map(|f| f.blocks.as_slice())
             .unwrap_or(&[]);
-        let canvas_widget = Canvas::new(VisualCanvas::new(blocks, self.settings.language))
-            .width(Length::Fill)
-            .height(Length::Fill);
+        let connections: &[Connection] = &[];
+        let canvas_widget = Canvas::new(VisualCanvas::new(
+            blocks,
+            connections,
+            self.settings.language,
+        ))
+        .width(Length::Fill)
+        .height(Length::Fill);
         let canvas: Element<CanvasMessage> = canvas_widget.into();
         let canvas = canvas.map(Message::CanvasEvent);
         if self.show_meta_panel {
