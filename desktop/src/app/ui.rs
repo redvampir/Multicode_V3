@@ -7,7 +7,7 @@ use iced::{Element, Length};
 
 use crate::app::diff::DiffView;
 use crate::app::events::Message;
-use crate::app::{command_palette::COMMANDS, MulticodeApp};
+use crate::app::{command_palette::COMMANDS, format_log, MulticodeApp};
 use crate::modal::Modal;
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::palette::{BlockPalette, PaletteMessage};
@@ -245,8 +245,7 @@ impl MulticodeApp {
         let output = scrollable(column(
             self.log
                 .iter()
-                .cloned()
-                .map(|l| text(l).into())
+                .map(|e| text(format_log(e, self.settings.language)).into())
                 .collect::<Vec<Element<Message>>>(),
         ))
         .height(Length::Fixed(150.0));
@@ -256,9 +255,11 @@ impl MulticodeApp {
         let clear_btn = button("Очистить").on_press(Message::RunTerminalCmd(":clear".into()));
         let stop_btn = button("Stop").on_press(Message::RunTerminalCmd(":stop".into()));
         let help_btn = button("Справка").on_press(Message::ShowTerminalHelp);
+        let translate_btn = button("Перевести")
+            .on_press(Message::LanguageSelected(self.settings.language.next()));
         column![
             output,
-            row![input, clear_btn, stop_btn, help_btn].spacing(5)
+            row![input, clear_btn, stop_btn, help_btn, translate_btn].spacing(5)
         ]
         .spacing(5)
         .into()

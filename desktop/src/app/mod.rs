@@ -3,6 +3,7 @@ pub mod diff;
 pub mod events;
 pub mod io;
 pub mod ui;
+pub mod log_translations;
 
 mod actions;
 mod state;
@@ -10,8 +11,10 @@ mod view;
 
 pub use state::{
     AppTheme, CreateTarget, Diagnostic, EditorMode, EntryType, FileEntry, Hotkey, HotkeyField,
-    Hotkeys, MulticodeApp, PendingAction, Screen, Tab, TabDragState, UserSettings, ViewMode,
+    Hotkeys, LogEntry, LogLevel, MulticodeApp, PendingAction, Screen, Tab, TabDragState,
+    UserSettings, ViewMode,
 };
+pub use log_translations::{format_log, LogMessage};
 pub use crate::visual::translations::Language;
 
 use iced::Application;
