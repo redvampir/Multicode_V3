@@ -1,10 +1,10 @@
 use crate::app::ViewMode;
-use crate::visual::canvas::{CanvasMessage, State as CanvasState, VisualCanvas};
+use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::connections::Connection;
 use crate::visual::translations::Language;
 use iced::widget::canvas::Canvas;
 use iced::widget::{button, column, row, scrollable, text, text_editor};
-use iced::{Element, Length};
+use iced::{Element, Length, Sandbox};
 use multicode_core::{blocks::parse_blocks, BlockInfo};
 
 /// Main user interface state containing current view mode and editor states.
@@ -13,8 +13,6 @@ pub struct MainUI {
     pub view_mode: ViewMode,
     /// Internal state of the text editor.
     pub code_editor: text_editor::Content,
-    /// Internal state of the visual editor canvas.
-    pub visual_state: CanvasState,
     /// Available blocks in the palette.
     pub palette: Vec<BlockInfo>,
     /// Blocks placed on the canvas.
@@ -25,6 +23,8 @@ pub struct MainUI {
     pub dragging: Option<Dragging>,
     /// Current interface language for visual components.
     pub language: Language,
+    /// Whether the block palette is visible.
+    pub show_palette: bool,
 }
 
 #[derive(Clone)]
@@ -37,12 +37,12 @@ impl Default for MainUI {
         Self {
             view_mode: ViewMode::Code,
             code_editor: text_editor::Content::new(),
-            visual_state: CanvasState::default(),
             palette: load_palette(),
             blocks: Vec::new(),
             connections: Vec::new(),
             dragging: None,
             language: Language::default(),
+            show_palette: true,
         }
     }
 }
@@ -98,6 +98,9 @@ impl MainUI {
                         self.connections.push(conn);
                     }
                 }
+                CanvasMessage::TogglePalette => {
+                    self.show_palette = !self.show_palette;
+                }
                 _ => {}
             },
         }
@@ -121,18 +124,6 @@ impl MainUI {
 
     /// Create a view for the visual editor.
     fn create_visual_editor_view(&self) -> Element<MainMessage> {
-        let palette_column = self.palette.iter().enumerate().fold(
-            column!().spacing(5),
-            |col, (i, b)| {
-                col.push(
-                    button(text(&b.kind)).on_press(MainMessage::StartPaletteDrag(i)),
-                )
-            },
-        );
-        let palette = scrollable(palette_column)
-            .width(Length::Fixed(150.0))
-            .height(Length::Fill);
-
         let canvas_widget = Canvas::new(VisualCanvas::new(
             &self.blocks,
             &self.connections,
@@ -142,8 +133,21 @@ impl MainUI {
         .height(Length::Fill);
         let canvas: Element<CanvasMessage> = canvas_widget.into();
         let canvas = canvas.map(MainMessage::CanvasEvent);
-
-        row![palette, canvas].into()
+        if self.show_palette {
+            let palette_column =
+                self.palette
+                    .iter()
+                    .enumerate()
+                    .fold(column!().spacing(5), |col, (i, b)| {
+                        col.push(button(text(&b.kind)).on_press(MainMessage::StartPaletteDrag(i)))
+                    });
+            let palette = scrollable(palette_column)
+                .width(Length::Fixed(150.0))
+                .height(Length::Fill);
+            row![palette, canvas].into()
+        } else {
+            canvas
+        }
     }
 
     /// Create a split view combining text and visual editors (placeholder).
@@ -162,4 +166,24 @@ fn add(a: i32, b: i32) -> i32 { a + b }
 fn mul(a: i32, b: i32) -> i32 { a * b }
 "#;
     parse_blocks(src.to_string(), "rust".into()).unwrap_or_default()
+}
+
+impl Sandbox for MainUI {
+    type Message = MainMessage;
+
+    fn new() -> Self {
+        Self::default()
+    }
+
+    fn title(&self) -> String {
+        String::from("Multicode")
+    }
+
+    fn update(&mut self, message: Self::Message) {
+        MainUI::update(self, message);
+    }
+
+    fn view(&self) -> Element<Self::Message> {
+        MainUI::view(self)
+    }
 }
