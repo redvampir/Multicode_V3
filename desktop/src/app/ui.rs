@@ -244,8 +244,7 @@ impl MulticodeApp {
             return Space::with_height(Length::Shrink).into();
         }
         let output = scrollable(column(
-            self
-                .log
+            self.log
                 .iter()
                 .filter(|e| e.level >= self.min_log_level)
                 .map(|e| text(format_log(e, self.settings.language)).into())
@@ -258,8 +257,9 @@ impl MulticodeApp {
         let clear_btn = button("Очистить").on_press(Message::RunTerminalCmd(":clear".into()));
         let stop_btn = button("Stop").on_press(Message::RunTerminalCmd(":stop".into()));
         let help_btn = button("Справка").on_press(Message::ShowTerminalHelp);
-        let translate_btn = button("Перевести")
-            .on_press(Message::LanguageSelected(self.settings.language.next()));
+        let translate_btn =
+            button("Перевести").on_press(Message::LanguageSelected(self.settings.language.next()));
+        let save_log_btn = button("Сохранить лог").on_press(Message::SaveLog);
         let level_pick = pick_list(
             &LogLevel::ALL[..],
             Some(self.min_log_level),
@@ -273,6 +273,7 @@ impl MulticodeApp {
                 stop_btn,
                 help_btn,
                 translate_btn,
+                save_log_btn,
                 level_pick
             ]
             .spacing(5)
@@ -319,7 +320,10 @@ impl MulticodeApp {
             .into()
     }
 
-    pub fn block_palette_modal<'a>(&'a self, content: Element<'a, Message>) -> Element<'a, Message> {
+    pub fn block_palette_modal<'a>(
+        &'a self,
+        content: Element<'a, Message>,
+    ) -> Element<'a, Message> {
         if !self.show_block_palette {
             return content;
         }
