@@ -2,10 +2,13 @@
 
 ## Навигация
 - [Узлы действий](action-nodes.md)
-- [Узлы памяти](memory-nodes.md)
 - [Узлы анализа](analysis-nodes.md)
+- [Узлы памяти](memory-nodes.md)
+- [Архитектура анализа](analysis-architecture.md)
 - [Поддерживающие системы](support-systems.md)
 - [Личность Нейры](personality.md)
+- [Шаблон узла](node-template.md)
+- [Политика источников](source-policy.md)
 
 ## Оглавление
 - [Назначение](#назначение)
