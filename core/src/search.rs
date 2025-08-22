@@ -1,5 +1,6 @@
 use std::{
     fs,
+    io::{BufRead, BufReader},
     path::{Path, PathBuf},
 };
 
@@ -11,6 +12,12 @@ use crate::meta::VisualMeta;
 
 static META_RE: Lazy<Result<Regex, RegexError>> =
     Lazy::new(|| Regex::new(r"@VISUAL_META\s*(\{.*?\})"));
+
+/// File extensions that are searched for metadata.
+const ALLOWED_EXTENSIONS: &[&str] = &["rs", "js", "ts", "tsx", "jsx"]; // extend as needed
+
+/// Maximum file size (in bytes) to scan for metadata.
+const MAX_FILE_SIZE: u64 = 1_000_000; // 1MB
 
 #[derive(Debug, Clone)]
 pub struct SearchResult {
@@ -28,18 +35,33 @@ pub fn search_metadata(root: &Path, query: &str) -> Result<Vec<SearchResult>, Re
             continue;
         }
         let path = entry.path();
-        if let Ok(content) = fs::read_to_string(path) {
-            for caps in re.captures_iter(&content) {
-                let json = &caps[1];
-                if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
-                    if meta.id == query {
-                        let start = caps.get(0).map(|m| m.start()).unwrap_or(0);
-                        let line = content[..start].chars().filter(|&c| c == '\n').count() + 1;
-                        out.push(SearchResult {
-                            file: path.to_path_buf(),
-                            line,
-                            meta,
-                        });
+        if !path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map_or(false, |e| ALLOWED_EXTENSIONS.contains(&e))
+        {
+            continue;
+        }
+        if let Ok(meta) = entry.metadata() {
+            if meta.len() > MAX_FILE_SIZE {
+                continue;
+            }
+        }
+        if let Ok(file) = fs::File::open(path) {
+            let reader = BufReader::new(file);
+            for (idx, line) in reader.lines().enumerate() {
+                if let Ok(line) = line {
+                    for caps in re.captures_iter(&line) {
+                        let json = &caps[1];
+                        if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
+                            if meta.id == query {
+                                out.push(SearchResult {
+                                    file: path.to_path_buf(),
+                                    line: idx + 1,
+                                    meta,
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -57,18 +79,33 @@ pub fn search_links(root: &Path, target: &str) -> Result<Vec<SearchResult>, Rege
             continue;
         }
         let path = entry.path();
-        if let Ok(content) = fs::read_to_string(path) {
-            for caps in re.captures_iter(&content) {
-                let json = &caps[1];
-                if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
-                    if meta.links.iter().any(|l| l == target) {
-                        let start = caps.get(0).map(|m| m.start()).unwrap_or(0);
-                        let line = content[..start].chars().filter(|&c| c == '\n').count() + 1;
-                        out.push(SearchResult {
-                            file: path.to_path_buf(),
-                            line,
-                            meta,
-                        });
+        if !path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map_or(false, |e| ALLOWED_EXTENSIONS.contains(&e))
+        {
+            continue;
+        }
+        if let Ok(meta) = entry.metadata() {
+            if meta.len() > MAX_FILE_SIZE {
+                continue;
+            }
+        }
+        if let Ok(file) = fs::File::open(path) {
+            let reader = BufReader::new(file);
+            for (idx, line) in reader.lines().enumerate() {
+                if let Ok(line) = line {
+                    for caps in re.captures_iter(&line) {
+                        let json = &caps[1];
+                        if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
+                            if meta.links.iter().any(|l| l == target) {
+                                out.push(SearchResult {
+                                    file: path.to_path_buf(),
+                                    line: idx + 1,
+                                    meta,
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -122,5 +159,32 @@ mod tests {
 
         let res_invalid = search_metadata(dir.path(), "any").unwrap();
         assert!(res_invalid.is_empty());
+    }
+
+    #[test]
+    fn skips_large_and_irrelevant_files() {
+        let dir = tempdir().unwrap();
+        // create many irrelevant files
+        for i in 0..500 {
+            let p = dir.path().join(format!("file{i}.txt"));
+            fs::write(p, "noop").unwrap();
+        }
+        // big file over size limit
+        let big = dir.path().join("big.rs");
+        fs::write(&big, vec![b'a'; (MAX_FILE_SIZE + 1) as usize]).unwrap();
+        // file with unsupported extension containing metadata
+        let ignored = dir.path().join("ignored.txt");
+        fs::write(&ignored, "// @VISUAL_META {\"id\":\"one\"}\n").unwrap();
+        // valid file
+        let target = dir.path().join("target.rs");
+        fs::write(
+            &target,
+            "// @VISUAL_META {\"id\":\"one\",\"x\":0,\"y\":0}\n",
+        )
+        .unwrap();
+
+        let res = search_metadata(dir.path(), "one").unwrap();
+        assert_eq!(res.len(), 1);
+        assert_eq!(res[0].file, target);
     }
 }

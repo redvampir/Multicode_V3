@@ -1,4 +1,8 @@
-use std::{fs, path::{Path, PathBuf}};
+use std::{
+    fs,
+    io::{BufRead, BufReader},
+    path::{Path, PathBuf},
+};
 
 use once_cell::sync::Lazy;
 use regex::Regex;
@@ -6,9 +10,13 @@ use walkdir::WalkDir;
 
 use crate::meta::VisualMeta;
 
-static META_RE: Lazy<Regex> = Lazy::new(|| {
-    Regex::new(r"@VISUAL_META\s*(\{.*?\})").unwrap()
-});
+static META_RE: Lazy<Regex> = Lazy::new(|| Regex::new(r"@VISUAL_META\s*(\{.*?\})").unwrap());
+
+/// File extensions that are searched for metadata.
+const ALLOWED_EXTENSIONS: &[&str] = &["rs", "js", "ts", "tsx", "jsx"]; // extend as needed
+
+/// Maximum file size (in bytes) to scan for metadata.
+const MAX_FILE_SIZE: u64 = 1_000_000; // 1MB
 
 #[derive(Debug, Clone)]
 pub struct SearchResult {
@@ -25,14 +33,33 @@ pub fn search_metadata(root: &Path, query: &str) -> Vec<SearchResult> {
             continue;
         }
         let path = entry.path();
-        if let Ok(content) = fs::read_to_string(path) {
-            for caps in META_RE.captures_iter(&content) {
-                let json = &caps[1];
-                if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
-                    if meta.id == query {
-                        let start = caps.get(0).map(|m| m.start()).unwrap_or(0);
-                        let line = content[..start].chars().filter(|&c| c == '\n').count() + 1;
-                        out.push(SearchResult { file: path.to_path_buf(), line, meta });
+        if !path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map_or(false, |e| ALLOWED_EXTENSIONS.contains(&e))
+        {
+            continue;
+        }
+        if let Ok(meta) = entry.metadata() {
+            if meta.len() > MAX_FILE_SIZE {
+                continue;
+            }
+        }
+        if let Ok(file) = fs::File::open(path) {
+            let reader = BufReader::new(file);
+            for (idx, line) in reader.lines().enumerate() {
+                if let Ok(line) = line {
+                    for caps in META_RE.captures_iter(&line) {
+                        let json = &caps[1];
+                        if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
+                            if meta.id == query {
+                                out.push(SearchResult {
+                                    file: path.to_path_buf(),
+                                    line: idx + 1,
+                                    meta,
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -49,14 +76,33 @@ pub fn search_links(root: &Path, target: &str) -> Vec<SearchResult> {
             continue;
         }
         let path = entry.path();
-        if let Ok(content) = fs::read_to_string(path) {
-            for caps in META_RE.captures_iter(&content) {
-                let json = &caps[1];
-                if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
-                    if meta.links.iter().any(|l| l == target) {
-                        let start = caps.get(0).map(|m| m.start()).unwrap_or(0);
-                        let line = content[..start].chars().filter(|&c| c == '\n').count() + 1;
-                        out.push(SearchResult { file: path.to_path_buf(), line, meta });
+        if !path
+            .extension()
+            .and_then(|e| e.to_str())
+            .map_or(false, |e| ALLOWED_EXTENSIONS.contains(&e))
+        {
+            continue;
+        }
+        if let Ok(meta) = entry.metadata() {
+            if meta.len() > MAX_FILE_SIZE {
+                continue;
+            }
+        }
+        if let Ok(file) = fs::File::open(path) {
+            let reader = BufReader::new(file);
+            for (idx, line) in reader.lines().enumerate() {
+                if let Ok(line) = line {
+                    for caps in META_RE.captures_iter(&line) {
+                        let json = &caps[1];
+                        if let Ok(meta) = serde_json::from_str::<VisualMeta>(json) {
+                            if meta.links.iter().any(|l| l == target) {
+                                out.push(SearchResult {
+                                    file: path.to_path_buf(),
+                                    line: idx + 1,
+                                    meta,
+                                });
+                            }
+                        }
                     }
                 }
             }
@@ -67,7 +113,9 @@ pub fn search_links(root: &Path, target: &str) -> Vec<SearchResult> {
 
 /// Find definition of metadata with a specific `id`.
 pub fn goto_definition(root: &Path, id: &str) -> Option<SearchResult> {
-    search_metadata(root, id).into_iter().find(|r| r.meta.id == id)
+    search_metadata(root, id)
+        .into_iter()
+        .find(|r| r.meta.id == id)
 }
 
 #[cfg(test)]
@@ -95,4 +143,3 @@ mod tests {
         assert_eq!(def.meta.id, "two");
     }
 }
-
