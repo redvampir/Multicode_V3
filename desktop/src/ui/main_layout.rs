@@ -1,7 +1,11 @@
 use crate::app::ViewMode;
-use crate::visual::canvas::{CanvasMessage, State as CanvasState};
-use iced::widget::{row, text, text_editor};
-use iced::Element;
+use crate::visual::canvas::{CanvasMessage, State as CanvasState, VisualCanvas};
+use crate::visual::connections::Connection;
+use crate::visual::translations::Language;
+use iced::widget::canvas::Canvas;
+use iced::widget::{button, column, row, scrollable, text, text_editor};
+use iced::{Element, Length};
+use multicode_core::{blocks::parse_blocks, BlockInfo};
 
 /// Main user interface state containing current view mode and editor states.
 pub struct MainUI {
@@ -11,6 +15,21 @@ pub struct MainUI {
     pub code_editor: text_editor::Content,
     /// Internal state of the visual editor canvas.
     pub visual_state: CanvasState,
+    /// Available blocks in the palette.
+    pub palette: Vec<BlockInfo>,
+    /// Blocks placed on the canvas.
+    pub blocks: Vec<BlockInfo>,
+    /// Connections between blocks.
+    pub connections: Vec<Connection>,
+    /// Currently dragged block (from the palette).
+    pub dragging: Option<Dragging>,
+    /// Current interface language for visual components.
+    pub language: Language,
+}
+
+#[derive(Clone)]
+pub enum Dragging {
+    Palette(BlockInfo),
 }
 
 impl Default for MainUI {
@@ -19,6 +38,11 @@ impl Default for MainUI {
             view_mode: ViewMode::Code,
             code_editor: text_editor::Content::new(),
             visual_state: CanvasState::default(),
+            palette: load_palette(),
+            blocks: Vec::new(),
+            connections: Vec::new(),
+            dragging: None,
+            language: Language::default(),
         }
     }
 }
@@ -34,8 +58,10 @@ pub enum MainMessage {
     SwitchToSplit,
     /// Message originating from the code editor.
     CodeEditorMsg(text_editor::Action),
+    /// Start dragging a block from the palette.
+    StartPaletteDrag(usize),
     /// Message originating from the visual editor canvas.
-    VisualMsg(CanvasMessage),
+    CanvasEvent(CanvasMessage),
 }
 
 impl MainUI {
@@ -48,9 +74,32 @@ impl MainUI {
             MainMessage::CodeEditorMsg(action) => {
                 self.code_editor.perform(action);
             }
-            MainMessage::VisualMsg(_msg) => {
-                // Visual editor updates would be handled here once implemented
+            MainMessage::StartPaletteDrag(i) => {
+                if let Some(info) = self.palette.get(i).cloned() {
+                    self.dragging = Some(Dragging::Palette(info));
+                }
             }
+            MainMessage::CanvasEvent(event) => match event {
+                CanvasMessage::BlockDragged { index, position } => {
+                    if let Some(block) = self.blocks.get_mut(index) {
+                        block.x = position.x as f64;
+                        block.y = position.y as f64;
+                    }
+                }
+                CanvasMessage::Dropped { position } => {
+                    if let Some(Dragging::Palette(mut info)) = self.dragging.take() {
+                        info.x = position.x as f64;
+                        info.y = position.y as f64;
+                        self.blocks.push(info);
+                    }
+                }
+                CanvasMessage::ConnectionCreated(conn) => {
+                    if !self.connections.contains(&conn) {
+                        self.connections.push(conn);
+                    }
+                }
+                _ => {}
+            },
         }
     }
 
@@ -70,10 +119,31 @@ impl MainUI {
             .into()
     }
 
-    /// Create a view for the visual editor (placeholder).
+    /// Create a view for the visual editor.
     fn create_visual_editor_view(&self) -> Element<MainMessage> {
-        // For now, show a placeholder until the real visual editor is integrated
-        text("Visual editor not implemented").into()
+        let palette_column = self.palette.iter().enumerate().fold(
+            column!().spacing(5),
+            |col, (i, b)| {
+                col.push(
+                    button(text(&b.kind)).on_press(MainMessage::StartPaletteDrag(i)),
+                )
+            },
+        );
+        let palette = scrollable(palette_column)
+            .width(Length::Fixed(150.0))
+            .height(Length::Fill);
+
+        let canvas_widget = Canvas::new(VisualCanvas::new(
+            &self.blocks,
+            &self.connections,
+            self.language,
+        ))
+        .width(Length::Fill)
+        .height(Length::Fill);
+        let canvas: Element<CanvasMessage> = canvas_widget.into();
+        let canvas = canvas.map(MainMessage::CanvasEvent);
+
+        row![palette, canvas].into()
     }
 
     /// Create a split view combining text and visual editors (placeholder).
@@ -84,4 +154,12 @@ impl MainUI {
         ]
         .into()
     }
+}
+
+fn load_palette() -> Vec<BlockInfo> {
+    let src = r#"
+fn add(a: i32, b: i32) -> i32 { a + b }
+fn mul(a: i32, b: i32) -> i32 { a * b }
+"#;
+    parse_blocks(src.to_string(), "rust".into()).unwrap_or_default()
 }
