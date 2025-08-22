@@ -9,10 +9,11 @@ async function main() {
     return;
   }
   for (const cmd of cmds) {
+    const [command, ...args] = cmd.split(/\s+/);
     const spinner = createSpinner(`Running ${cmd}`);
     spinner.start();
     try {
-      await runCommand(cmd, [], log, { env: process.env });
+      await runCommand(command, args, log, { env: process.env });
       spinner.succeed(`Passed ${cmd}`);
     } catch (err) {
       spinner.fail(`Failed ${cmd}`);

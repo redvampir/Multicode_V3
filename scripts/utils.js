@@ -34,8 +34,11 @@ function createLogger(name) {
 }
 
 function runCommand(cmd, args = [], log = console.log, options = {}) {
+  if (!Array.isArray(args)) {
+    throw new TypeError('args must be an array');
+  }
   return new Promise((resolve, reject) => {
-    const child = spawn(cmd, args, { shell: true, ...options });
+    const child = spawn(cmd, args, { shell: false, ...options });
     child.stdout.on('data', (data) => log(data.toString().trim()));
     child.stderr.on('data', (data) => log(data.toString().trim()));
     child.on('close', (code) => {
