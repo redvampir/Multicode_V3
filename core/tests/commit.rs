@@ -1,9 +1,9 @@
 #![cfg(feature = "git")]
 use core::git::commit;
 use git2::Repository;
-use tempfile::tempdir;
-use std::fs;
 use std::env;
+use std::fs;
+use tempfile::tempdir;
 
 #[test]
 fn commit_creates_commit() {
@@ -15,6 +15,8 @@ fn commit_creates_commit() {
         cfg.set_str("user.email", "test@example.com").unwrap();
     }
     fs::create_dir(dir.path().join("backend")).unwrap();
+    fs::create_dir(dir.path().join("frontend")).unwrap();
+    fs::create_dir(dir.path().join("docs")).unwrap();
     fs::write(dir.path().join("backend/file.txt"), "hello").unwrap();
 
     let prev = env::current_dir().unwrap();
@@ -48,4 +50,3 @@ fn commit_empty_message_error() {
     env::set_current_dir(prev).unwrap();
     assert_eq!(err.message(), "сообщение коммита не может быть пустым");
 }
-
