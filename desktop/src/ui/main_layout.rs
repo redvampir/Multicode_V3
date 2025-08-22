@@ -1,44 +1,38 @@
-use iced::widget::{canvas::Canvas, container, row};
-use iced::{Element, Length};
+use crate::app::ViewMode;
+use crate::visual::canvas::{CanvasMessage, State as CanvasState};
+use iced::widget::text_editor;
 
-use crate::app::{events::Message as MainMessage, MulticodeApp as MainUI};
-use crate::editor::CodeEditor;
-use crate::visual::canvas::{CanvasMessage, VisualCanvas};
-use crate::visual::connections::Connection;
-use multicode_core::BlockInfo;
-
-/// Create a view containing only the visual editor canvas.
-pub fn create_visual_editor_view(state: &MainUI) -> Element<MainMessage> {
-    let blocks: &[BlockInfo] = state
-        .current_file()
-        .map(|f| f.blocks.as_slice())
-        .unwrap_or(&[]);
-    let connections: &[Connection] = state
-        .current_file()
-        .map(|f| f.connections.as_slice())
-        .unwrap_or(&[]);
-
-    let canvas_widget = Canvas::new(VisualCanvas::new(
-        blocks,
-        connections,
-        state.settings().language,
-    ))
-    .width(Length::Fill)
-    .height(Length::Fill);
-
-    let canvas: Element<CanvasMessage> = canvas_widget.into();
-    canvas.map(MainMessage::CanvasEvent)
+/// Main user interface state containing current view mode and editor states.
+pub struct MainUI {
+    /// Currently active view mode.
+    pub view_mode: ViewMode,
+    /// Internal state of the text editor.
+    pub code_editor: text_editor::Content,
+    /// Internal state of the visual editor canvas.
+    pub visual_state: CanvasState,
 }
 
-/// Create a view that splits the window between the text and visual editors.
-pub fn create_split_view(state: &MainUI) -> Element<MainMessage> {
-    let text_editor: Element<MainMessage> = CodeEditor::new(state).view();
-    let visual_editor = create_visual_editor_view(state);
+impl Default for MainUI {
+    fn default() -> Self {
+        Self {
+            view_mode: ViewMode::Code,
+            code_editor: text_editor::Content::new(),
+            visual_state: CanvasState::default(),
+        }
+    }
+}
 
-    row![
-        container(text_editor).width(Length::FillPortion(1)),
-        container(visual_editor).width(Length::FillPortion(1)),
-    ]
-    .spacing(10)
-    .into()
+/// Messages emitted by [`MainUI`] components.
+#[derive(Debug, Clone)]
+pub enum MainMessage {
+    /// Switch to text editor view.
+    SwitchToText,
+    /// Switch to visual editor view.
+    SwitchToVisual,
+    /// Show both editors in split view.
+    SwitchToSplit,
+    /// Message originating from the code editor.
+    CodeEditorMsg(text_editor::Action),
+    /// Message originating from the visual editor canvas.
+    VisualMsg(CanvasMessage),
 }
