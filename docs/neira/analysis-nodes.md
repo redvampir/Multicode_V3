@@ -41,6 +41,7 @@ struct QualityMetrics {
 {
   "id": "example.analysis",
   "output": "analysis summary",
+  "status": "active",
   "quality_metrics": {
     "credibility": 0.95,
     "recency_days": 7,
@@ -50,12 +51,14 @@ struct QualityMetrics {
     "fetch sources",
     "aggregate signals"
   ],
+  "links": ["memory.node"],
+  "explanation": "aggregated analysis",
   "uncertainty_score": 0.05,
   "metadata": { "schema": "1.0" }
 }
 ```
 
-Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` — объект с числовыми метриками; отсутствующие показатели опускаются. `reasoning_chain` фиксирует этапы вывода, а `uncertainty_score` отражает уровень сомнения (`0` — полная уверенность). `metadata.schema` указывает версию формата.
+Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` — объект с числовыми метриками; отсутствующие показатели опускаются. `status` фиксирует состояние узла (`draft`, `active`, `deprecated`, `error`), `reasoning_chain` сохраняет этапы вывода, `links` перечисляет связанные узлы, `explanation` содержит краткое пояснение, а `uncertainty_score` отражает уровень сомнения (`0` — полная уверенность). `metadata.schema` указывает версию формата.
 
 После выполнения `analyze()` узел анализа всегда передаёт рассчитанные
 `QualityMetrics` и `uncertainty_score` в связанный `MemoryNode`, например через метод
@@ -784,6 +787,6 @@ metadata:
 
 JSON‑схемы расположены в каталоге [../../schemas](../../schemas):
 - [node-template.schema.json](../../schemas/node-template.schema.json)
-- [analysis-node.schema.json](../../schemas/analysis-node.schema.json)
+- [analysis-result.schema.json](../../schemas/analysis-result.schema.json)
 
 При несовместимых изменениях повышайте версию: `1.0.0` → `1.1.0`.

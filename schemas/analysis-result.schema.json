@@ -1,0 +1,42 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://multicode.dev/schemas/analysis-result.schema.json",
+  "title": "AnalysisResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "output"],
+  "properties": {
+    "id": { "type": "string" },
+    "output": { "type": "string" },
+    "status": {
+      "type": "string",
+      "enum": ["draft", "active", "deprecated", "error"]
+    },
+    "reasoning_chain": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "quality_metrics": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "credibility": { "type": "number", "minimum": 0, "maximum": 1 },
+        "recency_days": { "type": "integer", "minimum": 0 },
+        "demand": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "links": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "explanation": { "type": "string" },
+    "metadata": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["schema"],
+      "properties": {
+        "schema": { "type": "string" }
+      }
+    }
+  }
+}
