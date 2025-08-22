@@ -69,3 +69,7 @@ metadata:
 npx ajv validate -s node-template.schema.json -d node-template.json
 npx ajv validate -s node-template.schema.json -d node-template.yaml
 ```
+
+## Схемы
+
+JSON‑схемы расположены в каталоге [../../schemas](../../schemas). При несовместимых изменениях повышайте версию: `1.0.0` → `1.1.0`.
