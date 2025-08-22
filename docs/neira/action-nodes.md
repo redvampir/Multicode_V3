@@ -23,32 +23,35 @@
 
 ## MVP ActionNodes
 
-Начальный набор узлов действий (MVP) содержит три типа:
+Начальный набор узлов действий (MVP) содержит три типа. В каждом примере поле `action_type` указывает тип действия, а `id` — уникальный идентификатор узла:
 
-1. **Chat**  
+1. **Chat**
    Обеспечивает диалог и генерацию текстовых ответов.
    ```json
    {
-     "node": "chat",
+     "id": "example.chat",
+     "action_type": "chat",
      "prompt": "Расскажи о проекте Neira"
    }
    ```
 
-2. **Code**  
+2. **Code**
    Генерирует или изменяет фрагменты кода.
    ```json
    {
-     "node": "code",
+     "id": "example.code",
+     "action_type": "code",
      "language": "python",
      "task": "Напиши функцию fibonacci(n)"
    }
    ```
 
-3. **Self-Improve**  
+3. **Self-Improve**
    Переоценивает текущие модули, предлагает обновления и интегрирует новые узлы.
    ```json
    {
-     "node": "self_improve",
+     "id": "example.self_improve",
+     "action_type": "self_improve",
      "goal": "оптимизировать использование памяти"
    }
    ```
