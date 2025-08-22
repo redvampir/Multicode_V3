@@ -8,7 +8,7 @@ use iced::{Element, Length};
 
 use crate::app::diff::DiffView;
 use crate::app::events::Message;
-use crate::app::{command_palette::COMMANDS, format_log, LogLevel, MulticodeApp};
+use crate::app::{command_palette::COMMANDS, format_log, Language, LogLevel, MulticodeApp};
 use crate::modal::Modal;
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::palette::{BlockPalette, PaletteMessage};
@@ -257,8 +257,11 @@ impl MulticodeApp {
         let clear_btn = button("Очистить").on_press(Message::RunTerminalCmd(":clear".into()));
         let stop_btn = button("Stop").on_press(Message::RunTerminalCmd(":stop".into()));
         let help_btn = button("Справка").on_press(Message::ShowTerminalHelp);
-        let translate_btn =
-            button("Перевести").on_press(Message::LanguageSelected(self.settings.language.next()));
+        let lang_pick = pick_list(
+            &Language::ALL[..],
+            Some(self.settings.language),
+            Message::LanguageSelected,
+        );
         let save_log_btn = button("Сохранить лог").on_press(Message::SaveLog);
         let level_pick = pick_list(
             &LogLevel::ALL[..],
@@ -272,7 +275,7 @@ impl MulticodeApp {
                 clear_btn,
                 stop_btn,
                 help_btn,
-                translate_btn,
+                lang_pick,
                 save_log_btn,
                 level_pick
             ]
