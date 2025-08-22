@@ -3,6 +3,7 @@ use iced::{
     keyboard::{self, key},
     mouse, Color, Point, Rectangle, Renderer, Theme, Vector,
 };
+use std::cell::RefCell;
 
 use crate::visual::translations::{translate_kind, Language};
 use multicode_core::BlockInfo;
@@ -20,14 +21,14 @@ pub enum CanvasMessage {
     TogglePalette,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataType {
     Number,
     Boolean,
     Text,
 }
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Connection {
     pub from: usize,
     pub to: usize,
@@ -47,12 +48,22 @@ pub struct State {
     drag: Option<Drag>,
     panning: bool,
     last_cursor: Point,
+    connections: RefCell<Vec<PreparedConnection>>,
+    last_blocks: RefCell<Vec<(f64, f64)>>,
+    last_connections: RefCell<Vec<Connection>>,
 }
 
 #[derive(Debug, Clone)]
 struct Drag {
     index: usize,
     grab: Vector,
+}
+
+#[derive(Clone)]
+struct PreparedConnection {
+    start: Point,
+    end: Point,
+    color: Color,
 }
 
 impl Default for State {
@@ -64,6 +75,9 @@ impl Default for State {
             drag: None,
             panning: false,
             last_cursor: Point::ORIGIN,
+            connections: RefCell::new(Vec::new()),
+            last_blocks: RefCell::new(Vec::new()),
+            last_connections: RefCell::new(Vec::new()),
         }
     }
 }
@@ -85,6 +99,38 @@ fn contains(block: &BlockInfo, pos: Point) -> bool {
         && pos.y <= block.y as f32 + BLOCK_HEIGHT
 }
 
+impl State {
+    fn update_connections(&self, blocks: &[BlockInfo], connections: &[Connection]) {
+        let current_blocks: Vec<(f64, f64)> = blocks.iter().map(|b| (b.x, b.y)).collect();
+        let mut last_blocks = self.last_blocks.borrow_mut();
+        let mut last_connections = self.last_connections.borrow_mut();
+        if *last_blocks != current_blocks || *last_connections != connections {
+            let mut prepared = Vec::new();
+            for c in connections {
+                if let (Some(from), Some(to)) = (blocks.get(c.from), blocks.get(c.to)) {
+                    let start = Point::new(
+                        from.x as f32 + BLOCK_WIDTH / 2.0,
+                        from.y as f32 + BLOCK_HEIGHT / 2.0,
+                    );
+                    let end = Point::new(
+                        to.x as f32 + BLOCK_WIDTH / 2.0,
+                        to.y as f32 + BLOCK_HEIGHT / 2.0,
+                    );
+                    let color = match c.data_type {
+                        DataType::Number => Color::from_rgb(0.0, 0.0, 0.8),
+                        DataType::Boolean => Color::from_rgb(0.0, 0.6, 0.0),
+                        DataType::Text => Color::from_rgb(1.0, 0.5, 0.0),
+                    };
+                    prepared.push(PreparedConnection { start, end, color });
+                }
+            }
+            *self.connections.borrow_mut() = prepared;
+            *last_blocks = current_blocks;
+            *last_connections = connections.to_vec();
+        }
+    }
+}
+
 impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
     type State = State;
 
@@ -95,6 +141,7 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
         bounds: Rectangle,
         cursor: mouse::Cursor,
     ) -> (canvas::event::Status, Option<CanvasMessage>) {
+        state.update_connections(self.blocks, self.connections);
         match event {
             Event::Keyboard(keyboard::Event::KeyPressed { key, .. }) => {
                 if key == keyboard::Key::Named(key::Named::Space) {
@@ -243,33 +290,20 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
         bounds: Rectangle,
         _cursor: mouse::Cursor,
     ) -> Vec<Geometry> {
+        state.update_connections(self.blocks, self.connections);
+
         let mut frame = Frame::new(renderer, bounds.size());
 
         frame.translate(state.offset);
         frame.scale(state.scale);
 
-        for connection in self.connections {
-            if let (Some(from), Some(to)) = (
-                self.blocks.get(connection.from),
-                self.blocks.get(connection.to),
-            ) {
-                let start = Point::new(
-                    from.x as f32 + BLOCK_WIDTH / 2.0,
-                    from.y as f32 + BLOCK_HEIGHT / 2.0,
-                );
-                let end = Point::new(
-                    to.x as f32 + BLOCK_WIDTH / 2.0,
-                    to.y as f32 + BLOCK_HEIGHT / 2.0,
-                );
-                let color = match connection.data_type {
-                    DataType::Number => Color::from_rgb(0.0, 0.0, 0.8),
-                    DataType::Boolean => Color::from_rgb(0.0, 0.6, 0.0),
-                    DataType::Text => Color::from_rgb(1.0, 0.5, 0.0),
-                };
-                let path = Path::line(start, end);
-                let stroke = Stroke::default().with_color(color).with_width(2.0);
-                frame.stroke(&path, stroke);
-            }
+        let connections = state.connections.borrow();
+        for connection in connections.iter() {
+            let path = Path::line(connection.start, connection.end);
+            let stroke = Stroke::default()
+                .with_color(connection.color)
+                .with_width(2.0);
+            frame.stroke(&path, stroke);
         }
 
         for (i, block) in self.blocks.iter().enumerate() {
