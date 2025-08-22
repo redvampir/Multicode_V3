@@ -1,19 +1,20 @@
 use iced::widget::canvas::{self, Event, Frame, Geometry, Path, Program, Stroke, Text};
 use iced::{
     keyboard::{self, key},
-    mouse, Color, Point, Rectangle, Renderer, Theme, Vector,
+    mouse, Point, Rectangle, Renderer, Theme, Vector,
 };
 use std::cell::RefCell;
 
+use crate::visual::connection_draw::{
+    draw_connections, draw_drag, prepare_connections, ConnectionDrag, PreparedConnection,
+    PORT_RADIUS,
+};
 use crate::visual::connections::{Connection, DataType};
 use crate::visual::translations::{translate_kind, Language};
 use multicode_core::BlockInfo;
 
 pub const BLOCK_WIDTH: f32 = 120.0;
 pub const BLOCK_HEIGHT: f32 = 40.0;
-const PORT_RADIUS: f32 = 5.0;
-const ARROW_LENGTH: f32 = 10.0;
-const ARROW_WIDTH: f32 = 6.0;
 
 #[derive(Debug, Clone)]
 pub enum CanvasMessage {
@@ -49,23 +50,6 @@ pub struct State {
 struct Drag {
     index: usize,
     grab: Vector,
-}
-
-#[derive(Debug, Clone)]
-struct ConnectionDrag {
-    from_block: usize,
-    from_port: usize,
-    start: Point,
-    current: Point,
-    hover: Option<(usize, usize)>,
-    data_type: DataType,
-}
-
-#[derive(Clone)]
-struct PreparedConnection {
-    start: Point,
-    end: Point,
-    color: Color,
 }
 
 impl Default for State {
@@ -119,66 +103,13 @@ fn find_port(blocks: &[BlockInfo], pos: Point, output: bool) -> Option<(usize, u
     None
 }
 
-fn draw_arrow(frame: &mut Frame, start: Point, end: Point, color: Color, scale: f32) {
-    let dir = Vector::new(end.x - start.x, end.y - start.y);
-    let length = (dir.x * dir.x + dir.y * dir.y).sqrt();
-    if length == 0.0 {
-        return;
-    }
-    let norm = Vector::new(dir.x / length, dir.y / length);
-    let perp = Vector::new(-norm.y, norm.x);
-    let arrow_length = ARROW_LENGTH / scale;
-    let arrow_width = ARROW_WIDTH / scale;
-    let base = Point::new(end.x - norm.x * arrow_length, end.y - norm.y * arrow_length);
-    let left = Point::new(
-        base.x + perp.x * (arrow_width / 2.0),
-        base.y + perp.y * (arrow_width / 2.0),
-    );
-    let right = Point::new(
-        base.x - perp.x * (arrow_width / 2.0),
-        base.y - perp.y * (arrow_width / 2.0),
-    );
-    let triangle = Path::new(|p| {
-        p.move_to(end);
-        p.line_to(left);
-        p.line_to(right);
-        p.close();
-    });
-    frame.fill(&triangle, color);
-}
-
 impl State {
     fn update_connections(&self, blocks: &[BlockInfo], connections: &[Connection]) {
         let current_blocks: Vec<(f64, f64)> = blocks.iter().map(|b| (b.x, b.y)).collect();
         let mut last_blocks = self.last_blocks.borrow_mut();
         let mut last_connections = self.last_connections.borrow_mut();
         if *last_blocks != current_blocks || *last_connections != connections {
-            let mut prepared = Vec::new();
-            for c in connections {
-                if let (Some(from_block), Some(to_block)) =
-                    (blocks.get(c.from.0), blocks.get(c.to.0))
-                {
-                    if let (Some(from_port), Some(to_port)) =
-                        (from_block.ports.get(c.from.1), to_block.ports.get(c.to.1))
-                    {
-                        let start = Point::new(
-                            (from_block.x + from_port.x) as f32,
-                            (from_block.y + from_port.y) as f32,
-                        );
-                        let end = Point::new(
-                            (to_block.x + to_port.x) as f32,
-                            (to_block.y + to_port.y) as f32,
-                        );
-                        let color = match c.data_type {
-                            DataType::Number => Color::from_rgb(0.0, 0.0, 0.8),
-                            DataType::Boolean => Color::from_rgb(0.0, 0.6, 0.0),
-                            DataType::Text => Color::from_rgb(1.0, 0.5, 0.0),
-                            DataType::Any => Color::from_rgb(0.5, 0.5, 0.5),
-                        };
-                        prepared.push(PreparedConnection { start, end, color });
-                    }
-                }
-            }
+            let prepared = prepare_connections(blocks, connections);
             *self.connections.borrow_mut() = prepared;
             *last_blocks = current_blocks;
             *last_connections = connections.to_vec();
@@ -393,45 +324,11 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
         frame.scale(state.scale);
 
         let connections = state.connections.borrow();
-        for connection in connections.iter() {
-            let path = Path::line(connection.start, connection.end);
-            let stroke = Stroke::default()
-                .with_color(connection.color)
-                .with_width(2.0);
-            frame.stroke(&path, stroke);
-            draw_arrow(
-                &mut frame,
-                connection.start,
-                connection.end,
-                connection.color,
-                state.scale,
-            );
-        }
+        draw_connections(&mut frame, &connections, state.scale);
         drop(connections);
 
         if let Some(conn) = state.connection.as_ref() {
-            let path = Path::line(conn.start, conn.current);
-            let stroke = Stroke::default()
-                .with_color(Color::from_rgb(0.0, 0.0, 0.8))
-                .with_width(2.0);
-            frame.stroke(&path, stroke);
-            draw_arrow(
-                &mut frame,
-                conn.start,
-                conn.current,
-                Color::from_rgb(0.0, 0.0, 0.8),
-                state.scale,
-            );
-            if let Some((b, p)) = conn.hover {
-                if let Some(block) = self.blocks.get(b) {
-                    if let Some(port) = block.ports.get(p) {
-                        let point =
-                            Point::new((block.x + port.x) as f32, (block.y + port.y) as f32);
-                        let circle = Path::circle(point, PORT_RADIUS);
-                        frame.fill(&circle, Color::from_rgba(0.0, 1.0, 0.0, 0.5));
-                    }
-                }
-            }
+            draw_drag(&mut frame, conn, self.blocks, state.scale);
         }
 
         for (i, block) in self.blocks.iter().enumerate() {

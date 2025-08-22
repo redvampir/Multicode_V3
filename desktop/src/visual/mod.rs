@@ -1,5 +1,6 @@
 pub mod blocks;
 pub mod canvas;
+pub mod connection_draw;
 pub mod connections;
 pub mod palette;
 pub mod serialization;
