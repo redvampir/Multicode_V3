@@ -1,6 +1,6 @@
+use chrono::Utc;
 use core::meta::{read_all, upsert, VisualMeta};
 use core::search::search_links;
-use chrono::Utc;
 use std::collections::HashMap;
 use std::fs;
 use tempfile::tempdir;
@@ -47,7 +47,7 @@ fn search_finds_by_link() {
         "// @VISUAL_META {\"id\":\"1\",\"x\":0.0,\"y\":0.0,\"links\":[\"target\"]}\n",
     )
     .unwrap();
-    let res = search_links(dir.path(), "target");
+    let res = search_links(dir.path(), "target").unwrap();
     assert_eq!(res.len(), 1);
     assert_eq!(res[0].file, file);
     assert_eq!(res[0].meta.links, vec!["target"]);

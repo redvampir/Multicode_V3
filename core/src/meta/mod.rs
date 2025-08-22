@@ -156,7 +156,13 @@ pub fn read_all_with_dups(content: &str) -> (Vec<VisualMeta>, Vec<String>) {
     // Сериализуем доступ, чтобы реестр не очищался, пока другой поток
     // его использует. Иначе это могло приводить к пропущенным метаданным
     // и нестабильным тестам.
-    let _guard = REGISTRY_LOCK.lock().unwrap();
+    let _guard = match REGISTRY_LOCK.lock() {
+        Ok(g) => g,
+        Err(e) => {
+            eprintln!("Registry lock poisoned: {e}");
+            e.into_inner()
+        }
+    };
     id_registry::clear();
     let mut ids = Vec::new();
     for json in comment_detector::extract_json(content) {
@@ -299,10 +305,13 @@ pub fn fix_all(content: &str) -> String {
 
 fn unique_id() -> String {
     use std::time::{SystemTime, UNIX_EPOCH};
-    let nanos = SystemTime::now()
-        .duration_since(UNIX_EPOCH)
-        .unwrap()
-        .as_nanos();
+    let nanos = match SystemTime::now().duration_since(UNIX_EPOCH) {
+        Ok(d) => d.as_nanos(),
+        Err(e) => {
+            eprintln!("System time error: {e}");
+            0
+        }
+    };
     format!("m{}", nanos)
 }
 
@@ -440,6 +449,14 @@ mod tests {
         let ai = merged.ai.as_ref().unwrap();
         assert_eq!(ai.description.as_deref(), Some("pdesc"));
         assert_eq!(ai.hints, vec!["h1", "h2"]);
+    }
+
+    #[test]
+    fn read_all_with_dups_handles_invalid_json() {
+        let content = format!("<!-- {} {{invalid}} -->", MARKER);
+        let (metas, dups) = read_all_with_dups(&content);
+        assert!(metas.is_empty());
+        assert!(dups.is_empty());
     }
 
     #[test]
