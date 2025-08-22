@@ -32,7 +32,7 @@ Neira поддерживает конфигурацию через `.env` или
 Пример файла `.env`:
 ```dotenv
 NEIRA_PORT=4000
-NEIRA_MODEL=./models/tiny-llama.bin
+NEIRA_MODEL=./models/teacher-model.bin
 NEIRA_LOG_LEVEL=info
 ```
 После изменения переменных перезапустите приложение.
