@@ -11,6 +11,8 @@ use multicode_core::BlockInfo;
 pub const BLOCK_WIDTH: f32 = 120.0;
 pub const BLOCK_HEIGHT: f32 = 40.0;
 const PORT_RADIUS: f32 = 5.0;
+const ARROW_LENGTH: f32 = 10.0;
+const ARROW_WIDTH: f32 = 6.0;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DataType {
@@ -128,6 +130,34 @@ fn find_port(blocks: &[BlockInfo], pos: Point, output: bool) -> Option<(usize, u
         }
     }
     None
+}
+
+fn draw_arrow(frame: &mut Frame, start: Point, end: Point, color: Color, scale: f32) {
+    let dir = Vector::new(end.x - start.x, end.y - start.y);
+    let length = (dir.x * dir.x + dir.y * dir.y).sqrt();
+    if length == 0.0 {
+        return;
+    }
+    let norm = Vector::new(dir.x / length, dir.y / length);
+    let perp = Vector::new(-norm.y, norm.x);
+    let arrow_length = ARROW_LENGTH / scale;
+    let arrow_width = ARROW_WIDTH / scale;
+    let base = Point::new(end.x - norm.x * arrow_length, end.y - norm.y * arrow_length);
+    let left = Point::new(
+        base.x + perp.x * (arrow_width / 2.0),
+        base.y + perp.y * (arrow_width / 2.0),
+    );
+    let right = Point::new(
+        base.x - perp.x * (arrow_width / 2.0),
+        base.y - perp.y * (arrow_width / 2.0),
+    );
+    let triangle = Path::new(|p| {
+        p.move_to(end);
+        p.line_to(left);
+        p.line_to(right);
+        p.close();
+    });
+    frame.fill(&triangle, color);
 }
 
 impl State {
@@ -381,6 +411,13 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                 .with_color(connection.color)
                 .with_width(2.0);
             frame.stroke(&path, stroke);
+            draw_arrow(
+                &mut frame,
+                connection.start,
+                connection.end,
+                connection.color,
+                state.scale,
+            );
         }
         drop(connections);
 
@@ -390,6 +427,13 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                 .with_color(Color::from_rgb(0.0, 0.0, 0.8))
                 .with_width(2.0);
             frame.stroke(&path, stroke);
+            draw_arrow(
+                &mut frame,
+                conn.start,
+                conn.current,
+                Color::from_rgb(0.0, 0.0, 0.8),
+                state.scale,
+            );
             if let Some((b, p)) = conn.hover {
                 if let Some(block) = self.blocks.get(b) {
                     if let Some(port) = block.ports.get(p) {
