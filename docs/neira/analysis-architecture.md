@@ -32,23 +32,33 @@
 
 ## API узлов
 
-Трейт `AnalysisNode` задаёт минимальный контракт для всех реализаций. Метод `analyze` возвращает структуру `AnalysisResult` с наборами метрик и текстовым объяснением, а `explain` выдаёт краткое описание логики узла. Регистрация конкретных реализаций производится через `NodeRegistry`.
+Трейт `AnalysisNode` задаёт минимальный контракт для всех реализаций. Метод `analyze` возвращает структуру `AnalysisResult` с наборами метрик и текстовым объяснением, а `explain` выдаёт краткое описание логики узла. Дополнительно интерфейс предоставляет текущий `status` и связи `links`. Регистрация конкретных реализаций производится через `NodeRegistry`.
 
 ```rust
 pub trait AnalysisNode {
     fn id(&self) -> &str;
     fn analysis_type(&self) -> &str;
+    fn status(&self) -> NodeStatus;
+    fn links(&self) -> &[String];
     fn analyze(&self, input: &str) -> AnalysisResult;
     fn explain(&self) -> String;
 }
 ```
 
-Тип `AnalysisResult` содержит произвольные метрики и текстовое объяснение.
+Тип `AnalysisResult` содержит статус выполнения, произвольные метрики, цепочку рассуждений, ссылки и текстовое объяснение. Поле `metadata.schema` фиксирует версию схемы результата.
 
 ```rust
 pub struct AnalysisResult {
+    pub status: NodeStatus,
     pub metrics: HashMap<String, f32>,
+    pub reasoning_chain: Vec<String>,
     pub explanation: String,
+    pub links: Vec<String>,
+    pub metadata: AnalysisMetadata,
+}
+
+pub struct AnalysisMetadata {
+    pub schema: String,
 }
 ```
 
@@ -74,11 +84,17 @@ pub struct ComplexityNode;
 impl AnalysisNode for ComplexityNode {
     fn id(&self) -> &str { "analysis.complexity" }
     fn analysis_type(&self) -> &str { "ComplexityNode" }
+    fn status(&self) -> NodeStatus { NodeStatus::Active }
+    fn links(&self) -> &[String] { &[] }
     fn analyze(&self, input: &str) -> AnalysisResult {
         let score = compute_complexity(input);
         AnalysisResult {
+            status: NodeStatus::Active,
             metrics: HashMap::from([(String::from("score"), score)]),
+            reasoning_chain: vec!["compute cyclomatic complexity".into()],
             explanation: String::from("Оценка цикломатической сложности"),
+            links: vec![],
+            metadata: AnalysisMetadata { schema: "1.0".into() },
         }
     }
     fn explain(&self) -> String {
