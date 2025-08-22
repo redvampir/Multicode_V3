@@ -10,22 +10,33 @@ use super::blocks::{
 pub enum Language {
     English,
     Russian,
+    Spanish,
+    German,
 }
 
 impl Language {
-    pub const ALL: [Language; 2] = [Language::English, Language::Russian];
+    pub const ALL: [Language; 4] = [
+        Language::English,
+        Language::Russian,
+        Language::Spanish,
+        Language::German,
+    ];
 
     pub fn code(self) -> &'static str {
         match self {
             Language::English => "en",
             Language::Russian => "ru",
+            Language::Spanish => "es",
+            Language::German => "de",
         }
     }
 
     pub fn next(self) -> Self {
         match self {
             Language::English => Language::Russian,
-            Language::Russian => Language::English,
+            Language::Russian => Language::Spanish,
+            Language::Spanish => Language::German,
+            Language::German => Language::English,
         }
     }
 }
@@ -41,6 +52,8 @@ impl fmt::Display for Language {
         match self {
             Language::English => write!(f, "English"),
             Language::Russian => write!(f, "Русский"),
+            Language::Spanish => write!(f, "Español"),
+            Language::German => write!(f, "Deutsch"),
         }
     }
 }
@@ -59,22 +72,46 @@ impl BlockTranslation {
 
     pub fn get(&self, lang: Language) -> &'static str {
         match lang {
-            Language::English => self.en,
             Language::Russian => self.ru,
+            _ => self.en,
         }
     }
 }
 
 pub const BLOCK_TRANSLATIONS: &[BlockTranslation] = &[
     // Arithmetic
-    BlockTranslation::new(BlockType::Arithmetic(ArithmeticBlock::Add), "Add", "Сложить"),
-    BlockTranslation::new(BlockType::Arithmetic(ArithmeticBlock::Subtract), "Subtract", "Вычесть"),
-    BlockTranslation::new(BlockType::Arithmetic(ArithmeticBlock::Multiply), "Multiply", "Умножить"),
-    BlockTranslation::new(BlockType::Arithmetic(ArithmeticBlock::Divide), "Divide", "Делить"),
+    BlockTranslation::new(
+        BlockType::Arithmetic(ArithmeticBlock::Add),
+        "Add",
+        "Сложить",
+    ),
+    BlockTranslation::new(
+        BlockType::Arithmetic(ArithmeticBlock::Subtract),
+        "Subtract",
+        "Вычесть",
+    ),
+    BlockTranslation::new(
+        BlockType::Arithmetic(ArithmeticBlock::Multiply),
+        "Multiply",
+        "Умножить",
+    ),
+    BlockTranslation::new(
+        BlockType::Arithmetic(ArithmeticBlock::Divide),
+        "Divide",
+        "Делить",
+    ),
     // Conditional
     BlockTranslation::new(BlockType::Conditional(ConditionalBlock::If), "If", "Если"),
-    BlockTranslation::new(BlockType::Conditional(ConditionalBlock::ElseIf), "Else If", "Иначе если"),
-    BlockTranslation::new(BlockType::Conditional(ConditionalBlock::Else), "Else", "Иначе"),
+    BlockTranslation::new(
+        BlockType::Conditional(ConditionalBlock::ElseIf),
+        "Else If",
+        "Иначе если",
+    ),
+    BlockTranslation::new(
+        BlockType::Conditional(ConditionalBlock::Else),
+        "Else",
+        "Иначе",
+    ),
     // Loops
     BlockTranslation::new(BlockType::Loop(LoopBlock::For), "For", "Для"),
     BlockTranslation::new(BlockType::Loop(LoopBlock::While), "While", "Пока"),
@@ -83,9 +120,17 @@ pub const BLOCK_TRANSLATIONS: &[BlockTranslation] = &[
     BlockTranslation::new(BlockType::Variable(VariableBlock::Set), "Set", "Присвоить"),
     BlockTranslation::new(BlockType::Variable(VariableBlock::Get), "Get", "Получить"),
     // Functions
-    BlockTranslation::new(BlockType::Function(FunctionBlock::Define), "Define", "Определить"),
+    BlockTranslation::new(
+        BlockType::Function(FunctionBlock::Define),
+        "Define",
+        "Определить",
+    ),
     BlockTranslation::new(BlockType::Function(FunctionBlock::Call), "Call", "Вызвать"),
-    BlockTranslation::new(BlockType::Function(FunctionBlock::Return), "Return", "Возврат"),
+    BlockTranslation::new(
+        BlockType::Function(FunctionBlock::Return),
+        "Return",
+        "Возврат",
+    ),
 ];
 
 pub fn translate(block: BlockType, lang: Language) -> Option<&'static str> {
