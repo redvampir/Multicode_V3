@@ -1304,7 +1304,8 @@ impl MulticodeApp {
                 let query = self.query.clone();
                 Command::perform(
                     async move {
-                        let results = search::search_metadata(Path::new(&root), &query);
+                        let results = search::search_metadata(Path::new(&root), &query)
+                            .map_err(|e| e.to_string())?;
                         Ok::<_, String>(
                             results
                                 .into_iter()
