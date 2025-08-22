@@ -3,9 +3,9 @@ use iced::{
     keyboard::{self, key},
     mouse, Color, Point, Rectangle, Renderer, Theme, Vector,
 };
-use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 
+use crate::visual::connections::{Connection, DataType};
 use crate::visual::translations::{translate_kind, Language};
 use multicode_core::BlockInfo;
 
@@ -14,27 +14,6 @@ pub const BLOCK_HEIGHT: f32 = 40.0;
 const PORT_RADIUS: f32 = 5.0;
 const ARROW_LENGTH: f32 = 10.0;
 const ARROW_WIDTH: f32 = 6.0;
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
-pub enum DataType {
-    Any,
-    Number,
-    Boolean,
-    Text,
-}
-
-impl Default for DataType {
-    fn default() -> Self {
-        DataType::Any
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub struct Connection {
-    pub from: (usize, usize),
-    pub to: (usize, usize),
-    pub data_type: DataType,
-}
 
 #[derive(Debug, Clone)]
 pub enum CanvasMessage {

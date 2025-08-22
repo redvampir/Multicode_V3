@@ -1,4 +1,4 @@
-use crate::visual::canvas::Connection;
+use crate::visual::connections::Connection;
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use iced::{widget::text_editor, Color};

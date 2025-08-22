@@ -1,4 +1,4 @@
-use crate::visual::canvas::{Connection, DataType};
+use crate::visual::connections::{Connection, DataType};
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

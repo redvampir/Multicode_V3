@@ -10,7 +10,8 @@ use crate::app::diff::DiffView;
 use crate::app::events::Message;
 use crate::app::{command_palette::COMMANDS, format_log, Language, LogLevel, MulticodeApp};
 use crate::modal::Modal;
-use crate::visual::canvas::{CanvasMessage, Connection, VisualCanvas};
+use crate::visual::canvas::{CanvasMessage, VisualCanvas};
+use crate::visual::connections::Connection;
 use crate::visual::palette::{BlockPalette, PaletteMessage};
 use multicode_core::BlockInfo;
 
