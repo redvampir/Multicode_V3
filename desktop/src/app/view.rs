@@ -609,6 +609,7 @@ impl MulticodeApp {
             .into();
         let content = self.loading_overlay(page);
         let content = self.command_palette_modal(content);
+        let content = self.goto_line_modal(content);
         let content = self.block_palette_modal(content);
         self.error_modal(content)
     }

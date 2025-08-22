@@ -126,6 +126,10 @@ pub struct MulticodeApp {
     pub(super) project_search_results: Vec<(PathBuf, usize, String)>,
     /// строка для перехода после открытия файла
     pub(super) goto_line: Option<usize>,
+    /// текстовое значение для перехода к строке
+    pub(super) goto_line_input: String,
+    /// отображать модальное окно перехода к строке
+    pub(super) show_goto_line_modal: bool,
     pub(super) show_terminal: bool,
     pub(super) terminal_cmd: String,
     pub(super) terminal_child: Option<Child>,
