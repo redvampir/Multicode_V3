@@ -241,15 +241,24 @@ impl MulticodeApp {
                     }
                 }
                 if modifiers.control() && !modifiers.alt() && !modifiers.shift() {
-                    if let keyboard::Key::Character(c) = &key {
-                        match c.to_lowercase().as_str() {
+                    match &key {
+                        keyboard::Key::Named(keyboard::key::Named::Tab) => {
+                            let next = match self.view_mode {
+                                ViewMode::Code => ViewMode::Schema,
+                                ViewMode::Schema => ViewMode::Split,
+                                ViewMode::Split => ViewMode::Code,
+                            };
+                            return self.handle_message(Message::SwitchViewMode(next));
+                        }
+                        keyboard::Key::Character(c) => match c.to_lowercase().as_str() {
                             "n" => return self.handle_message(Message::CreateFile),
                             "s" => return self.handle_message(Message::SaveFile),
                             "f" => return self.handle_message(Message::ToggleSearchPanel),
                             "z" => return self.handle_message(Message::Undo),
                             "y" => return self.handle_message(Message::Redo),
                             _ => {}
-                        }
+                        },
+                        _ => {}
                     }
                 }
                 if !modifiers.control() && !modifiers.alt() && !modifiers.shift() {
