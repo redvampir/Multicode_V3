@@ -38,7 +38,7 @@ struct QualityMetrics {
 ```json
 {
   "id": "example.analysis",
-  "output": "...",
+  "output": "analysis summary",
   "quality_metrics": {
     "credibility": 0.95,
     "recency_days": 7,
@@ -47,7 +47,7 @@ struct QualityMetrics {
 }
 ```
 
-Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` передаётся как объект, где каждая метрика представлена числовым значением; отсутствующие показатели опускаются.
+Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` — объект с числовыми метриками; отсутствующие показатели опускаются.
 
 После выполнения `analyze()` узел анализа всегда передаёт рассчитанные
 `QualityMetrics` в связанный `MemoryNode`, например через метод
