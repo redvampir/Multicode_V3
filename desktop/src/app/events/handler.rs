@@ -1341,6 +1341,28 @@ impl MulticodeApp {
                 self.project_search_results = results;
                 Command::none()
             }
+            Message::OpenGotoLine => {
+                self.show_goto_line_modal = true;
+                self.goto_line_input.clear();
+                Command::none()
+            }
+            Message::GotoLineInputChanged(s) => {
+                self.goto_line_input = s;
+                Command::none()
+            }
+            Message::ConfirmGotoLine => {
+                if let Ok(line) = self.goto_line_input.trim().parse::<usize>() {
+                    self.move_cursor_to(line.saturating_sub(1), 0);
+                }
+                self.goto_line_input.clear();
+                self.show_goto_line_modal = false;
+                Command::none()
+            }
+            Message::CancelGotoLine => {
+                self.goto_line_input.clear();
+                self.show_goto_line_modal = false;
+                Command::none()
+            }
             Message::RunParse => {
                 self.loading = true;
                 let files = self.file_paths();

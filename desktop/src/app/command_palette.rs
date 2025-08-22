@@ -24,6 +24,11 @@ pub const COMMANDS: &[CommandItem] = &[
         message: Message::ToggleTerminal,
     },
     CommandItem {
+        id: "goto_line",
+        title: "Перейти к строке",
+        message: Message::OpenGotoLine,
+    },
+    CommandItem {
         id: "open_settings",
         title: "Открыть настройки",
         message: Message::OpenSettings,
@@ -59,6 +64,12 @@ mod tests {
             && matches!(c.message, Message::SwitchToVisualEditor)));
         assert!(COMMANDS.iter().any(|c| c.id == "switch_to_split"
             && matches!(c.message, Message::SwitchViewMode(crate::app::ViewMode::Split))));
+    }
+
+    #[test]
+    fn command_palette_contains_goto_line() {
+        assert!(COMMANDS.iter().any(|c| c.id == "goto_line"
+            && matches!(c.message, Message::OpenGotoLine)));
     }
 
     #[test]

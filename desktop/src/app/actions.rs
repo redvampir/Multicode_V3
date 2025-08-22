@@ -59,6 +59,8 @@ impl Application for MulticodeApp {
             min_log_level: LogLevel::Info,
             project_search_results: Vec::new(),
             goto_line: None,
+            goto_line_input: String::new(),
+            show_goto_line_modal: false,
             show_terminal: false,
             terminal_cmd: String::new(),
             terminal_child: None,

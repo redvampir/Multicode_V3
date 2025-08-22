@@ -332,6 +332,35 @@ impl MulticodeApp {
             .into()
     }
 
+    pub fn goto_line_modal<'a>(&self, content: Element<'a, Message>) -> Element<'a, Message> {
+        if !self.show_goto_line_modal {
+            return content;
+        }
+        let placeholder = if self.settings.language == Language::Russian {
+            "номер строки"
+        } else {
+            "line number"
+        };
+        let input = text_input(placeholder, &self.goto_line_input)
+            .on_input(Message::GotoLineInputChanged)
+            .on_submit(Message::ConfirmGotoLine);
+        let modal_content = container(
+            column![
+                input,
+                row![
+                    button("OK").on_press(Message::ConfirmGotoLine),
+                    button("Cancel").on_press(Message::CancelGotoLine)
+                ]
+                .spacing(10)
+            ]
+            .spacing(10),
+        )
+        .padding(10);
+        Modal::new(content, modal_content)
+            .on_blur(Message::CancelGotoLine)
+            .into()
+    }
+
     pub fn block_palette_modal<'a>(
         &'a self,
         content: Element<'a, Message>,
@@ -422,6 +451,8 @@ mod tests {
             min_log_level: LogLevel::Info,
             project_search_results: Vec::new(),
             goto_line: None,
+            goto_line_input: String::new(),
+            show_goto_line_modal: false,
             show_terminal: false,
             terminal_cmd: String::new(),
             terminal_child: None,
@@ -470,5 +501,17 @@ mod tests {
             root: PathBuf::new(),
         });
         assert!(!app.is_visual_mode());
+    }
+
+    #[test]
+    fn goto_line_modal_flow() {
+        let mut app = build_app(Screen::TextEditor { root: PathBuf::new() });
+        assert!(!app.show_goto_line_modal);
+        let _ = app.handle_message(crate::app::events::Message::OpenGotoLine);
+        assert!(app.show_goto_line_modal);
+        let _ = app.handle_message(crate::app::events::Message::GotoLineInputChanged("3".into()));
+        let _ = app.handle_message(crate::app::events::Message::ConfirmGotoLine);
+        assert!(!app.show_goto_line_modal);
+        assert!(app.goto_line_input.is_empty());
     }
 }
