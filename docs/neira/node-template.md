@@ -26,7 +26,7 @@
 | Поле | Описание |
 | --- | --- |
 | `id` | Уникальный идентификатор шаблона. |
-| `node_type` | Тип создаваемого узла. |
+| `analysis_type` | Тип создаваемого узла. |
 | `links` | Список связей с другими узлами. |
 | `draft_content` | Черновое содержимое узла. |
 | `metadata` | Дополнительные метаданные в формате ключ‑значение. |
@@ -38,7 +38,7 @@
 ```json
 {
   "id": "example.template",
-  "node_type": "ProgrammingSyntaxNode",
+  "analysis_type": "ProgrammingSyntaxNode",
   "links": ["prog.syntax.base"],
   "draft_content": "Initial description",
   "metadata": {
@@ -52,7 +52,7 @@
 
 ```yaml
 id: example.template
-node_type: ProgrammingSyntaxNode
+analysis_type: ProgrammingSyntaxNode
 links:
   - prog.syntax.base
 draft_content: Initial description

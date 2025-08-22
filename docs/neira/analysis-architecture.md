@@ -37,7 +37,7 @@
 ```rust
 pub trait AnalysisNode {
     fn id(&self) -> &str;
-    fn node_type(&self) -> &str;
+    fn analysis_type(&self) -> &str;
     fn analyze(&self, input: &str) -> AnalysisResult;
     fn explain(&self) -> String;
 }
@@ -73,7 +73,7 @@ pub struct ComplexityNode;
 
 impl AnalysisNode for ComplexityNode {
     fn id(&self) -> &str { "analysis.complexity" }
-    fn node_type(&self) -> &str { "ComplexityNode" }
+    fn analysis_type(&self) -> &str { "ComplexityNode" }
     fn analyze(&self, input: &str) -> AnalysisResult {
         let score = compute_complexity(input);
         AnalysisResult {

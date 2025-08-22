@@ -99,7 +99,7 @@ source: "https://example.org"
 | Поле | Описание |
 | --- | --- |
 | `id` | Уникальный идентификатор шаблона. |
-| `node_type` | Тип создаваемого узла. |
+| `analysis_type` | Тип создаваемого узла. |
 | `links` | Список связей с другими узлами. |
 | `draft_content` | Черновое содержимое узла. |
 | `metadata` | Дополнительные метаданные в формате ключ‑значение. |
@@ -107,7 +107,7 @@ source: "https://example.org"
 ```rust
 struct NodeTemplate {
     id: String,
-    node_type: String,
+    analysis_type: String,
     links: Vec<String>,
     draft_content: String,
     metadata: HashMap<String, String>,
@@ -119,7 +119,7 @@ struct NodeTemplate {
 | Поле NodeTemplate | Поле AnalysisNode |
 | --- | --- |
 | `id` | `id` |
-| `node_type` | `analysis_type` |
+| `analysis_type` | `analysis_type` |
 | `links` | `links` |
 | `metadata` | `metadata` |
 | `draft_content` | — |
@@ -131,7 +131,7 @@ struct NodeTemplate {
 ```json
 {
   "id": "example.template",
-  "node_type": "ProgrammingSyntaxNode",
+  "analysis_type": "ProgrammingSyntaxNode",
   "links": ["prog.syntax.base"],
   "draft_content": "Initial description",
   "metadata": {
@@ -165,7 +165,7 @@ struct NodeTemplate {
 
 ```yaml
 id: example.template
-node_type: ProgrammingSyntaxNode
+analysis_type: ProgrammingSyntaxNode
 links:
   - prog.syntax.base
 draft_content: Initial description
