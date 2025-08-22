@@ -6,7 +6,7 @@ use iced::{event, subscription, Application, Command, Element, Subscription, The
 use tokio::sync::broadcast;
 
 use super::events::Message;
-use super::{AppTheme, CreateTarget, EditorMode, MulticodeApp, Screen, UserSettings, ViewMode};
+use super::{AppTheme, CreateTarget, EditorMode, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
 use crate::visual::palette::{PaletteBlock, DEFAULT_CATEGORY};
 use multicode_core::parse_blocks;
 
@@ -55,6 +55,7 @@ impl Application for MulticodeApp {
             query: String::new(),
             show_command_palette: false,
             log: Vec::new(),
+            min_log_level: LogLevel::Info,
             project_search_results: Vec::new(),
             goto_line: None,
             show_terminal: false,

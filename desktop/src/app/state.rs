@@ -35,10 +35,25 @@ mod serde_color {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub enum LogLevel {
     Info,
+    Warning,
     Error,
+}
+
+impl fmt::Display for LogLevel {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            LogLevel::Info => write!(f, "Info"),
+            LogLevel::Warning => write!(f, "Warning"),
+            LogLevel::Error => write!(f, "Error"),
+        }
+    }
+}
+
+impl LogLevel {
+    pub const ALL: [LogLevel; 3] = [LogLevel::Info, LogLevel::Warning, LogLevel::Error];
 }
 
 #[derive(Debug, Clone)]
@@ -100,6 +115,8 @@ pub struct MulticodeApp {
     pub(super) query: String,
     pub(super) show_command_palette: bool,
     pub(super) log: Vec<LogEntry>,
+    /// минимальный уровень отображаемых записей журнала
+    pub(super) min_log_level: LogLevel,
     /// результаты поиска по проекту
     pub(super) project_search_results: Vec<(PathBuf, usize, String)>,
     /// строка для перехода после открытия файла
