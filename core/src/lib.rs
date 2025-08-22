@@ -22,6 +22,13 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 use tree_sitter::Tree;
 
+/// Порт блока на холсте.
+#[derive(Clone, Serialize, Deserialize, Debug)]
+pub struct Port {
+    pub x: f64,
+    pub y: f64,
+}
+
 /// Информация о блоке, дополненная визуальными метаданными.
 #[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BlockInfo {
@@ -35,6 +42,8 @@ pub struct BlockInfo {
     pub anchors: Vec<(usize, usize)>,
     pub x: f64,
     pub y: f64,
+    #[serde(default)]
+    pub ports: Vec<Port>,
     pub ai: Option<AiNote>,
     /// Optional tags associated with the block.
     #[serde(default)]

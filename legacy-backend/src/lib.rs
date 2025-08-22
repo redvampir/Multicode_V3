@@ -32,6 +32,13 @@ static BLOCK_CACHE: Lazy<Mutex<HashMap<String, (String, Vec<BlockInfo>)>>> =
     Lazy::new(|| Mutex::new(HashMap::new()));
 
 #[derive(Clone, Serialize, Deserialize, Debug)]
+/// Порт блока на холсте.
+pub struct Port {
+    pub x: f64,
+    pub y: f64,
+}
+
+#[derive(Clone, Serialize, Deserialize, Debug)]
 pub struct BlockInfo {
     pub visual_id: String,
     #[serde(default)]
@@ -43,6 +50,8 @@ pub struct BlockInfo {
     pub anchors: Vec<(usize, usize)>,
     pub x: f64,
     pub y: f64,
+    #[serde(default)]
+    pub ports: Vec<Port>,
     pub ai: Option<AiNote>,
     /// Optional tags associated with the block.
     #[serde(default)]
