@@ -7,3 +7,6 @@ pub mod translations;
 
 #[cfg(test)]
 mod connections_tests;
+
+#[cfg(test)]
+mod serialization_tests;
