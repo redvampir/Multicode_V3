@@ -99,6 +99,25 @@ version = "0.1.0"
 entry = "src/lib.rs"
 ```
 
+### package.manifest
+Файл `package.manifest` определяет права пакета. В секции `permissions`
+указываются четыре базовых типа разрешений:
+
+- `fs` — доступ к файловой системе;
+- `net` — разрешённые сетевые адреса;
+- `cpu` — допустимая доля времени процессора;
+- `mem` — лимит оперативной памяти.
+
+```toml
+# package.manifest
+[permissions]
+fs = ["read:/data", "write:/tmp"]
+net = ["https://api.example.com"]
+cpu = 0.5
+mem = "128MB"
+```
+Пример такого файла включён в репозиторий: [`examples/package.manifest`](../../examples/package.manifest).
+
 ### Управление пакетами
 Пакеты устанавливаются и обновляются через CLI:
 
@@ -106,6 +125,19 @@ entry = "src/lib.rs"
 neira pkg install draw   # установка
 neira pkg update draw    # обновление
 neira pkg remove draw    # удаление
+```
+
+### Проверка подписи и откат
+Перед запуском пакета рекомендуется проверить его подпись:
+
+```bash
+neira pkg verify draw    # проверка подписи
+```
+
+При необходимости можно откатить пакет к предыдущей версии:
+
+```bash
+neira pkg rollback draw --version 0.1.0
 ```
 
 ### Минимальный пример
