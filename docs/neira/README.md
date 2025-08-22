@@ -89,7 +89,7 @@ struct ActionNode {
 ### 2. Узлы анализа (Analysis Nodes)
 Обрабатывают запросы, строят логические цепочки,
 оценивают достоверность данных и выбирают нужные действия. В базовом интерфейсе обязательны
-поля `id`, `analysis_type`, `status`, `links` и `metadata.schema`; опционально поддерживается `reasoning_chain`.
+поля `id`, `analysis_type`, `status`, `links`, `confidence_threshold` и `metadata.schema`; опционально поддерживается `reasoning_chain`.
 
 ```rust
 struct AnalysisNode {
@@ -97,6 +97,7 @@ struct AnalysisNode {
     analysis_type: AnalysisType,
     status: NodeStatus,
     links: Vec<String>,
+    confidence_threshold: f32,
     reasoning_chain: Vec<ReasoningStep>,
     metadata: AnalysisMetadata,
 }
@@ -110,9 +111,13 @@ struct AnalysisMetadata {
 `status` фиксирует состояние узла (`draft`, `active`, `deprecated`, `error`) и
 используется планировщиком и системами ревизий. Обязательное поле `links`
 перечисляет связанные узлы и помогает планировщику ориентироваться в графе.
-`reasoning_chain` сохраняет последовательность рассуждений для объяснения выводов и
+`confidence_threshold` задаёт минимальную допустимую `credibility` для принятия результата,
+а `reasoning_chain` сохраняет последовательность рассуждений для объяснения выводов и
 отладки.
 `metadata.schema` содержит версию схемы описания узла.
+
+При выполнении `analyze()` узел формирует `AnalysisResult` с метриками `quality_metrics`,
+подробным `reasoning_chain`, вычисленным `uncertainty_score` и ссылками на использованные источники.
 
 ### 3. Узлы памяти (Memory Nodes)
 Хранят знания и опыт, поддерживают приоритизацию источников
