@@ -148,9 +148,10 @@ struct NodeTemplate {
   "id": "example.template",
   "analysis_type": "ProgrammingSyntaxNode",
   "links": ["prog.syntax.base"],
+  "confidence_threshold": 0.8,
   "draft_content": "Initial description",
   "metadata": {
-    "schema": "1.0.0",
+    "schema": "1.1.0",
     "source": "https://example.org"
   }
 }
@@ -170,7 +171,7 @@ struct NodeTemplate {
   ],
   "uncertainty_score": 0.2,
   "metadata": {
-    "schema": "1.0.0",
+    "schema": "1.1.0",
     "source": "https://example.org"
   }
 }
@@ -183,9 +184,10 @@ id: example.template
 analysis_type: ProgrammingSyntaxNode
 links:
   - prog.syntax.base
+confidence_threshold: 0.8
 draft_content: Initial description
 metadata:
-  schema: "1.0.0"
+  schema: "1.1.0"
   source: "https://example.org"
 ```
 
@@ -202,7 +204,7 @@ reasoning_chain:
   - initial review complete
 uncertainty_score: 0.2
 metadata:
-  schema: "1.0.0"
+  schema: "1.1.0"
   source: "https://example.org"
 ```
 

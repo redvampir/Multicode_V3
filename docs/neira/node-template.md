@@ -19,17 +19,18 @@
 - [Проверка](#проверка)
 
 
-Шаблон для создания узлов анализа. Все поля являются обязательными.
+Шаблон для создания узлов анализа. Обязательными являются поля `id`, `analysis_type` и `metadata`.
 
 ## Обязательные поля
 
-| Поле | Описание |
-| --- | --- |
-| `id` | Уникальный идентификатор шаблона. |
-| `analysis_type` | Тип создаваемого узла. |
-| `links` | Список связей с другими узлами. |
-| `draft_content` | Черновое содержимое узла. |
-| `metadata` | Дополнительные метаданные в формате ключ‑значение. |
+| Поле | Тип | Обязательное | Описание |
+| --- | --- | --- | --- |
+| `id` | string | да | Уникальный идентификатор шаблона. |
+| `analysis_type` | string | да | Тип создаваемого узла. |
+| `links` | array<string> | нет, по умолчанию `[]` | Список связей с другими узлами. |
+| `confidence_threshold` | number | нет | Минимальная допустимая `credibility` для принятия результата. |
+| `draft_content` | string | нет | Черновое содержимое узла. |
+| `metadata` | object | да | Дополнительные метаданные в формате ключ‑значение. Должно содержать поле `schema`. |
 
 ## Пример
 
@@ -40,9 +41,10 @@
   "id": "example.template",
   "analysis_type": "ProgrammingSyntaxNode",
   "links": ["prog.syntax.base"],
+  "confidence_threshold": 0.8,
   "draft_content": "Initial description",
   "metadata": {
-    "schema": "1.0.0",
+    "schema": "1.1.0",
     "source": "https://example.org"
   }
 }
@@ -55,9 +57,10 @@ id: example.template
 analysis_type: ProgrammingSyntaxNode
 links:
   - prog.syntax.base
+confidence_threshold: 0.8
 draft_content: Initial description
 metadata:
-  schema: "1.0.0"
+  schema: "1.1.0"
   source: "https://example.org"
 ```
 
