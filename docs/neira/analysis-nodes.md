@@ -264,6 +264,33 @@ analyze(input):
     uncertainty_score = 1 - confidence
 ```
 
+**Диаграмма переходов**
+
+```mermaid
+stateDiagram-v2
+    [*] --> Start
+    Start --> ParsedInput
+    ParsedInput --> EvidenceCollected
+    EvidenceCollected --> RulesEvaluated
+    RulesEvaluated --> ConfidenceUpdated
+    ConfidenceUpdated --> Decision
+    ConfidenceUpdated --> NeedMoreData
+    NeedMoreData --> Decision
+    Decision --> End
+    End --> [*]
+```
+
+**Описание состояний**
+
+- `Start` — цепочка пуста перед началом анализа.
+- `ParsedInput` — входное сообщение преобразовано в токены.
+- `EvidenceCollected` — собраны факты и контекст для проверки.
+- `RulesEvaluated` — применены грамматические и доменные правила.
+- `ConfidenceUpdated` — вычислены `confidence` и `uncertainty_score`.
+- `NeedMoreData` — текущих данных недостаточно для уверенного вывода.
+- `Decision` — узел формирует ответ или запрашивает дополнительные сведения.
+- `End` — обработка завершена.
+
 Каждый шаг в `reasoning_chain` отражает конкретное действие или вывод. `uncertainty_score` пересчитывается после каждого значимого шага на основе доступных данных.
 
 **Влияние на принятие решений**
