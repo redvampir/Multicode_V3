@@ -72,7 +72,7 @@ struct QualityMetrics {
 ```
 - **Метаданные:**
 ```yaml
-schema: "1.0"
+schema: "1.0.0"
 source: "https://example.org"
 ```
 ````
@@ -139,7 +139,7 @@ struct NodeTemplate {
   "links": ["prog.syntax.base"],
   "draft_content": "Initial description",
   "metadata": {
-    "schema": "1.0",
+    "schema": "1.0.0",
     "source": "https://example.org"
   }
 }
@@ -159,7 +159,7 @@ struct NodeTemplate {
   ],
   "uncertainty_score": 0.2,
   "metadata": {
-    "schema": "1.0",
+    "schema": "1.0.0",
     "source": "https://example.org"
   }
 }
@@ -174,7 +174,7 @@ links:
   - prog.syntax.base
 draft_content: Initial description
 metadata:
-  schema: "1.0"
+  schema: "1.0.0"
   source: "https://example.org"
 ```
 
@@ -191,11 +191,11 @@ reasoning_chain:
   - initial review complete
 uncertainty_score: 0.2
 metadata:
-  schema: "1.0"
+  schema: "1.0.0"
   source: "https://example.org"
 ```
 
-**Проверка перед ревью:** сохраните шаблон в файл и проверьте его с помощью JSON Schema, например командой `npx ajv validate -s node-template.schema.json -d node-template.json`. Для YAML используйте `npx ajv validate -s node-template.schema.json -d node-template.yaml` или `yamllint` для проверки синтаксиса.
+**Проверка перед ревью:** сохраните шаблон в файл и проверьте его с помощью JSON Schema, например командой `npx ajv validate -s ../../schemas/node-template.schema.json -d node-template.json`. Для YAML используйте `npx ajv validate -s ../../schemas/node-template.schema.json -d node-template.yaml` или `yamllint` для проверки синтаксиса.
 
 ## 1. Базовый интерфейс узла
 - **Интерфейс:** `AnalysisNode`
@@ -217,7 +217,7 @@ reasoning_chain:           # опционально, шаги рассужден
   - string
 uncertainty_score: number  # 0..1, опционально
 metadata:                  # опционально
-  schema: "1.0"            # версия схемы
+  schema: "1.0.0"            # версия схемы
 ```
 
 Версионирование определяется полем `metadata.schema` и следует [Semantic Versioning](https://semver.org/). `MAJOR` меняется при несовместимых изменениях, `MINOR` — при добавлении опциональных полей, `PATCH` — при исправлении описаний.
@@ -244,7 +244,7 @@ metadata:                  # опционально
   ],
   "uncertainty_score": 0.05,
   "metadata": {
-    "schema": "1.0",
+    "schema": "1.0.0",
     "language": "Python",
     "example": "for i in range(10): print(i)"
   }
@@ -323,7 +323,7 @@ stateDiagram-v2
   ],
   "uncertainty_score": 0.16,
   "metadata": {
-    "schema": "1.0",
+    "schema": "1.0.0",
     "language": "Python"
   }
 }
@@ -343,7 +343,7 @@ reasoning_chain:
   - validated loop bounds
 uncertainty_score: 0.16
 metadata:
-  schema: "1.0"
+  schema: "1.0.0"
   language: Python
 ```
 
@@ -769,4 +769,8 @@ metadata:
 
 ## Схемы
 
-JSON‑схемы расположены в каталоге [../../schemas](../../schemas). При несовместимых изменениях повышайте версию: `1.0.0` → `1.1.0`.
+JSON‑схемы расположены в каталоге [../../schemas](../../schemas):
+- [node-template.schema.json](../../schemas/node-template.schema.json)
+- [analysis-node.schema.json](../../schemas/analysis-node.schema.json)
+
+При несовместимых изменениях повышайте версию: `1.0.0` → `1.1.0`.

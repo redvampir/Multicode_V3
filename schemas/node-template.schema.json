@@ -1,0 +1,25 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://multicode.dev/schemas/node-template.schema.json",
+  "title": "NodeTemplate",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["id", "analysis_type", "links", "draft_content", "metadata"],
+  "properties": {
+    "id": { "type": "string" },
+    "analysis_type": { "type": "string" },
+    "links": {
+      "type": "array",
+      "items": { "type": "string" }
+    },
+    "draft_content": { "type": "string" },
+    "metadata": {
+      "type": "object",
+      "required": ["schema"],
+      "additionalProperties": { "type": "string" },
+      "properties": {
+        "schema": { "type": "string" }
+      }
+    }
+  }
+}

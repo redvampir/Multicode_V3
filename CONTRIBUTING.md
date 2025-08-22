@@ -73,7 +73,8 @@ npm run dev
 JSON‑схемы хранятся в каталоге `schemas/`. В конвейере CI они валидируются командой:
 
 ```bash
-npx ajv validate
+npx ajv validate -s schemas/node-template.schema.json -d node-template.json
+npx ajv validate -s schemas/analysis-node.schema.json -d analysis-node.json
 ```
 
 Запускайте эту проверку локально при изменении схем, чтобы убедиться в корректности.
