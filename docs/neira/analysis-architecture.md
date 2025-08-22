@@ -32,7 +32,7 @@
 
 ## API узлов
 
-Трейт `AnalysisNode` задаёт минимальный контракт для всех реализаций. Метод `analyze` возвращает структуру `AnalysisResult` с наборами метрик и текстовым объяснением, а `explain` выдаёт краткое описание логики узла. Дополнительно интерфейс предоставляет текущий `status` и связи `links`. Регистрация конкретных реализаций производится через `NodeRegistry`.
+Трейт `AnalysisNode` задаёт минимальный контракт для всех реализаций. Метод `analyze` возвращает структуру `AnalysisResult` с метриками качества и текстовым объяснением, а `explain` выдаёт краткое описание логики узла. Дополнительно интерфейс предоставляет текущий `status` и связи `links`. Регистрация конкретных реализаций производится через `NodeRegistry`.
 
 ```rust
 pub trait AnalysisNode {
@@ -45,12 +45,14 @@ pub trait AnalysisNode {
 }
 ```
 
-Тип `AnalysisResult` содержит статус выполнения, произвольные метрики, цепочку рассуждений, ссылки и текстовое объяснение. Поле `metadata.schema` фиксирует версию схемы результата.
+Тип `AnalysisResult` содержит идентификатор, основной текстовый вывод, статус выполнения, метрики качества, цепочку рассуждений, ссылки и текстовое объяснение. Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` передаётся как объект, где каждая метрика представлена числовым значением. Поле `metadata.schema` фиксирует версию схемы результата.
 
 ```rust
 pub struct AnalysisResult {
+    pub id: String,
+    pub output: String,
     pub status: NodeStatus,
-    pub metrics: HashMap<String, f32>,
+    pub quality_metrics: HashMap<String, f32>,
     pub reasoning_chain: Vec<String>,
     pub explanation: String,
     pub links: Vec<String>,
@@ -89,8 +91,10 @@ impl AnalysisNode for ComplexityNode {
     fn analyze(&self, input: &str) -> AnalysisResult {
         let score = compute_complexity(input);
         AnalysisResult {
+            id: self.id().into(),
+            output: score.to_string(),
             status: NodeStatus::Active,
-            metrics: HashMap::from([(String::from("score"), score)]),
+            quality_metrics: HashMap::from([(String::from("score"), score)]),
             reasoning_chain: vec!["compute cyclomatic complexity".into()],
             explanation: String::from("Оценка цикломатической сложности"),
             links: vec![],
