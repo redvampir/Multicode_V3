@@ -17,6 +17,15 @@ pub enum PortType {
     Out,
 }
 
+impl fmt::Display for PortType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            PortType::In => write!(f, "Input"),
+            PortType::Out => write!(f, "Output"),
+        }
+    }
+}
+
 /// The kind of data transported over a connection between blocks.
 ///
 /// # Examples
@@ -32,6 +41,18 @@ pub enum DataType {
     Text,
 }
 
+impl fmt::Display for DataType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let s = match self {
+            DataType::Any => "Any",
+            DataType::Number => "Number",
+            DataType::Boolean => "Boolean",
+            DataType::Text => "Text",
+        };
+        write!(f, "{}", s)
+    }
+}
+
 impl Default for DataType {
     fn default() -> Self {
         DataType::Any
@@ -42,16 +63,20 @@ impl Default for DataType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ConnectionError {
     /// The ports have incompatible directions.
-    PortMismatch,
+    PortMismatch(PortType, PortType),
     /// The ports carry incompatible data types.
-    DataTypeMismatch,
+    DataTypeMismatch(DataType, DataType),
 }
 
 impl fmt::Display for ConnectionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ConnectionError::PortMismatch => write!(f, "incompatible port types"),
-            ConnectionError::DataTypeMismatch => write!(f, "data type mismatch"),
+            ConnectionError::PortMismatch(from, to) => {
+                write!(f, "incompatible port types: {} -> {}", from, to)
+            }
+            ConnectionError::DataTypeMismatch(from, to) => {
+                write!(f, "data type mismatch: {} vs {}", from, to)
+            }
         }
     }
 }
@@ -85,7 +110,7 @@ impl Connection {
         to: (usize, usize, PortType, DataType),
     ) -> Result<Self, ConnectionError> {
         if from.2 != PortType::Out || to.2 != PortType::In {
-            return Err(ConnectionError::PortMismatch);
+            return Err(ConnectionError::PortMismatch(from.2, to.2));
         }
 
         let data_type = if from.3 == to.3 {
@@ -95,7 +120,7 @@ impl Connection {
         } else if to.3 == DataType::Any {
             from.3
         } else {
-            return Err(ConnectionError::DataTypeMismatch);
+            return Err(ConnectionError::DataTypeMismatch(from.3, to.3));
         };
 
         Ok(Connection {
