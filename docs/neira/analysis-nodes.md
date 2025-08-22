@@ -199,7 +199,7 @@ metadata:
 
 ## 1. Базовый интерфейс узла
 - **Интерфейс:** `AnalysisNode`
-- **Свойства:** идентификатор, `analysis_type`, `confidence_threshold`, `reasoning_chain`, `uncertainty_score`, связи.
+ - **Свойства:** идентификатор, `analysis_type`, `links`, `confidence_threshold`, `reasoning_chain`, `uncertainty_score`.
 - **Методы:** `analyze()`, `explain()`, `updateContext()` и т. п.
 - **Назначение:** единый контракт для всех типов узлов, обеспечивающий расширяемость и полиморфизм.
 ### Сериализация и версионирование
@@ -209,9 +209,9 @@ metadata:
 ```yaml
 id: string                 # обязательный
 analysis_type: string      # обязательный
-confidence_threshold: number  # 0..1, опционально
-links:                     # опционально
+links:                     # обязательный, список ID связанных узлов
   - string
+confidence_threshold: number  # 0..1, опционально
 status: string             # обязательный (draft|active|deprecated|error)
 reasoning_chain:           # опционально, шаги рассуждений
   - string
@@ -222,8 +222,8 @@ metadata:                  # опционально
 
 Версионирование определяется полем `metadata.schema` и следует [Semantic Versioning](https://semver.org/). `MAJOR` меняется при несовместимых изменениях, `MINOR` — при добавлении опциональных полей, `PATCH` — при исправлении описаний.
 
-**Обязательные поля:** `id`, `analysis_type`, `status`, `metadata.schema`.
-**Опциональные поля:** `confidence_threshold`, `links`, `reasoning_chain`, `uncertainty_score`, остальные элементы `metadata`.
+**Обязательные поля:** `id`, `analysis_type`, `links`, `status`, `metadata.schema`.
+**Опциональные поля:** `confidence_threshold`, `reasoning_chain`, `uncertainty_score`, остальные элементы `metadata`.
 
 При сериализации используется `snake_case`. Поля `links` и `reasoning_chain` кодируются как массивы строк, отсутствующие опциональные поля опускаются. `status` и `analysis_type` передаются строковыми литералами, `metadata` — объектом ключ‑значение.
 
