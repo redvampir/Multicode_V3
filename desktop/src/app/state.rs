@@ -1,3 +1,4 @@
+use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use iced::{widget::text_editor, Color};
 use multicode_core::{git, meta::VisualMeta, BlockInfo};
@@ -8,12 +9,12 @@ use std::ops::Range;
 use std::path::PathBuf;
 use tokio::{fs, process::Child, sync::broadcast};
 
+use super::log_translations::LogMessage;
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
 use crate::editor::{AutocompleteState, EditorSettings};
 use crate::visual::palette::PaletteBlock;
 use crate::visual::translations::Language;
-use super::log_translations::LogMessage;
 
 mod serde_color {
     use iced::Color;
@@ -61,23 +62,26 @@ pub struct LogEntry {
     pub level: LogLevel,
     pub message_key: LogMessage,
     pub args: Vec<String>,
+    pub timestamp: DateTime<Utc>,
 }
 
 impl LogEntry {
-    pub fn new(message_key: LogMessage, args: Vec<String>) -> Self {
+    pub fn new(message_key: LogMessage, args: Vec<String>, timestamp: DateTime<Utc>) -> Self {
         let level = message_key.level();
         Self {
             level,
             message_key,
             args,
+            timestamp,
         }
     }
 
-    pub fn raw(message: String) -> Self {
+    pub fn raw(message: String, timestamp: DateTime<Utc>) -> Self {
         Self {
             level: LogLevel::Info,
             message_key: LogMessage::Raw,
             args: vec![message],
+            timestamp,
         }
     }
 }

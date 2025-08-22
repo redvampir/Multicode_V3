@@ -599,7 +599,8 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::FileError(e) => {
-                self.log.push(LogEntry::new(LogMessage::FileError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::FileError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::DefaultEntryPicked(path) => {
@@ -801,7 +802,8 @@ impl MulticodeApp {
                 return self.handle_message(Message::RunGitBlame(blame_path));
             }
             Message::FileLoaded(Err(e)) => {
-                self.log.push(LogEntry::new(LogMessage::ReadError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::ReadError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::FileContentEdited(action) => {
@@ -910,12 +912,14 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::FileSaved(Ok(())) => {
-                self.log.push(LogEntry::new(LogMessage::FileSaved, vec![]));
+                self.log
+                    .push(LogEntry::new(LogMessage::FileSaved, vec![], Utc::now()));
                 self.set_dirty(false);
                 Command::none()
             }
             Message::FileSaved(Err(e)) => {
-                self.log.push(LogEntry::new(LogMessage::SaveError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::SaveError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::NewFileNameChanged(s) => {
@@ -934,8 +938,11 @@ impl MulticodeApp {
                 if let Some(root) = self.current_root_path() {
                     let name = self.new_file_name.clone();
                     if name.is_empty() {
-                        self.log
-                            .push(LogEntry::new(LogMessage::FileNameMissing, vec![]));
+                        self.log.push(LogEntry::new(
+                            LogMessage::FileNameMissing,
+                            vec![],
+                            Utc::now(),
+                        ));
                         return Command::none();
                     }
                     let path = root.join(&name);
@@ -943,6 +950,7 @@ impl MulticodeApp {
                         self.log.push(LogEntry::new(
                             LogMessage::FileExists,
                             vec![path.display().to_string()],
+                            Utc::now(),
                         ));
                         self.show_create_file_confirm = true;
                         return Command::none();
@@ -988,6 +996,7 @@ impl MulticodeApp {
                 self.log.push(LogEntry::new(
                     LogMessage::FileCreated,
                     vec![path.display().to_string()],
+                    Utc::now(),
                 ));
                 file_manager::emit_create(&path);
                 self.new_file_name.clear();
@@ -1009,15 +1018,18 @@ impl MulticodeApp {
             }
             Message::FileCreated(Err(e)) => {
                 self.log
-                    .push(LogEntry::new(LogMessage::CreateError, vec![e]));
+                    .push(LogEntry::new(LogMessage::CreateError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::CreateDirectory => {
                 if let Some(root) = self.current_root_path() {
                     let name = self.new_directory_name.clone();
                     if name.is_empty() {
-                        self.log
-                            .push(LogEntry::new(LogMessage::DirNameMissing, vec![]));
+                        self.log.push(LogEntry::new(
+                            LogMessage::DirNameMissing,
+                            vec![],
+                            Utc::now(),
+                        ));
                         return Command::none();
                     }
                     let path = root.join(&name);
@@ -1037,13 +1049,17 @@ impl MulticodeApp {
                 self.log.push(LogEntry::new(
                     LogMessage::DirCreated,
                     vec![path.display().to_string()],
+                    Utc::now(),
                 ));
                 self.new_directory_name.clear();
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::DirectoryCreated(Err(e)) => {
-                self.log
-                    .push(LogEntry::new(LogMessage::DirCreateError, vec![e]));
+                self.log.push(LogEntry::new(
+                    LogMessage::DirCreateError,
+                    vec![e],
+                    Utc::now(),
+                ));
                 Command::none()
             }
             Message::RenameFileNameChanged(s) => {
@@ -1056,7 +1072,7 @@ impl MulticodeApp {
                     let new_name = self.rename_file_name.clone();
                     if new_name.is_empty() {
                         self.log
-                            .push(LogEntry::new(LogMessage::NewNameEmpty, vec![]));
+                            .push(LogEntry::new(LogMessage::NewNameEmpty, vec![], Utc::now()));
                         return Command::none();
                     }
                     let new_path = old_path.parent().unwrap().join(new_name);
@@ -1076,6 +1092,7 @@ impl MulticodeApp {
                 self.log.push(LogEntry::new(
                     LogMessage::Renamed,
                     vec![path.display().to_string()],
+                    Utc::now(),
                 ));
                 if let Some(i) = self.active_tab {
                     let old = self.tabs[i].path.clone();
@@ -1087,7 +1104,7 @@ impl MulticodeApp {
             }
             Message::FileRenamed(Err(e)) => {
                 self.log
-                    .push(LogEntry::new(LogMessage::RenameError, vec![e]));
+                    .push(LogEntry::new(LogMessage::RenameError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::RequestDeleteFile => {
@@ -1124,6 +1141,7 @@ impl MulticodeApp {
                 self.log.push(LogEntry::new(
                     LogMessage::Deleted,
                     vec![path.display().to_string()],
+                    Utc::now(),
                 ));
                 file_manager::emit_delete(&path);
                 if let Some(idx) = self.tabs.iter().position(|f| f.path == path) {
@@ -1142,7 +1160,7 @@ impl MulticodeApp {
             }
             Message::FileDeleted(Err(e)) => {
                 self.log
-                    .push(LogEntry::new(LogMessage::DeleteError, vec![e]));
+                    .push(LogEntry::new(LogMessage::DeleteError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::CloseFile(idx) => {
@@ -1191,7 +1209,8 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::FileClosed(Err(e)) => {
-                self.log.push(LogEntry::new(LogMessage::SaveError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::SaveError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::StartTabDrag(index) => {
@@ -1281,13 +1300,13 @@ impl MulticodeApp {
             Message::SearchFinished(Ok(list)) => {
                 for item in list {
                     self.log
-                        .push(LogEntry::new(LogMessage::FoundItem, vec![item]));
+                        .push(LogEntry::new(LogMessage::FoundItem, vec![item], Utc::now()));
                 }
                 Command::none()
             }
             Message::SearchFinished(Err(e)) => {
                 self.log
-                    .push(LogEntry::new(LogMessage::SearchError, vec![e]));
+                    .push(LogEntry::new(LogMessage::SearchError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::ProjectSearch(query) => {
@@ -1348,13 +1367,17 @@ impl MulticodeApp {
             }
             Message::ParseFinished(Ok(lines)) => {
                 self.loading = false;
-                self.log.extend(lines.into_iter().map(LogEntry::raw));
+                self.log.extend(
+                    lines
+                        .into_iter()
+                        .map(|line| LogEntry::raw(line, Utc::now())),
+                );
                 Command::none()
             }
             Message::ParseFinished(Err(e)) => {
                 self.loading = false;
                 self.log
-                    .push(LogEntry::new(LogMessage::ParseError, vec![e]));
+                    .push(LogEntry::new(LogMessage::ParseError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::RunLint => {
@@ -1419,9 +1442,11 @@ impl MulticodeApp {
                             tab.blame = lines.into_iter().map(|b| (b.line, b)).collect();
                         }
                     }
-                    Err(e) => self
-                        .log
-                        .push(LogEntry::new(LogMessage::GitError, vec![e.to_string()])),
+                    Err(e) => self.log.push(LogEntry::new(
+                        LogMessage::GitError,
+                        vec![e.to_string()],
+                        Utc::now(),
+                    )),
                 }
                 Command::none()
             }
@@ -1434,12 +1459,17 @@ impl MulticodeApp {
             }
             Message::GitFinished(Ok(lines)) => {
                 self.loading = false;
-                self.log.extend(lines.into_iter().map(LogEntry::raw));
+                self.log.extend(
+                    lines
+                        .into_iter()
+                        .map(|line| LogEntry::raw(line, Utc::now())),
+                );
                 Command::none()
             }
             Message::GitFinished(Err(e)) => {
                 self.loading = false;
-                self.log.push(LogEntry::new(LogMessage::GitError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::GitError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::RunExport => {
@@ -1467,13 +1497,17 @@ impl MulticodeApp {
             }
             Message::ExportFinished(Ok(lines)) => {
                 self.loading = false;
-                self.log.extend(lines.into_iter().map(LogEntry::raw));
+                self.log.extend(
+                    lines
+                        .into_iter()
+                        .map(|line| LogEntry::raw(line, Utc::now())),
+                );
                 Command::none()
             }
             Message::ExportFinished(Err(e)) => {
                 self.loading = false;
                 self.log
-                    .push(LogEntry::new(LogMessage::ExportError, vec![e]));
+                    .push(LogEntry::new(LogMessage::ExportError, vec![e], Utc::now()));
                 Command::none()
             }
             Message::ToggleTerminal => {
@@ -1486,8 +1520,11 @@ impl MulticodeApp {
             }
             Message::RunTerminalCmd(cmd) => {
                 let cmd = cmd.trim().to_string();
-                self.log
-                    .push(LogEntry::new(LogMessage::Command, vec![cmd.clone()]));
+                self.log.push(LogEntry::new(
+                    LogMessage::Command,
+                    vec![cmd.clone()],
+                    Utc::now(),
+                ));
                 self.terminal_cmd.clear();
                 if cmd == ":clear" {
                     self.log.clear();
@@ -1531,8 +1568,11 @@ impl MulticodeApp {
                         self.terminal_child = Some(child);
                     }
                     Err(e) => {
-                        self.log
-                            .push(LogEntry::new(LogMessage::RunError, vec![e.to_string()]));
+                        self.log.push(LogEntry::new(
+                            LogMessage::RunError,
+                            vec![e.to_string()],
+                            Utc::now(),
+                        ));
                     }
                 }
                 Command::none()
@@ -1544,10 +1584,14 @@ impl MulticodeApp {
             Message::SaveLog => {
                 let path = PathBuf::from("log.json");
                 match save_log_to_file(&self.log, &path) {
-                    Ok(()) => self
-                        .log
-                        .push(LogEntry::raw(format!("log saved to {}", path.display()))),
-                    Err(e) => self.log.push(LogEntry::new(LogMessage::SaveError, vec![e])),
+                    Ok(()) => self.log.push(LogEntry::raw(
+                        format!("log saved to {}", path.display()),
+                        Utc::now(),
+                    )),
+                    Err(e) => {
+                        self.log
+                            .push(LogEntry::new(LogMessage::SaveError, vec![e], Utc::now()))
+                    }
                 }
                 Command::none()
             }
@@ -1857,9 +1901,10 @@ impl MulticodeApp {
                     self.log.push(LogEntry::new(
                         LogMessage::BlocksUpdated,
                         vec![blocks.len().to_string()],
+                        Utc::now(),
                     ));
                 } else {
-                    self.log.push(LogEntry::raw(ev));
+                    self.log.push(LogEntry::raw(ev, Utc::now()));
                 }
                 Command::none()
             }
