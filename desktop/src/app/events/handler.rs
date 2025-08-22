@@ -1,9 +1,9 @@
 use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
 use crate::app::{
-    command_palette::COMMANDS, diff::DiffView, log_translations::LogMessage, Diagnostic,
-    EditorMode, EntryType, Hotkey, HotkeyField, LogEntry, MulticodeApp, PendingAction, Screen,
-    Tab, TabDragState, ViewMode,
+    command_palette::COMMANDS, diff::DiffView, log_translations::LogMessage, save_log_to_file,
+    Diagnostic, EditorMode, EntryType, Hotkey, HotkeyField, LogEntry, MulticodeApp, PendingAction,
+    Screen, Tab, TabDragState, ViewMode,
 };
 use crate::components::file_manager::{self, ContextMenu};
 use crate::editor::autocomplete::{self, AutocompleteState};
@@ -934,7 +934,8 @@ impl MulticodeApp {
                 if let Some(root) = self.current_root_path() {
                     let name = self.new_file_name.clone();
                     if name.is_empty() {
-                        self.log.push(LogEntry::new(LogMessage::FileNameMissing, vec![]));
+                        self.log
+                            .push(LogEntry::new(LogMessage::FileNameMissing, vec![]));
                         return Command::none();
                     }
                     let path = root.join(&name);
@@ -1007,14 +1008,16 @@ impl MulticodeApp {
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::FileCreated(Err(e)) => {
-                self.log.push(LogEntry::new(LogMessage::CreateError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::CreateError, vec![e]));
                 Command::none()
             }
             Message::CreateDirectory => {
                 if let Some(root) = self.current_root_path() {
                     let name = self.new_directory_name.clone();
                     if name.is_empty() {
-                        self.log.push(LogEntry::new(LogMessage::DirNameMissing, vec![]));
+                        self.log
+                            .push(LogEntry::new(LogMessage::DirNameMissing, vec![]));
                         return Command::none();
                     }
                     let path = root.join(&name);
@@ -1039,7 +1042,8 @@ impl MulticodeApp {
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::DirectoryCreated(Err(e)) => {
-                self.log.push(LogEntry::new(LogMessage::DirCreateError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::DirCreateError, vec![e]));
                 Command::none()
             }
             Message::RenameFileNameChanged(s) => {
@@ -1051,7 +1055,8 @@ impl MulticodeApp {
                 if let Some(old_path) = self.current_file().map(|f| f.path.clone()) {
                     let new_name = self.rename_file_name.clone();
                     if new_name.is_empty() {
-                        self.log.push(LogEntry::new(LogMessage::NewNameEmpty, vec![]));
+                        self.log
+                            .push(LogEntry::new(LogMessage::NewNameEmpty, vec![]));
                         return Command::none();
                     }
                     let new_path = old_path.parent().unwrap().join(new_name);
@@ -1081,7 +1086,8 @@ impl MulticodeApp {
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::FileRenamed(Err(e)) => {
-                self.log.push(LogEntry::new(LogMessage::RenameError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::RenameError, vec![e]));
                 Command::none()
             }
             Message::RequestDeleteFile => {
@@ -1135,7 +1141,8 @@ impl MulticodeApp {
                 return self.load_files(self.current_root_path().unwrap());
             }
             Message::FileDeleted(Err(e)) => {
-                self.log.push(LogEntry::new(LogMessage::DeleteError, vec![e]));
+                self.log
+                    .push(LogEntry::new(LogMessage::DeleteError, vec![e]));
                 Command::none()
             }
             Message::CloseFile(idx) => {
@@ -1184,8 +1191,7 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::FileClosed(Err(e)) => {
-                self.log
-                    .push(LogEntry::new(LogMessage::SaveError, vec![e]));
+                self.log.push(LogEntry::new(LogMessage::SaveError, vec![e]));
                 Command::none()
             }
             Message::StartTabDrag(index) => {
@@ -1433,8 +1439,7 @@ impl MulticodeApp {
             }
             Message::GitFinished(Err(e)) => {
                 self.loading = false;
-                self.log
-                    .push(LogEntry::new(LogMessage::GitError, vec![e]));
+                self.log.push(LogEntry::new(LogMessage::GitError, vec![e]));
                 Command::none()
             }
             Message::RunExport => {
@@ -1481,7 +1486,8 @@ impl MulticodeApp {
             }
             Message::RunTerminalCmd(cmd) => {
                 let cmd = cmd.trim().to_string();
-                self.log.push(LogEntry::new(LogMessage::Command, vec![cmd.clone()]));
+                self.log
+                    .push(LogEntry::new(LogMessage::Command, vec![cmd.clone()]));
                 self.terminal_cmd.clear();
                 if cmd == ":clear" {
                     self.log.clear();
@@ -1533,6 +1539,16 @@ impl MulticodeApp {
             }
             Message::ShowTerminalHelp => {
                 self.show_terminal_help = !self.show_terminal_help;
+                Command::none()
+            }
+            Message::SaveLog => {
+                let path = PathBuf::from("log.json");
+                match save_log_to_file(&self.log, &path) {
+                    Ok(()) => self
+                        .log
+                        .push(LogEntry::raw(format!("log saved to {}", path.display()))),
+                    Err(e) => self.log.push(LogEntry::new(LogMessage::SaveError, vec![e])),
+                }
                 Command::none()
             }
             Message::LogLevelSelected(level) => {

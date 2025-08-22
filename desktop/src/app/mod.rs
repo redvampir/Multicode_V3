@@ -2,20 +2,20 @@ pub mod command_palette;
 pub mod diff;
 pub mod events;
 pub mod io;
-pub mod ui;
 pub mod log_translations;
+pub mod ui;
 
 mod actions;
 mod state;
 mod view;
 
+pub use crate::visual::translations::Language;
+pub use log_translations::{format_log, LogMessage};
 pub use state::{
     AppTheme, CreateTarget, Diagnostic, EditorMode, EntryType, FileEntry, Hotkey, HotkeyField,
     Hotkeys, LogEntry, LogLevel, MulticodeApp, PendingAction, Screen, Tab, TabDragState,
     UserSettings, ViewMode,
 };
-pub use log_translations::{format_log, LogMessage};
-pub use crate::visual::translations::Language;
 
 use iced::Application;
 use iced::Settings;
@@ -28,4 +28,24 @@ pub fn run(path: Option<PathBuf>) -> iced::Result {
         flags,
         ..Settings::default()
     })
+}
+
+/// Save log entries to a file in JSON format.
+pub fn save_log_to_file<P: AsRef<std::path::Path>>(
+    entries: &[LogEntry],
+    path: P,
+) -> Result<(), String> {
+    use std::fs::File;
+    let items: Vec<serde_json::Value> = entries
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "level": e.level.to_string(),
+                "message_key": format!("{:?}", e.message_key),
+                "args": e.args,
+            })
+        })
+        .collect();
+    let file = File::create(path.as_ref()).map_err(|e| e.to_string())?;
+    serde_json::to_writer_pretty(file, &items).map_err(|e| e.to_string())
 }

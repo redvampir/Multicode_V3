@@ -119,6 +119,7 @@ pub enum Message {
     TerminalCmdChanged(String),
     RunTerminalCmd(String),
     ShowTerminalHelp,
+    SaveLog,
     LogLevelSelected(LogLevel),
     OpenDiff(PathBuf, PathBuf, bool),
     OpenGitDiff(PathBuf, String, bool),
