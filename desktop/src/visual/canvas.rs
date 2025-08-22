@@ -3,6 +3,7 @@ use iced::{
     keyboard::{self, key},
     mouse, Color, Point, Rectangle, Renderer, Theme, Vector,
 };
+use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 
 use crate::visual::translations::{translate_kind, Language};
@@ -14,11 +15,18 @@ const PORT_RADIUS: f32 = 5.0;
 const ARROW_LENGTH: f32 = 10.0;
 const ARROW_WIDTH: f32 = 6.0;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum DataType {
+    Any,
     Number,
     Boolean,
     Text,
+}
+
+impl Default for DataType {
+    fn default() -> Self {
+        DataType::Any
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -186,6 +194,7 @@ impl State {
                             DataType::Number => Color::from_rgb(0.0, 0.0, 0.8),
                             DataType::Boolean => Color::from_rgb(0.0, 0.6, 0.0),
                             DataType::Text => Color::from_rgb(1.0, 0.5, 0.0),
+                            DataType::Any => Color::from_rgb(0.5, 0.5, 0.5),
                         };
                         prepared.push(PreparedConnection { start, end, color });
                     }
@@ -253,7 +262,7 @@ impl<'a> Program<CanvasMessage> for VisualCanvas<'a> {
                                         start,
                                         current: start,
                                         hover: None,
-                                        data_type: DataType::Number,
+                                        data_type: DataType::Any,
                                     });
                                     return (canvas::event::Status::Captured, None);
                                 }
