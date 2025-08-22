@@ -1,5 +1,5 @@
-use crate::visual::translations::Language;
 use super::state::{LogEntry, LogLevel};
+use crate::visual::translations::Language;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LogMessage {
@@ -34,18 +34,10 @@ impl LogMessage {
     pub fn level(self) -> LogLevel {
         use LogMessage::*;
         match self {
-            FileError
-            | ReadError
-            | SaveError
-            | CreateError
-            | DirCreateError
-            | RenameError
-            | DeleteError
-            | SearchError
-            | ParseError
-            | GitError
-            | ExportError
-            | RunError => LogLevel::Error,
+            FileError | ReadError | SaveError | CreateError | DirCreateError | RenameError
+            | DeleteError | SearchError | ParseError | GitError | ExportError | RunError => {
+                LogLevel::Error
+            }
             _ => LogLevel::Info,
         }
     }
@@ -54,7 +46,7 @@ impl LogMessage {
 pub fn format_log(entry: &LogEntry, lang: Language) -> String {
     use LogMessage::*;
     let arg0 = |idx: usize| entry.args.get(idx).cloned().unwrap_or_default();
-    match entry.message_key {
+    let message = match entry.message_key {
         FileError => match lang {
             Language::English => format!("file error: {}", arg0(0)),
             Language::Russian => format!("ошибка файла: {}", arg0(0)),
@@ -151,6 +143,6 @@ pub fn format_log(entry: &LogEntry, lang: Language) -> String {
             Language::Russian => format!("обновлено блоков: {}", arg0(0)),
         },
         Raw => arg0(0),
-    }
+    };
+    format!("[{}] {}", entry.timestamp.format("%H:%M:%S"), message)
 }
-
