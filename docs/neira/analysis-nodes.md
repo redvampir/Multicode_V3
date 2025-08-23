@@ -114,6 +114,7 @@ source: "https://example.org"
 - [12. Стратегия многоязычности](#12-стратегия-многоязычности)
 - [13. Перспективные и устойчивые технологии](#13-перспективные-и-устойчивые-технологии)
 - [14. A/B‑тестирование и откат](#14-ab-тестирование-и-откат)
+- [15. Регистрация узлов и управление версиями](#15-регистрация-узлов-и-управление-версиями)
 - [Revision Engine](#revision-engine)
 
 ## NodeTemplate
@@ -727,6 +728,80 @@ test_result:
 ### Критерий отката
 
 Возврат на стабильную версию выполняется, если `success_rate` кандидата опускается ниже `rollback_threshold.success_rate` или `performance_gain ≤ 1`. В противном случае кандидат может быть принят как новая стабильная версия.
+## 15. Регистрация узлов и управление версиями
+
+### NodeState
+
+```rust
+enum NodeState {
+    Draft,
+    Active,
+    Deprecated,
+    Archived,
+    Error,
+}
+```
+
+`NodeState` фиксирует текущий статус узла и помогает отслеживать жизненный цикл версий.
+
+### NodeRegistry
+
+```rust
+struct NodeRegistry {
+    nodes: HashMap<NodeId, NodeState>,
+    versions: HashMap<NodeId, Vec<NodeVersion>>,
+}
+```
+
+`NodeRegistry` хранит сведения о зарегистрированных узлах и связанных с ними версиях.
+
+### VersionManager
+
+```rust
+struct VersionManager {
+    registry: NodeRegistry,
+    policies: HashMap<NodeId, TrafficPolicy>,
+}
+```
+
+`VersionManager` распределяет трафик между стабильной версией и кандидатами.
+
+### A/B‑распределение и workflow
+
+```yaml
+TrafficPolicy:
+  baseline: 0.8   # доля запросов к стабильной версии
+  candidate: 0.2  # экспериментальная версия
+```
+
+1. публикуется кандидат и задаётся `TrafficPolicy`;
+2. `VersionManager` направляет трафик согласно схеме;
+3. метрики записываются в `NodeVersion`;
+4. пользователь решает исход: `promote`, `rollback` или `archive`.
+
+### Безопасность
+
+```rust
+struct SafetyMonitor {
+    error_rate: f32,
+    rollback_on: f32,
+}
+```
+
+`SafetyMonitor` отслеживает сбои и при превышении `rollback_on` инициирует аварийный `fallback`.
+Каждое переключение фиксируется:
+
+```yaml
+NodeVersionLog:
+  node_id: string
+  version: string
+  state: NodeState
+  timestamp: string
+  reason: string
+```
+
+Журнал позволяет анализировать историю обновлений и инцидентов.
+
 ## Revision Engine
 
 ### Структура кандидата
