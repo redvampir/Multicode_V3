@@ -162,6 +162,8 @@ pub struct MulticodeApp {
     pub(super) show_block_palette: bool,
     pub(super) palette_query: String,
     pub(super) palette_drag: Option<BlockInfo>,
+    /// history of executed commands
+    pub(super) recent_commands: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -596,5 +598,80 @@ impl Drop for MulticodeApp {
             let settings = self.settings.clone();
             rt.block_on(settings.save());
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::app::events::Message;
+    use tokio::sync::broadcast;
+    use std::collections::HashSet;
+
+    fn build_app() -> MulticodeApp {
+        let (sender, _) = broadcast::channel(1);
+        MulticodeApp {
+            screen: Screen::ProjectPicker,
+            view_mode: ViewMode::Code,
+            files: Vec::new(),
+            tabs: Vec::new(),
+            active_tab: None,
+            search_term: String::new(),
+            replace_term: String::new(),
+            search_results: Vec::new(),
+            show_search_panel: false,
+            current_match: None,
+            new_file_name: String::new(),
+            new_directory_name: String::new(),
+            create_target: CreateTarget::File,
+            rename_file_name: String::new(),
+            search_query: String::new(),
+            favorites: Vec::new(),
+            query: String::new(),
+            show_command_palette: false,
+            log: Vec::new(),
+            min_log_level: LogLevel::Info,
+            project_search_results: Vec::new(),
+            goto_line: None,
+            goto_line_input: String::new(),
+            show_goto_line_modal: false,
+            show_terminal: false,
+            terminal_cmd: String::new(),
+            terminal_child: None,
+            show_terminal_help: false,
+            sender,
+            settings: UserSettings::default(),
+            expanded_dirs: HashSet::new(),
+            context_menu: None,
+            selected_path: None,
+            show_create_file_confirm: false,
+            show_delete_confirm: false,
+            pending_action: None,
+            hotkey_capture: None,
+            shortcut_capture: None,
+            settings_warning: None,
+            loading: false,
+            diff_error: None,
+            show_meta_dialog: false,
+            meta_tags: String::new(),
+            meta_links: String::new(),
+            meta_comment: String::new(),
+            autocomplete: None,
+            show_meta_panel: false,
+            tab_drag: None,
+            palette: Vec::new(),
+            palette_categories: Vec::new(),
+            show_block_palette: false,
+            palette_query: String::new(),
+            palette_drag: None,
+            recent_commands: Vec::new(),
+        }
+    }
+
+    #[test]
+    fn execute_command_updates_history() {
+        let mut app = build_app();
+        let _ = app.handle_message(Message::ExecuteCommand("test_cmd".into()));
+        assert_eq!(app.recent_commands, vec!["test_cmd".to_string()]);
     }
 }

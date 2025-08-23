@@ -1795,6 +1795,7 @@ impl MulticodeApp {
             }
             Message::ExecuteCommand(cmd) => {
                 self.show_command_palette = false;
+                self.recent_commands.push(cmd.clone());
                 match cmd.as_str() {
                     "open_file" => return self.handle_message(Message::PickFile),
                     "save_file" => return self.handle_message(Message::SaveFile),
