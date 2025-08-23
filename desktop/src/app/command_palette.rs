@@ -1,3 +1,11 @@
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CommandCategory {
+    File,
+    View,
+    Navigation,
+    Settings,
+}
+
 #[derive(Debug, Clone)]
 pub struct CommandItem {
     pub id: &'static str,
@@ -5,7 +13,7 @@ pub struct CommandItem {
     pub name_ru: &'static str,
     pub description_en: &'static str,
     pub description_ru: &'static str,
-    pub category: &'static str,
+    pub category: CommandCategory,
     pub hotkey: &'static str,
 }
 
@@ -16,7 +24,7 @@ pub const COMMANDS: &[CommandItem] = &[
         name_ru: "Открыть файл",
         description_en: "Open a file from disk",
         description_ru: "Открыть файл с диска",
-        category: "file",
+        category: CommandCategory::File,
         hotkey: "Ctrl+O",
     },
     CommandItem {
@@ -25,7 +33,7 @@ pub const COMMANDS: &[CommandItem] = &[
         name_ru: "Сохранить файл",
         description_en: "Save the current file",
         description_ru: "Сохранить текущий файл",
-        category: "file",
+        category: CommandCategory::File,
         hotkey: "Ctrl+S",
     },
     CommandItem {
@@ -34,7 +42,7 @@ pub const COMMANDS: &[CommandItem] = &[
         name_ru: "Показать/Скрыть терминал",
         description_en: "Show or hide the terminal",
         description_ru: "Показать или скрыть терминал",
-        category: "view",
+        category: CommandCategory::View,
         hotkey: "Ctrl+`",
     },
     CommandItem {
@@ -43,7 +51,7 @@ pub const COMMANDS: &[CommandItem] = &[
         name_ru: "Перейти к строке",
         description_en: "Jump to specified line number",
         description_ru: "Перейти к указанной строке",
-        category: "navigation",
+        category: CommandCategory::Navigation,
         hotkey: "Ctrl+G",
     },
     CommandItem {
@@ -52,7 +60,7 @@ pub const COMMANDS: &[CommandItem] = &[
         name_ru: "Открыть настройки",
         description_en: "Open application settings",
         description_ru: "Открыть настройки приложения",
-        category: "settings",
+        category: CommandCategory::Settings,
         hotkey: "Ctrl+,",
     },
     CommandItem {
@@ -61,7 +69,7 @@ pub const COMMANDS: &[CommandItem] = &[
         name_ru: "Переключиться в текстовый редактор",
         description_en: "Switch to text editor",
         description_ru: "Переключиться в текстовый редактор",
-        category: "view",
+        category: CommandCategory::View,
         hotkey: "",
     },
     CommandItem {
@@ -70,7 +78,7 @@ pub const COMMANDS: &[CommandItem] = &[
         name_ru: "Переключиться в визуальный редактор",
         description_en: "Switch to visual editor",
         description_ru: "Переключиться в визуальный редактор",
-        category: "view",
+        category: CommandCategory::View,
         hotkey: "",
     },
     CommandItem {
@@ -79,7 +87,7 @@ pub const COMMANDS: &[CommandItem] = &[
         name_ru: "Переключиться в режим разделения",
         description_en: "Switch to split view",
         description_ru: "Переключиться в режим разделения",
-        category: "view",
+        category: CommandCategory::View,
         hotkey: "",
     },
 ];
@@ -87,7 +95,7 @@ pub const COMMANDS: &[CommandItem] = &[
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::command_translations::{command_name};
+    use crate::app::command_translations::command_name;
     use crate::app::Language;
 
     #[test]
@@ -102,8 +110,10 @@ mod tests {
 
     #[test]
     fn filtering_by_category_returns_view_commands() {
-        let filtered: Vec<&CommandItem> =
-            COMMANDS.iter().filter(|c| c.category == "view").collect();
+        let filtered: Vec<&CommandItem> = COMMANDS
+            .iter()
+            .filter(|c| c.category == CommandCategory::View)
+            .collect();
         assert!(filtered.iter().any(|c| c.id == "switch_to_text_editor"));
         assert!(filtered.iter().any(|c| c.id == "switch_to_visual_editor"));
         assert!(filtered.iter().any(|c| c.id == "switch_to_split"));
