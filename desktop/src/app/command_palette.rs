@@ -70,7 +70,7 @@ pub const COMMANDS: &[CommandItem] = &[
         description_en: "Switch to text editor",
         description_ru: "Переключиться в текстовый редактор",
         category: CommandCategory::View,
-        hotkey: "",
+        hotkey: "Ctrl+1",
     },
     CommandItem {
         id: "switch_to_visual_editor",
@@ -79,7 +79,7 @@ pub const COMMANDS: &[CommandItem] = &[
         description_en: "Switch to visual editor",
         description_ru: "Переключиться в визуальный редактор",
         category: CommandCategory::View,
-        hotkey: "",
+        hotkey: "Ctrl+2",
     },
     CommandItem {
         id: "switch_to_split",
@@ -88,14 +88,14 @@ pub const COMMANDS: &[CommandItem] = &[
         description_en: "Switch to split view",
         description_ru: "Переключиться в режим разделения",
         category: CommandCategory::View,
-        hotkey: "",
+        hotkey: "Ctrl+3",
     },
 ];
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::app::command_translations::command_name;
+    use crate::app::command_translations::{command_hotkey, command_name};
     use crate::app::Language;
 
     #[test]
@@ -117,5 +117,27 @@ mod tests {
         assert!(filtered.iter().any(|c| c.id == "switch_to_text_editor"));
         assert!(filtered.iter().any(|c| c.id == "switch_to_visual_editor"));
         assert!(filtered.iter().any(|c| c.id == "switch_to_split"));
+    }
+
+    #[test]
+    fn all_commands_have_hotkeys() {
+        assert!(COMMANDS.iter().all(|c| !c.hotkey.is_empty()));
+    }
+
+    #[test]
+    fn hotkeys_are_translated() {
+        let cmd = COMMANDS.iter().find(|c| c.id == "toggle_terminal").unwrap();
+        #[cfg(target_os = "macos")]
+        let prefix = "Cmd+";
+        #[cfg(not(target_os = "macos"))]
+        let prefix = "Ctrl+";
+        assert_eq!(
+            command_hotkey(cmd, Language::English),
+            format!("{}{}", prefix, "`")
+        );
+        assert_eq!(
+            command_hotkey(cmd, Language::Russian),
+            format!("{}Ё", prefix)
+        );
     }
 }

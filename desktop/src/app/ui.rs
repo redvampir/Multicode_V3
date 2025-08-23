@@ -10,18 +10,15 @@ use crate::app::diff::DiffView;
 use crate::app::events::Message;
 use crate::app::{
     command_palette::COMMANDS,
-    command_translations::{command_description, command_name},
-    format_log,
-    Language,
-    LogLevel,
-    MulticodeApp,
+    command_translations::{command_description, command_hotkey, command_name},
+    format_log, Language, LogLevel, MulticodeApp,
 };
 use crate::modal::Modal;
+use crate::search::fuzzy;
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::connections::Connection;
 use crate::visual::palette::{BlockPalette, PaletteMessage};
 use multicode_core::BlockInfo;
-use crate::search::fuzzy;
 use std::collections::HashMap;
 
 const OPEN_ICON: &[u8] = include_bytes!("../../assets/open.svg");
@@ -358,8 +355,7 @@ impl MulticodeApp {
         } else {
             items.retain(|(_, _, _, s)| *s > 0.0);
             items.sort_by(|a, b| {
-                b.3
-                    .partial_cmp(&a.3)
+                b.3.partial_cmp(&a.3)
                     .unwrap_or(std::cmp::Ordering::Equal)
                     .then_with(|| {
                         let fa = freq.get(a.0.id).copied().unwrap_or(0);
@@ -369,12 +365,14 @@ impl MulticodeApp {
             });
         }
 
-        let items = items.into_iter().fold(column![], |col, (cmd, name, desc, _)| {
-            col.push(
-                button(column![text(name), text(desc).size(14)])
-                    .on_press(Message::ExecuteCommand(cmd.id.to_string())),
-            )
-        }).spacing(5);
+        let items = items
+            .into_iter()
+            .fold(column![], |col, (cmd, name, desc, _)| {
+                let hk = command_hotkey(cmd, self.settings.language);
+                let content = row![column![text(name), text(desc).size(14)], text(hk)].spacing(10);
+                col.push(button(content).on_press(Message::ExecuteCommand(cmd.id.to_string())))
+            })
+            .spacing(5);
 
         let modal_content = container(column![query_input, items]).padding(10);
         Modal::new(content, modal_content)
@@ -556,11 +554,15 @@ mod tests {
 
     #[test]
     fn goto_line_modal_flow() {
-        let mut app = build_app(Screen::TextEditor { root: PathBuf::new() });
+        let mut app = build_app(Screen::TextEditor {
+            root: PathBuf::new(),
+        });
         assert!(!app.show_goto_line_modal);
         let _ = app.handle_message(crate::app::events::Message::OpenGotoLine);
         assert!(app.show_goto_line_modal);
-        let _ = app.handle_message(crate::app::events::Message::GotoLineInputChanged("3".into()));
+        let _ = app.handle_message(crate::app::events::Message::GotoLineInputChanged(
+            "3".into(),
+        ));
         let _ = app.handle_message(crate::app::events::Message::ConfirmGotoLine);
         assert!(!app.show_goto_line_modal);
         assert!(app.goto_line_input.is_empty());
