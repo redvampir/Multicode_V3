@@ -134,6 +134,7 @@ pub enum Message {
     DiffError(String),
     ClearDiffError,
     ToggleCommandPalette,
+    /// Execute a command by its identifier
     ExecuteCommand(String),
     SwitchViewMode(ViewMode),
     FileError(String),
