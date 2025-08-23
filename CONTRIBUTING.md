@@ -43,6 +43,10 @@ cargo test -p core     # тесты ядра
 
 - `cargo update` актуализирует `Cargo.lock`. Добавьте обновлённый файл в коммит.
 
+## Обновление зависимостей
+
+См. [docs/dependency-update.md](docs/dependency-update.md) для подробных инструкций.
+
 ## Структура проекта
 
 ```

@@ -21,6 +21,7 @@ run() {
 }
 
 run "npm ci"
+run "npm audit --audit-level=high"
 run "npx tsc --noEmit"
 run "npm run lint -- --max-warnings=0"
 run "npm run build --verbose"

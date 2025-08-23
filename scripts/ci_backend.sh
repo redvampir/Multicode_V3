@@ -20,6 +20,7 @@ run() {
   fi
 }
 
+run "npm audit --prefix .. --audit-level=high"
 run "cargo fmt --all -- --check"
 run "cargo clippy --all-targets --all-features -- -D warnings"
 run "cargo doc --no-deps"
