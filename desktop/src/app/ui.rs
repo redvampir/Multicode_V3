@@ -11,7 +11,9 @@ use crate::app::events::Message;
 use crate::app::{
     command_palette::COMMANDS,
     command_translations::{command_description, command_hotkey, command_name},
-    format_log, Language, LogLevel, MulticodeApp,
+    format_log,
+    search_translations::{search_text, SearchText},
+    Language, LogLevel, MulticodeApp,
 };
 use crate::modal::Modal;
 use crate::search::fuzzy;
@@ -32,13 +34,30 @@ impl MulticodeApp {
             return Space::with_height(Length::Shrink).into();
         }
         row![
-            text_input("найти", &self.search_term).on_input(Message::SearchTermChanged),
-            button("Найти").on_press(Message::Find),
+            text_input(
+                search_text(SearchText::FindPlaceholder, self.settings.language),
+                &self.search_term,
+            )
+            .on_input(Message::SearchTermChanged),
+            button(search_text(SearchText::FindButton, self.settings.language))
+                .on_press(Message::Find),
             button("←").on_press(Message::FindPrev),
             button("→").on_press(Message::FindNext),
-            text_input("заменить на", &self.replace_term).on_input(Message::ReplaceTermChanged),
-            button("Заменить").on_press(Message::Replace),
-            button("Заменить все").on_press(Message::ReplaceAll),
+            text_input(
+                search_text(SearchText::ReplacePlaceholder, self.settings.language),
+                &self.replace_term,
+            )
+            .on_input(Message::ReplaceTermChanged),
+            button(search_text(
+                SearchText::ReplaceButton,
+                self.settings.language
+            ))
+            .on_press(Message::Replace),
+            button(search_text(
+                SearchText::ReplaceAllButton,
+                self.settings.language
+            ))
+            .on_press(Message::ReplaceAll),
             button("×").on_press(Message::ToggleSearchPanel),
         ]
         .spacing(5)
