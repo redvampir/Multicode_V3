@@ -26,13 +26,13 @@
 Neira поддерживает конфигурацию через `.env` или переменные окружения.
 Основные параметры:
 - `NEIRA_PORT` — порт, на котором модуль слушает запросы (по умолчанию `4000`).
-- `NEIRA_MODEL` — путь к используемой модели.
+- `NEIRA_TUTOR_URL` — URL или путь к внешнему тьютору; можно опустить для автономного режима.
 - `NEIRA_LOG_LEVEL` — уровень логирования (`info`, `debug` и т.д.).
 
 Пример файла `.env`:
 ```dotenv
 NEIRA_PORT=4000
-NEIRA_MODEL=./models/teacher-model.bin
+NEIRA_TUTOR_URL=https://api.example.com/tutor
 NEIRA_LOG_LEVEL=info
 ```
 После изменения переменных перезапустите приложение.
