@@ -18,6 +18,17 @@ function has(command, label) {
   }
 }
 
+function run(command, label) {
+  try {
+    execSync(command, { stdio: 'inherit' });
+    console.log(`${label}: OK`);
+    return true;
+  } catch (err) {
+    console.error(`${label}: FAILED`);
+    return false;
+  }
+}
+
 let ok = true;
 ok &= has('pkg-config --version', 'pkg-config');
 if (isLinux) {
@@ -30,6 +41,17 @@ if (isLinux) {
 if (!ok) {
   console.error('\nMissing required system dependencies.');
   process.exit(1);
-} else {
-  console.log('\nAll required system dependencies found.');
 }
+
+console.log('\nAll required system dependencies found.');
+
+ok &= run('npm audit --audit-level=high', 'npm audit');
+ok &= run('cargo audit', 'cargo audit');
+
+if (!ok) {
+  console.error('\nDependency audit failed.');
+  process.exit(1);
+}
+
+console.log('\nDependency audit passed.');
+
