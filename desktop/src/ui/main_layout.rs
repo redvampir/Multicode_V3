@@ -5,7 +5,8 @@ use crate::visual::translations::Language;
 use iced::widget::canvas::Canvas;
 use iced::widget::{button, column, row, scrollable, text, text_editor};
 use iced::{Element, Length, Sandbox};
-use multicode_core::{blocks::parse_blocks, BlockInfo};
+use multicode_core::{blocks::parse_blocks, export, search, BlockInfo};
+use std::{path::Path, process::Command};
 
 /// Main user interface state containing current view mode and editor states.
 pub struct MainUI {
@@ -56,6 +57,12 @@ pub enum MainMessage {
     SwitchToVisual,
     /// Show both editors in split view.
     SwitchToSplit,
+    /// Search for metadata in project files.
+    SearchMetadata,
+    /// Export the current editor content without metadata.
+    Export,
+    /// Open project settings via setup script.
+    OpenSettings,
     /// Message originating from the code editor.
     CodeEditorMsg(text_editor::Action),
     /// Start dragging a block from the palette.
@@ -71,6 +78,20 @@ impl MainUI {
             MainMessage::SwitchToText => self.view_mode = ViewMode::Code,
             MainMessage::SwitchToVisual => self.view_mode = ViewMode::Schema,
             MainMessage::SwitchToSplit => self.view_mode = ViewMode::Split,
+            MainMessage::SearchMetadata => {
+                if let Ok(results) = search::search_metadata(Path::new("."), "id") {
+                    println!("found {} metadata entries", results.len());
+                }
+            }
+            MainMessage::Export => {
+                let content = self.code_editor.text();
+                if let Ok(cleaned) = export::prepare_for_export(&content, true) {
+                    println!("{}", cleaned);
+                }
+            }
+            MainMessage::OpenSettings => {
+                let _ = Command::new("node").arg("scripts/setup.js").spawn();
+            }
             MainMessage::CodeEditorMsg(action) => {
                 self.code_editor.perform(action);
             }
@@ -108,11 +129,23 @@ impl MainUI {
 
     /// Render the current view based on the active [`ViewMode`].
     pub fn view(&self) -> Element<MainMessage> {
-        match self.view_mode {
+        let content = match self.view_mode {
             ViewMode::Code => self.create_text_editor_view(),
             ViewMode::Schema => self.create_visual_editor_view(),
             ViewMode::Split => self.create_split_view(),
-        }
+        };
+
+        let menu = row![
+            button("Text").on_press(MainMessage::SwitchToText),
+            button("Visual").on_press(MainMessage::SwitchToVisual),
+            button("Split").on_press(MainMessage::SwitchToSplit),
+            button("Meta search").on_press(MainMessage::SearchMetadata),
+            button("Export").on_press(MainMessage::Export),
+            button("Settings").on_press(MainMessage::OpenSettings)
+        ]
+        .spacing(10);
+
+        column![menu, content].into()
     }
 
     /// Create a view for the text editor.
