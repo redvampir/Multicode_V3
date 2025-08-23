@@ -4,3 +4,4 @@ pub mod editor;
 pub mod modal;
 pub mod visual;
 pub mod ui;
+pub mod search;

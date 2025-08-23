@@ -21,6 +21,8 @@ use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::connections::Connection;
 use crate::visual::palette::{BlockPalette, PaletteMessage};
 use multicode_core::BlockInfo;
+use crate::search::fuzzy;
+use std::collections::HashMap;
 
 const OPEN_ICON: &[u8] = include_bytes!("../../assets/open.svg");
 const SAVE_ICON: &[u8] = include_bytes!("../../assets/save.svg");
@@ -329,22 +331,51 @@ impl MulticodeApp {
             "command"
         };
         let query_input = text_input(placeholder, &self.query).on_input(Message::QueryChanged);
-        let items = COMMANDS
+        let mut freq: HashMap<&str, usize> = HashMap::new();
+        for cmd in &self.recent_commands {
+            *freq.entry(cmd.as_str()).or_insert(0) += 1;
+        }
+        let mut items: Vec<_> = COMMANDS
             .iter()
-            .filter(|c| {
-                command_name(c, self.settings.language)
-                    .to_lowercase()
-                    .contains(&self.query.to_lowercase())
-            })
-            .fold(column![], |col, cmd| {
+            .map(|cmd| {
                 let name = command_name(cmd, self.settings.language);
                 let desc = command_description(cmd, self.settings.language);
-                col.push(
-                    button(column![text(name), text(desc).size(14)])
-                        .on_press(Message::ExecuteCommand(cmd.id.to_string())),
-                )
+                let score = if self.query.is_empty() {
+                    0.0
+                } else {
+                    fuzzy::similarity(&self.query, &name)
+                };
+                (cmd, name, desc, score)
             })
-            .spacing(5);
+            .collect();
+
+        if self.query.is_empty() {
+            items.sort_by(|a, b| {
+                let fa = freq.get(a.0.id).copied().unwrap_or(0);
+                let fb = freq.get(b.0.id).copied().unwrap_or(0);
+                fb.cmp(&fa)
+            });
+        } else {
+            items.retain(|(_, _, _, s)| *s > 0.0);
+            items.sort_by(|a, b| {
+                b.3
+                    .partial_cmp(&a.3)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+                    .then_with(|| {
+                        let fa = freq.get(a.0.id).copied().unwrap_or(0);
+                        let fb = freq.get(b.0.id).copied().unwrap_or(0);
+                        fb.cmp(&fa)
+                    })
+            });
+        }
+
+        let items = items.into_iter().fold(column![], |col, (cmd, name, desc, _)| {
+            col.push(
+                button(column![text(name), text(desc).size(14)])
+                    .on_press(Message::ExecuteCommand(cmd.id.to_string())),
+            )
+        }).spacing(5);
+
         let modal_content = container(column![query_input, items]).padding(10);
         Modal::new(content, modal_content)
             .on_blur(Message::ToggleCommandPalette)
@@ -501,6 +532,7 @@ mod tests {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
+            recent_commands: Vec::new(),
         }
     }
 
