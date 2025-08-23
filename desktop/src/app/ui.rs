@@ -359,7 +359,8 @@ impl MulticodeApp {
                 let score = if self.query.is_empty() {
                     0.0
                 } else {
-                    fuzzy::similarity(&self.query, &name)
+                    let n = self.query.chars().count().min(3).max(1);
+                    fuzzy::similarity(&self.query, &name, n)
                 };
                 (cmd, name, desc, score)
             })
