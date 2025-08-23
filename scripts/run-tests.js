@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+process.on('unhandledRejection', (err) => {
+  console.error(err && err.stack ? err.stack : err);
+  process.exit(1);
+});
 const { createLogger, runCommand, createSpinner } = require('./utils');
 
 async function main() {

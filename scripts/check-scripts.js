@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+process.on('unhandledRejection', (err) => {
+  console.error(err && err.stack ? err.stack : err);
+  process.exit(1);
+});
 const { execSync } = require('child_process');
 const fs = require('fs');
 const path = require('path');
