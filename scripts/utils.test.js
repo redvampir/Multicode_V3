@@ -4,9 +4,12 @@ const fs = require('fs');
 const path = require('path');
 const { runCommand } = require('./utils');
 
-test('runCommand does not execute suspicious arguments', async () => {
+test('runCommand rejects suspicious arguments', () => {
   const tmpFile = path.join(__dirname, 'hacked.txt');
   fs.rmSync(tmpFile, { force: true });
-  await runCommand('echo', ['hello', '&&', 'touch', tmpFile], () => {});
+  assert.throws(
+    () => runCommand('echo', ['hello', '&&', 'touch', tmpFile], () => {}),
+    TypeError,
+  );
   assert.ok(!fs.existsSync(tmpFile));
 });

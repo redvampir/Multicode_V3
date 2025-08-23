@@ -19,6 +19,19 @@ const ALLOWED_EXTENSIONS: &[&str] = &["rs", "js", "ts", "tsx", "jsx"]; // extend
 /// Maximum file size (in bytes) to scan for metadata.
 const MAX_FILE_SIZE: u64 = 1_000_000; // 1MB
 
+fn validate_query(query: &str) -> Result<(), RegexError> {
+    if query.is_empty() {
+        return Err(RegexError::Syntax("query must not be empty".into()));
+    }
+    if !query
+        .chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+    {
+        return Err(RegexError::Syntax("query contains invalid characters".into()));
+    }
+    Ok(())
+}
+
 #[derive(Debug, Clone)]
 pub struct SearchResult {
     pub file: PathBuf,
@@ -26,8 +39,11 @@ pub struct SearchResult {
     pub meta: VisualMeta,
 }
 
-/// Рекурсивно ищет в `root` метаданные, содержащие строку `query`.
+/// Рекурсивно ищет в `root` метаданные с идентификатором `query`.
+/// `query` должен быть непустым и состоять только из символов `[a-zA-Z0-9_-]`.
+/// Возвращает ошибку, если `query` не проходит проверку.
 pub fn search_metadata(root: &Path, query: &str) -> Result<Vec<SearchResult>, RegexError> {
+    validate_query(query)?;
     let re = META_RE.as_ref().map_err(|e| e.clone())?;
     let mut out = Vec::new();
     for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
@@ -71,7 +87,9 @@ pub fn search_metadata(root: &Path, query: &str) -> Result<Vec<SearchResult>, Re
 }
 
 /// Ищет записи метаданных, ссылающиеся на идентификатор `target`.
+/// `target` должен удовлетворять тем же ограничениям, что и `query`.
 pub fn search_links(root: &Path, target: &str) -> Result<Vec<SearchResult>, RegexError> {
+    validate_query(target)?;
     let re = META_RE.as_ref().map_err(|e| e.clone())?;
     let mut out = Vec::new();
     for entry in WalkDir::new(root).into_iter().filter_map(Result::ok) {
@@ -115,7 +133,9 @@ pub fn search_links(root: &Path, target: &str) -> Result<Vec<SearchResult>, Rege
 }
 
 /// Находит определение метаданных с указанным `id`.
+/// `id` должен удовлетворять ограничениям, описанным для `query`.
 pub fn goto_definition(root: &Path, id: &str) -> Result<Option<SearchResult>, RegexError> {
+    validate_query(id)?;
     Ok(search_metadata(root, id)?
         .into_iter()
         .find(|r| r.meta.id == id))
@@ -186,5 +206,13 @@ mod tests {
         let res = search_metadata(dir.path(), "one").unwrap();
         assert_eq!(res.len(), 1);
         assert_eq!(res[0].file, target);
+    }
+
+    #[test]
+    fn rejects_invalid_query() {
+        let dir = tempdir().unwrap();
+        assert!(search_metadata(dir.path(), "").is_err());
+        assert!(search_metadata(dir.path(), "bad?").is_err());
+        assert!(search_links(dir.path(), "").is_err());
     }
 }

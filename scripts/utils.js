@@ -8,6 +8,7 @@ try {
 }
 const path = require('path');
 const { spawn } = require('child_process');
+const INVALID_ARG_RE = /[&|;<>\r\n]/;
 
 let ora;
 try {
@@ -33,9 +34,21 @@ function createLogger(name) {
   };
 }
 
+/**
+ * Безопасно выполняет команду через `spawn`.
+ * @param {string} cmd исполняемый файл
+ * @param {string[]} [args=[]] массив аргументов без управляющих символов оболочки (`&`, `|`, `;`, `<`, `>`).
+ * Каждый аргумент должен быть непустой строкой.
+ * @param {(msg: string) => void} [log=console.log] функция логирования
+ * @param {object} [options={}] дополнительные опции `spawn`
+ * @returns {Promise<void>} завершается при успешном выполнении команды
+ */
 function runCommand(cmd, args = [], log = console.log, options = {}) {
-  if (!Array.isArray(args)) {
-    throw new TypeError('args must be an array');
+  if (
+    !Array.isArray(args) ||
+    !args.every((a) => typeof a === 'string' && a.length > 0 && !INVALID_ARG_RE.test(a))
+  ) {
+    throw new TypeError('args must be an array of safe strings');
   }
   return new Promise((resolve, reject) => {
     const child = spawn(cmd, args, { shell: false, ...options });
