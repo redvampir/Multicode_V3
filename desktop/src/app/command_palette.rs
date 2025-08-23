@@ -61,6 +61,7 @@ mod tests {
     use super::*;
     use crate::app::command_translations::{command_hotkey, command_name};
     use crate::app::Language;
+    use std::collections::HashSet;
 
     #[test]
     fn commands_have_localizations() {
@@ -86,6 +87,16 @@ mod tests {
     #[test]
     fn all_commands_have_hotkeys() {
         assert!(COMMANDS.iter().all(|c| !c.hotkey.is_empty()));
+    }
+
+    #[test]
+    fn command_ids_are_unique() {
+        let mut ids = HashSet::new();
+        for cmd in COMMANDS {
+            if !ids.insert(cmd.id) {
+                panic!("duplicate command id: {}", cmd.id);
+            }
+        }
     }
 
     #[test]
