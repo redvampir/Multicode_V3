@@ -1,18 +1,106 @@
+use std::collections::HashMap;
+
+use once_cell::sync::Lazy;
+
 use super::command_palette::CommandItem;
 use super::Language;
 
+type Translation = (&'static str, &'static str);
+
+static COMMAND_TRANSLATIONS: Lazy<HashMap<(&'static str, Language), Translation>> =
+    Lazy::new(|| {
+        use Language::*;
+        let mut m = HashMap::new();
+        m.insert(
+            ("open_file", English),
+            ("Open File", "Open a file from disk"),
+        );
+        m.insert(
+            ("open_file", Russian),
+            ("Открыть файл", "Открыть файл с диска"),
+        );
+        m.insert(
+            ("save_file", English),
+            ("Save File", "Save the current file"),
+        );
+        m.insert(
+            ("save_file", Russian),
+            ("Сохранить файл", "Сохранить текущий файл"),
+        );
+        m.insert(
+            ("toggle_terminal", English),
+            ("Toggle Terminal", "Show or hide the terminal"),
+        );
+        m.insert(
+            ("toggle_terminal", Russian),
+            ("Показать/Скрыть терминал", "Показать или скрыть терминал"),
+        );
+        m.insert(
+            ("goto_line", English),
+            ("Go to Line", "Jump to specified line number"),
+        );
+        m.insert(
+            ("goto_line", Russian),
+            ("Перейти к строке", "Перейти к указанной строке"),
+        );
+        m.insert(
+            ("open_settings", English),
+            ("Open Settings", "Open application settings"),
+        );
+        m.insert(
+            ("open_settings", Russian),
+            ("Открыть настройки", "Открыть настройки приложения"),
+        );
+        m.insert(
+            ("switch_to_text_editor", English),
+            ("Switch to Text", "Switch to text editor"),
+        );
+        m.insert(
+            ("switch_to_text_editor", Russian),
+            (
+                "Переключиться в текстовый редактор",
+                "Переключиться в текстовый редактор",
+            ),
+        );
+        m.insert(
+            ("switch_to_visual_editor", English),
+            ("Switch to Visual", "Switch to visual editor"),
+        );
+        m.insert(
+            ("switch_to_visual_editor", Russian),
+            (
+                "Переключиться в визуальный редактор",
+                "Переключиться в визуальный редактор",
+            ),
+        );
+        m.insert(
+            ("switch_to_split", English),
+            ("Switch to Split", "Switch to split view"),
+        );
+        m.insert(
+            ("switch_to_split", Russian),
+            (
+                "Переключиться в режим разделения",
+                "Переключиться в режим разделения",
+            ),
+        );
+        m
+    });
+
 pub fn command_name(cmd: &CommandItem, lang: Language) -> &'static str {
-    match lang {
-        Language::Russian => cmd.name_ru,
-        _ => cmd.name_en,
-    }
+    COMMAND_TRANSLATIONS
+        .get(&(cmd.id, lang))
+        .or_else(|| COMMAND_TRANSLATIONS.get(&(cmd.id, Language::English)))
+        .map(|(name, _)| *name)
+        .unwrap_or(cmd.id)
 }
 
 pub fn command_description(cmd: &CommandItem, lang: Language) -> &'static str {
-    match lang {
-        Language::Russian => cmd.description_ru,
-        _ => cmd.description_en,
-    }
+    COMMAND_TRANSLATIONS
+        .get(&(cmd.id, lang))
+        .or_else(|| COMMAND_TRANSLATIONS.get(&(cmd.id, Language::English)))
+        .map(|(_, desc)| *desc)
+        .unwrap_or("")
 }
 
 pub fn command_hotkey(cmd: &CommandItem, lang: Language) -> String {
