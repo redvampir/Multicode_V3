@@ -1,9 +1,9 @@
 use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
 use crate::app::{
-    command_palette::COMMANDS, diff::DiffView, log_translations::LogMessage, save_log_to_file,
-    Diagnostic, EditorMode, EntryType, Hotkey, HotkeyField, LogEntry, MulticodeApp, PendingAction,
-    Screen, Tab, TabDragState, ViewMode,
+    diff::DiffView, log_translations::LogMessage, save_log_to_file, Diagnostic, EditorMode,
+    EntryType, Hotkey, HotkeyField, LogEntry, MulticodeApp, PendingAction, Screen, Tab,
+    TabDragState, ViewMode,
 };
 use crate::components::file_manager::{self, ContextMenu};
 use crate::editor::autocomplete::{self, AutocompleteState};
@@ -288,8 +288,19 @@ impl MulticodeApp {
                 }
                 for (id, hk) in &self.settings.shortcuts {
                     if hk.matches(&key, modifiers) {
-                        if let Some(cmd) = COMMANDS.iter().find(|c| c.id == id.as_str()) {
-                            return self.handle_message(cmd.message.clone());
+                        let msg = match id.as_str() {
+                            "open_file" => Some(Message::PickFile),
+                            "save_file" => Some(Message::SaveFile),
+                            "toggle_terminal" => Some(Message::ToggleTerminal),
+                            "goto_line" => Some(Message::OpenGotoLine),
+                            "open_settings" => Some(Message::OpenSettings),
+                            "switch_to_text_editor" => Some(Message::SwitchToTextEditor),
+                            "switch_to_visual_editor" => Some(Message::SwitchToVisualEditor),
+                            "switch_to_split" => Some(Message::SwitchViewMode(ViewMode::Split)),
+                            _ => None,
+                        };
+                        if let Some(m) = msg {
+                            return self.handle_message(m);
                         }
                     }
                 }
@@ -1784,14 +1795,25 @@ impl MulticodeApp {
             }
             Message::ExecuteCommand(cmd) => {
                 self.show_command_palette = false;
-                let msg = COMMANDS
-                    .iter()
-                    .find(|c| c.id == cmd)
-                    .map(|c| c.message.clone());
-                if let Some(m) = msg {
-                    return self.handle_message(m);
+                match cmd.as_str() {
+                    "open_file" => return self.handle_message(Message::PickFile),
+                    "save_file" => return self.handle_message(Message::SaveFile),
+                    "toggle_terminal" => {
+                        return self.handle_message(Message::ToggleTerminal)
+                    }
+                    "goto_line" => return self.handle_message(Message::OpenGotoLine),
+                    "open_settings" => return self.handle_message(Message::OpenSettings),
+                    "switch_to_text_editor" => {
+                        return self.handle_message(Message::SwitchToTextEditor)
+                    }
+                    "switch_to_visual_editor" => {
+                        return self.handle_message(Message::SwitchToVisualEditor)
+                    }
+                    "switch_to_split" => {
+                        return self.handle_message(Message::SwitchViewMode(ViewMode::Split))
+                    }
+                    _ => Command::none(),
                 }
-                Command::none()
             }
             Message::ToggleDir(path) => {
                 self.selected_path = Some(path.clone());

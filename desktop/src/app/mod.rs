@@ -1,4 +1,5 @@
 pub mod command_palette;
+pub mod command_translations;
 pub mod diff;
 pub mod events;
 pub mod io;

@@ -8,7 +8,14 @@ use iced::{Element, Length};
 
 use crate::app::diff::DiffView;
 use crate::app::events::Message;
-use crate::app::{command_palette::COMMANDS, format_log, Language, LogLevel, MulticodeApp};
+use crate::app::{
+    command_palette::COMMANDS,
+    command_translations::{command_description, command_name},
+    format_log,
+    Language,
+    LogLevel,
+    MulticodeApp,
+};
 use crate::modal::Modal;
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::connections::Connection;
@@ -316,13 +323,25 @@ impl MulticodeApp {
         if !self.show_command_palette {
             return content;
         }
-        let query_input = text_input("команда", &self.query).on_input(Message::QueryChanged);
+        let placeholder = if self.settings.language == Language::Russian {
+            "команда"
+        } else {
+            "command"
+        };
+        let query_input = text_input(placeholder, &self.query).on_input(Message::QueryChanged);
         let items = COMMANDS
             .iter()
-            .filter(|c| c.title.to_lowercase().contains(&self.query.to_lowercase()))
+            .filter(|c| {
+                command_name(c, self.settings.language)
+                    .to_lowercase()
+                    .contains(&self.query.to_lowercase())
+            })
             .fold(column![], |col, cmd| {
+                let name = command_name(cmd, self.settings.language);
+                let desc = command_description(cmd, self.settings.language);
                 col.push(
-                    button(text(cmd.title)).on_press(Message::ExecuteCommand(cmd.id.to_string())),
+                    button(column![text(name), text(desc).size(14)])
+                        .on_press(Message::ExecuteCommand(cmd.id.to_string())),
                 )
             })
             .spacing(5);
@@ -396,7 +415,7 @@ impl MulticodeApp {
                         .unwrap_or_else(|| String::from("-"))
                 };
                 row![
-                    text(cmd.title),
+                    text(command_name(cmd, self.settings.language)),
                     button(text(label)).on_press(Message::StartCaptureShortcut(cmd.id.to_string()))
                 ]
                 .spacing(10)
