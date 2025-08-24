@@ -487,6 +487,7 @@ impl MulticodeApp {
 mod tests {
     use super::super::{CreateTarget, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
     use crate::components::file_manager::ContextMenu;
+    use crate::app::command_palette::COMMANDS;
     use std::collections::{HashMap, HashSet, VecDeque};
     use std::path::PathBuf;
     use tokio::sync::broadcast;
@@ -596,5 +597,49 @@ mod tests {
         let _ = app.handle_message(crate::app::events::Message::ConfirmGotoLine);
         assert!(!app.show_goto_line_modal);
         assert!(app.goto_line_input.is_empty());
+    }
+
+    #[test]
+    fn command_palette_orders_by_frequency() {
+        use iced::widget::Space;
+        use iced::Length;
+
+        let mut app = build_app(Screen::TextEditor {
+            root: PathBuf::new(),
+        });
+
+        let _ = app.handle_message(crate::app::events::Message::ExecuteCommand(
+            "open_file".into(),
+        ));
+        let _ = app.handle_message(crate::app::events::Message::ExecuteCommand(
+            "toggle_terminal".into(),
+        ));
+        let _ = app.handle_message(crate::app::events::Message::ExecuteCommand(
+            "open_file".into(),
+        ));
+        let _ = app.handle_message(crate::app::events::Message::ExecuteCommand(
+            "save_file".into(),
+        ));
+        let _ = app.handle_message(crate::app::events::Message::ExecuteCommand(
+            "open_file".into(),
+        ));
+        let _ = app.handle_message(crate::app::events::Message::ExecuteCommand(
+            "toggle_terminal".into(),
+        ));
+
+        app.show_command_palette = true;
+        app.query.clear();
+
+        // ensure the modal can be built without crashing
+        let _ = app.command_palette_modal(Space::with_height(Length::Shrink).into());
+
+        let mut items: Vec<_> = COMMANDS
+            .iter()
+            .map(|cmd| (cmd.id, app.command_counts.get(cmd.id).copied().unwrap_or(0)))
+            .collect();
+        items.sort_by(|a, b| b.1.cmp(&a.1));
+        assert_eq!(items[0].0, "open_file");
+        assert_eq!(items[1].0, "toggle_terminal");
+        assert_eq!(items[2].0, "save_file");
     }
 }

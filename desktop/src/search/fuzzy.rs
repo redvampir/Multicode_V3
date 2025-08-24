@@ -121,4 +121,21 @@ mod tests {
         let direct = similarity(a, b, 3);
         assert!((cached - direct).abs() < f32::EPSILON);
     }
+
+    #[test]
+    fn search_one_char_matches_inside() {
+        let items = vec!["ba", "cb"];
+        let results = search("a", items.iter().map(|s| *s));
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].0, "ba");
+    }
+
+    #[test]
+    fn search_two_char_matches_inside() {
+        let items = vec!["xabc", "cab", "zz"];
+        let results = search("ab", items.iter().map(|s| *s));
+        assert_eq!(results.len(), 2);
+        assert_eq!(results[0].0, "cab");
+        assert_eq!(results[1].0, "xabc");
+    }
 }
