@@ -25,6 +25,7 @@ use multicode_core::{
 use serde_json::json;
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::path::{Path, PathBuf};
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -298,6 +299,18 @@ impl MulticodeApp {
             Message::ToggleSearchIndex(val) => {
                 self.settings.search.use_index = val;
                 self.rebuild_search_indices();
+                Command::none()
+            }
+            Message::CacheSizeChanged(value) => {
+                if let Ok(v) = value.parse() {
+                    self.settings.search.cache_size = v;
+                    let cap = NonZeroUsize::new(v)
+                        .unwrap_or_else(|| NonZeroUsize::new(1).unwrap());
+                    self.command_cache.borrow_mut().resize(cap);
+                    self.block_cache.borrow_mut().resize(cap);
+                    self.command_cache.borrow_mut().clear();
+                    self.block_cache.borrow_mut().clear();
+                }
                 Command::none()
             }
             Message::FontSizeChanged(value) => {

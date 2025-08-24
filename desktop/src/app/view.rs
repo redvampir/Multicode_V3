@@ -488,6 +488,16 @@ impl MulticodeApp {
                     ]
                     .spacing(10),
                     row![
+                        text("Размер кэша поиска"),
+                        text_input(
+                            "",
+                            &self.settings.search.cache_size.to_string()
+                        )
+                        .on_input(Message::CacheSizeChanged)
+                        .width(Length::Fixed(50.0)),
+                    ]
+                    .spacing(10),
+                    row![
                         text("Номера строк"),
                         checkbox("", self.settings.show_line_numbers)
                             .on_toggle(Message::ToggleLineNumbers)
