@@ -44,7 +44,11 @@ impl SyncEngine {
                     meta.version = DEFAULT_VERSION;
                 }
                 self.state.code = meta::upsert(&self.state.code, &meta);
-                self.state.metas = meta::read_all(&self.state.code);
+                if let Some(existing) = self.state.metas.iter_mut().find(|m| m.id == meta.id) {
+                    *existing = meta;
+                } else {
+                    self.state.metas.push(meta);
+                }
                 Some(self.state.code.clone())
             }
         }
