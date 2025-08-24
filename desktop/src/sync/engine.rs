@@ -31,13 +31,13 @@ impl SyncEngine {
     }
 
     /// Обрабатывает входящее сообщение синхронизации.
-    /// Возвращает обновлённый текст, если он был изменён.
-    pub fn handle(&mut self, msg: SyncMessage) -> Option<String> {
+    /// Возвращает обновлённый текст и список метаданных.
+    pub fn handle(&mut self, msg: SyncMessage) -> Option<(String, Vec<VisualMeta>)> {
         match msg {
             SyncMessage::TextChanged(code) => {
                 self.state.metas = meta::read_all(&code);
                 self.state.code = code;
-                None
+                Some((self.state.code.clone(), self.state.metas.clone()))
             }
             SyncMessage::VisualChanged(mut meta) => {
                 if meta.version == 0 {
@@ -49,7 +49,7 @@ impl SyncEngine {
                 } else {
                     self.state.metas.push(meta);
                 }
-                Some(self.state.code.clone())
+                Some((self.state.code.clone(), self.state.metas.clone()))
             }
         }
     }

@@ -80,7 +80,7 @@ impl MulticodeApp {
                                 None
                             };
                             if let Some(meta) = meta {
-                                if let Some(code) =
+                                if let Some((code, _)) =
                                     self.sync_engine.handle(SyncMessage::VisualChanged(meta))
                                 {
                                     if let Some(tab) = self.tabs.get_mut(i) {
@@ -101,7 +101,7 @@ impl MulticodeApp {
                                     tab.blocks.push(block);
                                     tab.dirty = true;
                                 }
-                                if let Some(code) =
+                                if let Some((code, _)) =
                                     self.sync_engine.handle(SyncMessage::VisualChanged(meta))
                                 {
                                     if let Some(tab) = self.tabs.get_mut(i) {
@@ -164,10 +164,20 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::Sync(msg) => {
-                if let Some(code) = self.sync_engine.handle(msg) {
+                if let Some((code, metas)) = self.sync_engine.handle(msg) {
                     if let Some(tab) = self.current_file_mut() {
                         tab.content = code;
                         tab.editor = Content::with_text(&tab.content);
+                        for block in &mut tab.blocks {
+                            if let Some(meta) = metas.iter().find(|m| m.id == block.visual_id) {
+                                block.x = meta.x;
+                                block.y = meta.y;
+                                block.tags = meta.tags.clone();
+                                block.links = meta.links.clone();
+                                block.translations = meta.translations.clone();
+                            }
+                        }
+                        tab.meta = metas.first().cloned();
                     }
                 }
                 Command::none()
@@ -869,8 +879,20 @@ impl MulticodeApp {
                         }
                         f.editor.perform(action);
                         f.content = f.editor.text();
-                        self.sync_engine
-                            .handle(SyncMessage::TextChanged(f.content.clone()));
+                        if let Some((_, metas)) =
+                            self.sync_engine.handle(SyncMessage::TextChanged(f.content.clone()))
+                        {
+                            for block in &mut f.blocks {
+                                if let Some(meta) = metas.iter().find(|m| m.id == block.visual_id) {
+                                    block.x = meta.x;
+                                    block.y = meta.y;
+                                    block.tags = meta.tags.clone();
+                                    block.links = meta.links.clone();
+                                    block.translations = meta.translations.clone();
+                                }
+                            }
+                            f.meta = metas.first().cloned();
+                        }
                         if is_edit {
                             f.dirty = true;
                         }
