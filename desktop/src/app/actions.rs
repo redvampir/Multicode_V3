@@ -87,7 +87,6 @@ impl Application for MulticodeApp {
             show_create_file_confirm: false,
             show_delete_confirm: false,
             pending_action: None,
-            hotkey_capture: None,
             shortcut_capture: None,
             settings_warning: None,
             loading: false,

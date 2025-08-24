@@ -14,9 +14,8 @@ mod view;
 pub use crate::visual::translations::Language;
 pub use log_translations::{format_log, LogMessage};
 pub use state::{
-    AppTheme, CreateTarget, Diagnostic, EditorMode, EntryType, FileEntry, Hotkey, HotkeyField,
-    Hotkeys, LogEntry, LogLevel, MulticodeApp, PendingAction, Screen, Tab, TabDragState,
-    UserSettings, ViewMode,
+    AppTheme, CreateTarget, Diagnostic, EditorMode, EntryType, FileEntry, LogEntry, LogLevel,
+    MulticodeApp, PendingAction, Screen, Tab, TabDragState, UserSettings, ViewMode,
 };
 
 use iced::Application;

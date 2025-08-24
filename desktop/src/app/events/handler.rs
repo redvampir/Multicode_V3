@@ -2,14 +2,14 @@ use super::Message;
 use crate::app::io::{pick_file, pick_file_in_dir, pick_folder};
 use crate::app::{
     diff::DiffView, log_translations::LogMessage, save_log_to_file, Diagnostic, EditorMode,
-    EntryType, Hotkey, HotkeyField, LogEntry, MulticodeApp, PendingAction, Screen, Tab,
-    TabDragState, ViewMode,
+    EntryType, LogEntry, MulticodeApp, PendingAction, Screen, Tab, TabDragState, ViewMode,
 };
 use crate::components::file_manager::{self, ContextMenu};
 use crate::editor::autocomplete::{self, AutocompleteState};
 use crate::editor::meta_integration::validate_meta_json;
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::palette::PaletteMessage;
+use crate::search::hotkeys::{HotkeyContext, KeyCombination};
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -126,39 +126,12 @@ impl MulticodeApp {
                     }
                 }
                 if let Some(id) = self.shortcut_capture.take() {
-                    let key_str = match key {
-                        keyboard::Key::Character(c) => c.to_string().to_uppercase(),
-                        keyboard::Key::Named(named) => format!("{:?}", named),
-                        _ => return Command::none(),
-                    };
-                    let hk = Hotkey {
-                        key: key_str,
-                        ctrl: modifiers.control(),
-                        alt: modifiers.alt(),
-                        shift: modifiers.shift(),
-                    };
-                    self.settings.shortcuts.insert(id, hk);
-                    return Command::none();
-                }
-                if let Some(field) = self.hotkey_capture.take() {
-                    let key_str = match key {
-                        keyboard::Key::Character(c) => c.to_string().to_uppercase(),
-                        keyboard::Key::Named(named) => format!("{:?}", named),
-                        _ => return Command::none(),
-                    };
-                    let hk = Hotkey {
-                        key: key_str,
-                        ctrl: modifiers.control(),
-                        alt: modifiers.alt(),
-                        shift: modifiers.shift(),
-                    };
-                    match field {
-                        HotkeyField::CreateFile => self.settings.hotkeys.create_file = hk,
-                        HotkeyField::SaveFile => self.settings.hotkeys.save_file = hk,
-                        HotkeyField::RenameFile => self.settings.hotkeys.rename_file = hk,
-                        HotkeyField::DeleteFile => self.settings.hotkeys.delete_file = hk,
-                        HotkeyField::NextDiff => self.settings.hotkeys.next_diff = hk,
-                        HotkeyField::PrevDiff => self.settings.hotkeys.prev_diff = hk,
+                    if let Some(hk) = KeyCombination::from_event(&key, modifiers) {
+                        let ctx = match id.as_str() {
+                            "next_diff" | "prev_diff" => HotkeyContext::Diff,
+                            _ => HotkeyContext::Global,
+                        };
+                        self.settings.hotkeys.bind(ctx, id, hk);
                     }
                     return Command::none();
                 }
@@ -170,15 +143,14 @@ impl MulticodeApp {
                         }
                     }
                 }
-                if let Screen::Diff(_) = self.screen {
-                    let hotkeys = &self.settings.hotkeys;
-                    if hotkeys.next_diff.matches(&key, modifiers) {
-                        return self.handle_message(Message::NextDiff);
-                    }
-                    if hotkeys.prev_diff.matches(&key, modifiers) {
-                        return self.handle_message(Message::PrevDiff);
-                    }
-                    return Command::none();
+                if let Some(cmd) =
+                    self
+                        .settings
+                        .hotkeys
+                        .get_command(self.hotkey_context(), &key, modifiers)
+                {
+                    return self
+                        .handle_message(Message::ExecuteCommand(cmd.to_string()));
                 }
                 if !matches!(
                     self.screen,
@@ -285,37 +257,6 @@ impl MulticodeApp {
                             _ => {}
                         }
                     }
-                }
-                for (id, hk) in &self.settings.shortcuts {
-                    if hk.matches(&key, modifiers) {
-                        let msg = match id.as_str() {
-                            "open_file" => Some(Message::PickFile),
-                            "save_file" => Some(Message::SaveFile),
-                            "toggle_terminal" => Some(Message::ToggleTerminal),
-                            "goto_line" => Some(Message::OpenGotoLine),
-                            "open_settings" => Some(Message::OpenSettings),
-                            "switch_to_text_editor" => Some(Message::SwitchToTextEditor),
-                            "switch_to_visual_editor" => Some(Message::SwitchToVisualEditor),
-                            "switch_to_split" => Some(Message::SwitchViewMode(ViewMode::Split)),
-                            _ => None,
-                        };
-                        if let Some(m) = msg {
-                            return self.handle_message(m);
-                        }
-                    }
-                }
-                let hotkeys = &self.settings.hotkeys;
-                if hotkeys.create_file.matches(&key, modifiers) {
-                    return self.handle_message(Message::CreateFile);
-                }
-                if hotkeys.save_file.matches(&key, modifiers) {
-                    return self.handle_message(Message::SaveFile);
-                }
-                if hotkeys.rename_file.matches(&key, modifiers) {
-                    return self.handle_message(Message::RenameFile);
-                }
-                if hotkeys.delete_file.matches(&key, modifiers) {
-                    return self.handle_message(Message::RequestDeleteFile);
                 }
                 Command::none()
             }
@@ -490,10 +431,6 @@ impl MulticodeApp {
                     f.dirty = true;
                 }
                 self.show_meta_dialog = false;
-                Command::none()
-            }
-            Message::StartCaptureHotkey(field) => {
-                self.hotkey_capture = Some(field);
                 Command::none()
             }
             Message::StartCaptureShortcut(id) => {
@@ -1817,6 +1754,14 @@ impl MulticodeApp {
                     "toggle_terminal" => self.handle_message(Message::ToggleTerminal),
                     "goto_line" => self.handle_message(Message::OpenGotoLine),
                     "open_settings" => self.handle_message(Message::OpenSettings),
+                    "create_file" => self.handle_message(Message::CreateFile),
+                    "rename_file" => self.handle_message(Message::RenameFile),
+                    "delete_file" => self.handle_message(Message::RequestDeleteFile),
+                    "next_diff" => self.handle_message(Message::NextDiff),
+                    "prev_diff" => self.handle_message(Message::PrevDiff),
+                    "toggle_command_palette" => {
+                        self.handle_message(Message::ToggleCommandPalette)
+                    }
                     "switch_to_text_editor" => {
                         self.handle_message(Message::SwitchToTextEditor)
                     }
@@ -1987,18 +1932,9 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::SaveSettings => {
-                let h = &self.settings.hotkeys;
                 let mut set = HashSet::new();
-                if !set.insert(h.create_file.to_string())
-                    || !set.insert(h.save_file.to_string())
-                    || !set.insert(h.rename_file.to_string())
-                    || !set.insert(h.delete_file.to_string())
-                {
-                    self.settings_warning = Some("Сочетания клавиш должны быть уникальными".into());
-                    return Command::none();
-                }
-                for hk in self.settings.shortcuts.values() {
-                    if !set.insert(hk.to_string()) {
+                for s in self.settings.hotkeys.all_bindings() {
+                    if !set.insert(s) {
                         self.settings_warning =
                             Some("Сочетания клавиш должны быть уникальными".into());
                         return Command::none();

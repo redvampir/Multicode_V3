@@ -15,6 +15,7 @@ use crate::app::{
     search_translations::{search_text, SearchText},
     Language, LogLevel, MulticodeApp,
 };
+use crate::search::hotkeys::HotkeyContext;
 use crate::modal::Modal;
 use crate::search::fuzzy;
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
@@ -467,8 +468,8 @@ impl MulticodeApp {
                     String::from("...")
                 } else {
                     self.settings
-                        .shortcuts
-                        .get(cmd.id)
+                        .hotkeys
+                        .binding(HotkeyContext::Global, cmd.id)
                         .map(|h| h.to_string())
                         .unwrap_or_else(|| String::from("-"))
                 };
@@ -543,7 +544,6 @@ mod tests {
             show_create_file_confirm: false,
             show_delete_confirm: false,
             pending_action: None,
-            hotkey_capture: None,
             shortcut_capture: None,
             settings_warning: None,
             loading: false,
