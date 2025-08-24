@@ -512,6 +512,7 @@ impl Drop for MulticodeApp {
 mod tests {
     use super::*;
     use crate::app::events::Message;
+    use crate::search::hotkeys::KeyCombination;
     use tokio::sync::broadcast;
     use std::collections::{HashMap, HashSet, VecDeque};
 
@@ -610,5 +611,43 @@ mod tests {
         let json = "{}";
         let settings: UserSettings = serde_json::from_str(json).unwrap();
         assert!(settings.recent_commands.is_empty());
+    }
+
+    #[test]
+    fn user_settings_serialization_preserves_custom_hotkeys() {
+        let mut hotkeys = HotkeyManager::default();
+
+        let global_combo = KeyCombination::parse("Ctrl+Alt+K").unwrap();
+        assert!(hotkeys.bind(
+            HotkeyContext::Global,
+            "custom_global".into(),
+            global_combo.clone(),
+        ));
+
+        let diff_combo = KeyCombination::parse("Ctrl+Shift+D").unwrap();
+        assert!(hotkeys.bind(
+            HotkeyContext::Diff,
+            "custom_diff".into(),
+            diff_combo.clone(),
+        ));
+
+        let mut settings = UserSettings::default();
+        settings.hotkeys = hotkeys;
+
+        let json = serde_json::to_string(&settings).unwrap();
+        let deserialized: UserSettings = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(
+            deserialized
+                .hotkeys
+                .binding(HotkeyContext::Global, "custom_global"),
+            Some(&global_combo)
+        );
+        assert_eq!(
+            deserialized
+                .hotkeys
+                .binding(HotkeyContext::Diff, "custom_diff"),
+            Some(&diff_combo)
+        );
     }
 }
