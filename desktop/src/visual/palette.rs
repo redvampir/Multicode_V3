@@ -436,6 +436,19 @@ mod tests {
     }
 
     #[test]
+    fn matches_block_synonyms_multi_language() {
+        let add_block = make_block("Add", "Add", "Сложить");
+        assert!(matches_block(&add_block, &["sum"]));
+        assert!(matches_block(&add_block, &["прибавить"]));
+        assert!(matches_block(&add_block, &["sumar"]));
+        assert!(matches_block(&add_block, &["hinzufuegen"]));
+
+        let while_block = make_block("While", "While", "Пока");
+        assert!(matches_block(&while_block, &["mientras"]));
+        assert!(matches_block(&while_block, &["solange"]));
+    }
+
+    #[test]
     fn start_drag_message_on_press() {
         let content = Space::new(Length::Fixed(10.0), Length::Fixed(10.0));
         let mut widget = MouseArea::new(content).on_press(PaletteMessage::StartDrag(0));
