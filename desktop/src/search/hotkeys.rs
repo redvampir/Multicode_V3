@@ -91,6 +91,9 @@ impl fmt::Display for KeyCombination {
 pub enum HotkeyContext {
     Global,
     Diff,
+    TextEditor,
+    VisualEditor,
+    Settings,
 }
 
 /// Manager storing bindings between commands and key combinations
@@ -222,6 +225,21 @@ impl Default for HotkeyManager {
             "toggle_command_palette".into(),
             KeyCombination::parse("Ctrl+Shift+P").unwrap(),
         );
+        hm.bind(
+            HotkeyContext::TextEditor,
+            "text_editor_special".into(),
+            KeyCombination::parse("Ctrl+Alt+T").unwrap(),
+        );
+        hm.bind(
+            HotkeyContext::VisualEditor,
+            "visual_editor_special".into(),
+            KeyCombination::parse("Ctrl+Alt+V").unwrap(),
+        );
+        hm.bind(
+            HotkeyContext::Settings,
+            "settings_special".into(),
+            KeyCombination::parse("Ctrl+Alt+S").unwrap(),
+        );
         // Commands from command palette
         for cmd in COMMANDS {
             if let Some(combo) = KeyCombination::parse(cmd.hotkey) {
@@ -261,6 +279,32 @@ mod tests {
                 Modifiers::CTRL | Modifiers::ALT
             ),
             Some("special"),
+        );
+        let key_t = Key::Character("T".into());
+        assert_eq!(
+            mgr.get_command(
+                HotkeyContext::TextEditor,
+                &key_t,
+                Modifiers::CTRL | Modifiers::ALT
+            ),
+            Some("text_editor_special"),
+        );
+        let key_v = Key::Character("V".into());
+        assert_eq!(
+            mgr.get_command(
+                HotkeyContext::VisualEditor,
+                &key_v,
+                Modifiers::CTRL | Modifiers::ALT
+            ),
+            Some("visual_editor_special"),
+        );
+        assert_eq!(
+            mgr.get_command(
+                HotkeyContext::Settings,
+                &key_s,
+                Modifiers::CTRL | Modifiers::ALT
+            ),
+            Some("settings_special"),
         );
     }
 
