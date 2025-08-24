@@ -1,6 +1,6 @@
 use super::{SyncEngine, SyncMessage};
-use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use chrono::Utc;
+use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use std::collections::HashMap;
 
 fn make_meta(id: &str, version: u32) -> VisualMeta {
@@ -45,6 +45,20 @@ fn visual_changed_updates_state_code() {
     assert_eq!(result, engine.state().code);
     assert_eq!(engine.state().metas.len(), 1);
     assert_eq!(engine.state().metas[0].id, "block");
+}
+
+#[test]
+fn visual_changed_does_not_duplicate_meta() {
+    let mut engine = SyncEngine::new();
+    let meta = make_meta("block", DEFAULT_VERSION);
+    let code = meta::upsert("", &meta);
+    engine.handle(SyncMessage::TextChanged(code));
+
+    let updated = make_meta("block", DEFAULT_VERSION + 1);
+    engine.handle(SyncMessage::VisualChanged(updated));
+
+    assert_eq!(engine.state().metas.len(), 1);
+    assert_eq!(engine.state().metas[0].version, DEFAULT_VERSION + 1);
 }
 
 #[test]
