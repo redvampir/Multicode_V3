@@ -1807,25 +1807,28 @@ impl MulticodeApp {
                         }
                     }
                 }
-                match cmd.as_str() {
-                    "open_file" => return self.handle_message(Message::PickFile),
-                    "save_file" => return self.handle_message(Message::SaveFile),
-                    "toggle_terminal" => {
-                        return self.handle_message(Message::ToggleTerminal)
-                    }
-                    "goto_line" => return self.handle_message(Message::OpenGotoLine),
-                    "open_settings" => return self.handle_message(Message::OpenSettings),
+                self.settings.recent_commands =
+                    self.recent_commands.iter().cloned().collect();
+                let save_cmd =
+                    Command::perform(self.settings.clone().save(), |_| Message::SettingsSaved);
+                let action_cmd = match cmd.as_str() {
+                    "open_file" => self.handle_message(Message::PickFile),
+                    "save_file" => self.handle_message(Message::SaveFile),
+                    "toggle_terminal" => self.handle_message(Message::ToggleTerminal),
+                    "goto_line" => self.handle_message(Message::OpenGotoLine),
+                    "open_settings" => self.handle_message(Message::OpenSettings),
                     "switch_to_text_editor" => {
-                        return self.handle_message(Message::SwitchToTextEditor)
+                        self.handle_message(Message::SwitchToTextEditor)
                     }
                     "switch_to_visual_editor" => {
-                        return self.handle_message(Message::SwitchToVisualEditor)
+                        self.handle_message(Message::SwitchToVisualEditor)
                     }
                     "switch_to_split" => {
-                        return self.handle_message(Message::SwitchViewMode(ViewMode::Split))
+                        self.handle_message(Message::SwitchViewMode(ViewMode::Split))
                     }
                     _ => Command::none(),
-                }
+                };
+                Command::batch([save_cmd, action_cmd])
             }
             Message::ToggleDir(path) => {
                 self.selected_path = Some(path.clone());

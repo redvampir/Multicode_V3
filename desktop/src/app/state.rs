@@ -456,6 +456,8 @@ pub struct UserSettings {
     pub favorites: Vec<PathBuf>,
     #[serde(default)]
     pub block_favorites: Vec<String>,
+    #[serde(default)]
+    pub recent_commands: Vec<String>,
 }
 
 impl Default for UserSettings {
@@ -479,6 +481,7 @@ impl Default for UserSettings {
             show_markdown_preview: false,
             favorites: Vec::new(),
             block_favorites: Vec::new(),
+            recent_commands: Vec::new(),
         }
     }
 }
@@ -689,5 +692,21 @@ mod tests {
         assert_eq!(app.recent_commands.len(), 50);
         assert_eq!(app.command_counts.get("a"), Some(&45));
         assert_eq!(app.command_counts.get("b"), Some(&5));
+    }
+
+    #[test]
+    fn user_settings_serialization_roundtrip_preserves_recent_commands() {
+        let mut settings = UserSettings::default();
+        settings.recent_commands = vec!["cmd1".into(), "cmd2".into()];
+        let json = serde_json::to_string(&settings).unwrap();
+        let deserialized: UserSettings = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.recent_commands, settings.recent_commands);
+    }
+
+    #[test]
+    fn user_settings_deserialization_defaults_recent_commands() {
+        let json = "{}";
+        let settings: UserSettings = serde_json::from_str(json).unwrap();
+        assert!(settings.recent_commands.is_empty());
     }
 }
