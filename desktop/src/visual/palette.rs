@@ -99,11 +99,12 @@ impl<'a> BlockPalette<'a> {
 
     fn filter_indices(&self) -> Vec<usize> {
         let q = self.query.trim().to_lowercase();
+        let tokens: Vec<_> = q.split_whitespace().collect();
         self.blocks
             .iter()
             .enumerate()
             .filter_map(|(i, b)| {
-                if q.is_empty() || matches_block(b, &q) {
+                if tokens.is_empty() || matches_block(b, &tokens) {
                     Some(i)
                 } else {
                     None
@@ -115,10 +116,11 @@ impl<'a> BlockPalette<'a> {
     pub fn view(self) -> Element<'a, PaletteMessage> {
         let search = text_input("search", self.query).on_input(PaletteMessage::SearchChanged);
         let q = self.query.trim().to_lowercase();
+        let tokens: Vec<_> = q.split_whitespace().collect();
 
         let mut suggestions = suggest_blocks(self.blocks, self.categories, self.selected);
-        if !q.is_empty() {
-            suggestions.retain(|&i| matches_block(&self.blocks[i], &q));
+        if !tokens.is_empty() {
+            suggestions.retain(|&i| matches_block(&self.blocks[i], &tokens));
         }
         let suggestion_set: HashSet<_> = suggestions.iter().copied().collect();
 
@@ -244,19 +246,22 @@ impl<'a> BlockPalette<'a> {
     }
 }
 
-fn matches_block(block: &PaletteBlock, q: &str) -> bool {
-    if block.lower_en.contains(q)
-        || block.lower_ru.contains(q)
-        || block.lower_kind.contains(q)
-        || block.tags.iter().any(|t| t.contains(q))
-    {
-        return true;
-    }
-    if let Some(syns) = block_synonyms(&block.info.kind) {
-        syns.iter().any(|s| s.contains(q))
-    } else {
-        false
-    }
+fn matches_block(block: &PaletteBlock, tokens: &[&str]) -> bool {
+    let syns = block_synonyms(&block.info.kind);
+    tokens.iter().all(|q| {
+        if block.lower_en.contains(q)
+            || block.lower_ru.contains(q)
+            || block.lower_kind.contains(q)
+            || block.tags.iter().any(|t| t.contains(q))
+        {
+            return true;
+        }
+        if let Some(syns) = syns {
+            syns.iter().any(|s| s.contains(q))
+        } else {
+            false
+        }
+    })
 }
 
 #[cfg(test)]
@@ -298,10 +303,43 @@ mod tests {
     #[test]
     fn matches_block_case_insensitive() {
         let block = make_block("Loop", "Repeat", "Повторение");
-        assert!(matches_block(&block, &"RePeAt".to_lowercase()));
-        assert!(matches_block(&block, &"ПОВТОР".to_lowercase()));
-        assert!(matches_block(&block, &"LoOp".to_lowercase()));
-        assert!(!matches_block(&block, &"unknown".to_string()));
+        let q = "RePeAt".to_lowercase();
+        assert!(matches_block(&block, &[q.as_str()]));
+        let q = "ПОВТОР".to_lowercase();
+        assert!(matches_block(&block, &[q.as_str()]));
+        let q = "LoOp".to_lowercase();
+        assert!(matches_block(&block, &[q.as_str()]));
+        let q = "unknown".to_string();
+        assert!(!matches_block(&block, &[q.as_str()]));
+    }
+
+    #[test]
+    fn filter_indices_multiple_tokens() {
+        let blocks = vec![
+            make_block_with_tags("Loop", "Repeat", "Повторение", vec!["control"]),
+            make_block_with_tags("Arithmetic", "Add", "Сложение", vec!["math"]),
+        ];
+        let categories = vec![];
+        let favorites = vec![];
+        let palette = BlockPalette::new(
+            &blocks,
+            &categories,
+            &favorites,
+            "repeat loop control",
+            None,
+            Language::English,
+        );
+        assert_eq!(palette.filter_indices(), vec![0]);
+
+        let palette = BlockPalette::new(
+            &blocks,
+            &categories,
+            &favorites,
+            "repeat math",
+            None,
+            Language::English,
+        );
+        assert!(palette.filter_indices().is_empty());
     }
 
     #[test]
