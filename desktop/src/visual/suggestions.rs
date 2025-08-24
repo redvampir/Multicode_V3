@@ -1,11 +1,15 @@
 use super::palette::{PaletteBlock, DEFAULT_CATEGORY};
 use std::collections::HashSet;
 
+/// Maximum number of suggestions to return.
+pub const SUGGESTION_LIMIT: usize = 5;
+
 /// Suggest block indices based on the selected block and categories.
 pub fn suggest_blocks(
     blocks: &[PaletteBlock],
     categories: &[(String, Vec<usize>)],
     selected: Option<&str>,
+    limit: usize,
 ) -> Vec<usize> {
     if let Some(kind) = selected {
         if let Some(selected_block) = blocks.iter().find(|b| b.info.kind == kind) {
@@ -27,6 +31,7 @@ pub fn suggest_blocks(
                                 .any(|t| tag_set.contains(&t.to_lowercase()))
                     })
                     .map(|(i, _)| i)
+                    .take(limit)
                     .collect();
                 if !suggestions.is_empty() {
                     return suggestions;
@@ -39,6 +44,7 @@ pub fn suggest_blocks(
                     .iter()
                     .filter(|&&i| blocks[i].info.kind != kind)
                     .copied()
+                    .take(limit)
                     .collect();
             }
         }
@@ -47,7 +53,7 @@ pub fn suggest_blocks(
         .iter()
         .find(|(cat, _)| cat == DEFAULT_CATEGORY)
         .or_else(|| categories.first())
-        .map(|(_, indices)| indices.clone())
+        .map(|(_, indices)| indices.iter().copied().take(limit).collect())
         .unwrap_or_default()
 }
 
@@ -106,7 +112,7 @@ mod tests {
             ("Arithmetic".to_string(), vec![0, 1]),
             ("Loops".to_string(), vec![2]),
         ];
-        let res = suggest_blocks(&blocks, &categories, Some("Add"));
+        let res = suggest_blocks(&blocks, &categories, Some("Add"), SUGGESTION_LIMIT);
         assert_eq!(res, vec![1]);
     }
 
@@ -122,7 +128,7 @@ mod tests {
             ("Other".to_string(), vec![1]),
             ("Loops".to_string(), vec![2]),
         ];
-        let res = suggest_blocks(&blocks, &categories, Some("Add"));
+        let res = suggest_blocks(&blocks, &categories, Some("Add"), SUGGESTION_LIMIT);
         assert_eq!(res, vec![1]);
     }
 
@@ -137,7 +143,18 @@ mod tests {
             ("Arithmetic".to_string(), vec![0, 1]),
             ("Loops".to_string(), vec![2]),
         ];
-        let res = suggest_blocks(&blocks, &categories, Some("Add"));
+        let res = suggest_blocks(&blocks, &categories, Some("Add"), SUGGESTION_LIMIT);
         assert_eq!(res, vec![1]);
+    }
+
+    #[test]
+    fn respects_limit() {
+        // Create more suggestions than the limit and ensure the result is truncated.
+        let blocks: Vec<_> = (0..10)
+            .map(|i| make_block_with_tags(&format!("B{}", i), &["tag"]))
+            .collect();
+        let categories = vec![("Other".to_string(), (0..10).collect())];
+        let res = suggest_blocks(&blocks, &categories, Some("B0"), 3);
+        assert!(res.len() <= 3);
     }
 }

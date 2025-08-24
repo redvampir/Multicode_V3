@@ -3,7 +3,7 @@ use iced::{theme, Color, Element, Length};
 use multicode_core::BlockInfo;
 
 use super::{
-    suggestions::suggest_blocks,
+    suggestions::{suggest_blocks, SUGGESTION_LIMIT},
     translations::{block_synonyms, Language},
 };
 use std::collections::HashSet;
@@ -118,7 +118,8 @@ impl<'a> BlockPalette<'a> {
         let q = self.query.trim().to_lowercase();
         let tokens: Vec<_> = q.split_whitespace().collect();
 
-        let mut suggestions = suggest_blocks(self.blocks, self.categories, self.selected);
+        let mut suggestions =
+            suggest_blocks(self.blocks, self.categories, self.selected, SUGGESTION_LIMIT);
         if !tokens.is_empty() {
             suggestions.retain(|&i| matches_block(&self.blocks[i], &tokens));
         }
