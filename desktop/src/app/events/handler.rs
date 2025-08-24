@@ -292,6 +292,12 @@ impl MulticodeApp {
             }
             Message::LanguageSelected(lang) => {
                 self.settings.language = lang;
+                self.rebuild_search_indices();
+                Command::none()
+            }
+            Message::ToggleSearchIndex(val) => {
+                self.settings.search.use_index = val;
+                self.rebuild_search_indices();
                 Command::none()
             }
             Message::FontSizeChanged(value) => {

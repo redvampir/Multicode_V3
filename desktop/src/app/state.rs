@@ -23,7 +23,9 @@ use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
 use crate::editor::{AutocompleteState, EditorSettings};
 use crate::visual::palette::PaletteBlock;
-use crate::visual::translations::Language;
+use crate::visual::translations::{block_synonyms, Language};
+use super::command_palette::COMMANDS;
+use super::command_translations::command_name;
 
 mod serde_color {
     use iced::Color;
@@ -512,6 +514,51 @@ impl MulticodeApp {
 
     pub fn show_meta_panel(&self) -> bool {
         self.show_meta_panel
+    }
+
+    /// Rebuild search indexes and clear caches based on current settings.
+    pub fn rebuild_search_indices(&mut self) {
+        self.command_cache.borrow_mut().clear();
+        self.block_cache.borrow_mut().clear();
+        if self.settings.search.use_index {
+            let mut command_index = SearchIndex::new();
+            for cmd in COMMANDS {
+                let en = command_name(cmd, Language::English);
+                let ru = command_name(cmd, Language::Russian);
+                for kw in en.split_whitespace().chain(ru.split_whitespace()) {
+                    command_index.insert(kw, cmd.id);
+                }
+            }
+            let mut block_index = SearchIndex::new();
+            for (i, block) in self.palette.iter().enumerate() {
+                if let Some(en) = block.info.translations.get("en") {
+                    for kw in en.to_lowercase().split_whitespace() {
+                        block_index.insert(kw, i);
+                    }
+                }
+                if let Some(ru) = block.info.translations.get("ru") {
+                    for kw in ru.to_lowercase().split_whitespace() {
+                        block_index.insert(kw, i);
+                    }
+                }
+                for kw in block.info.kind.to_lowercase().split_whitespace() {
+                    block_index.insert(kw, i);
+                }
+                for tag in &block.info.tags {
+                    block_index.insert(&tag.to_lowercase(), i);
+                }
+                if let Some(syns) = block_synonyms(&block.info.kind) {
+                    for s in syns {
+                        block_index.insert(s, i);
+                    }
+                }
+            }
+            self.command_index = Some(command_index);
+            self.block_index = Some(block_index);
+        } else {
+            self.command_index = None;
+            self.block_index = None;
+        }
     }
 
     /// Search command identifiers using pre-built index and cache.

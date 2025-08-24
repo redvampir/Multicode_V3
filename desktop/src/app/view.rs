@@ -482,6 +482,12 @@ impl MulticodeApp {
                     ]
                     .spacing(10),
                     row![
+                        text("Индекс поиска"),
+                        checkbox("", self.settings.search.use_index)
+                            .on_toggle(Message::ToggleSearchIndex)
+                    ]
+                    .spacing(10),
+                    row![
                         text("Номера строк"),
                         checkbox("", self.settings.show_line_numbers)
                             .on_toggle(Message::ToggleLineNumbers)
