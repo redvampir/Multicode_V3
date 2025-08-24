@@ -1,11 +1,18 @@
 use crate::visual::connections::Connection;
-use crate::search::{fuzzy::TrigramSet, hotkeys::{HotkeyContext, HotkeyManager}};
+use crate::search::{
+    fuzzy::TrigramSet,
+    hotkeys::{HotkeyContext, HotkeyManager},
+    index::SearchIndex,
+    settings::SearchSettings,
+};
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use iced::{widget::text_editor, Color};
 use multicode_core::{git, meta::VisualMeta, BlockInfo};
 use serde::{Deserialize, Serialize};
+use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
+use lru::LruCache;
 use std::fmt;
 use std::ops::Range;
 use std::path::PathBuf;
@@ -168,6 +175,10 @@ pub struct MulticodeApp {
     pub(super) command_counts: HashMap<String, usize>,
     /// precomputed trigram sets for command names
     pub(super) command_trigrams: HashMap<&'static str, TrigramSet>,
+    pub(super) command_index: Option<SearchIndex<&'static str>>,
+    pub(super) block_index: Option<SearchIndex<usize>>,
+    pub(super) command_cache: RefCell<LruCache<String, Vec<&'static str>>>,
+    pub(super) block_cache: RefCell<LruCache<String, Vec<usize>>>,
 }
 
 #[derive(Debug, Clone)]
@@ -334,6 +345,8 @@ pub struct UserSettings {
     pub syntect_theme: String,
     #[serde(default)]
     pub editor: EditorSettings,
+    #[serde(default)]
+    pub search: SearchSettings,
     #[serde(default = "default_match_color", with = "serde_color")]
     pub match_color: Color,
     #[serde(default = "default_diagnostic_color", with = "serde_color")]
@@ -367,6 +380,7 @@ impl Default for UserSettings {
             theme: AppTheme::default(),
             syntect_theme: default_syntect_theme(),
             editor: EditorSettings::default(),
+            search: SearchSettings::default(),
             match_color: default_match_color(),
             diagnostic_color: default_diagnostic_color(),
             language: Language::default(),
@@ -499,6 +513,100 @@ impl MulticodeApp {
     pub fn show_meta_panel(&self) -> bool {
         self.show_meta_panel
     }
+
+    /// Search command identifiers using pre-built index and cache.
+    pub fn search_commands(&self, query: &str) -> Vec<&'static str> {
+        let q = query.trim().to_lowercase();
+        if q.is_empty() {
+            return super::command_palette::COMMANDS.iter().map(|c| c.id).collect();
+        }
+        if let Some(res) = self.command_cache.borrow_mut().get(&q).cloned() {
+            return res;
+        }
+        let tokens: Vec<&str> = q.split_whitespace().collect();
+        let ids = if let Some(index) = self.command_index.as_ref() {
+            let res = index.search(&q);
+            if res.is_empty() {
+                super::command_palette::COMMANDS
+                    .iter()
+                    .filter(|cmd| {
+                        let name = super::command_translations::command_name(
+                            cmd,
+                            self.settings.language,
+                        )
+                        .to_lowercase();
+                        tokens.iter().all(|t| name.contains(t))
+                    })
+                    .map(|cmd| cmd.id)
+                    .collect()
+            } else {
+                res
+            }
+        } else {
+            super::command_palette::COMMANDS
+                .iter()
+                .filter(|cmd| {
+                    let name = super::command_translations::command_name(
+                        cmd,
+                        self.settings.language,
+                    )
+                    .to_lowercase();
+                    tokens.iter().all(|t| name.contains(t))
+                })
+                .map(|cmd| cmd.id)
+                .collect()
+        };
+        self.command_cache.borrow_mut().put(q.clone(), ids.clone());
+        ids
+    }
+
+    /// Search block indices using pre-built index and cache.
+    pub fn search_blocks(&self, query: &str) -> Vec<usize> {
+        let q = query.trim().to_lowercase();
+        if q.is_empty() {
+            return (0..self.palette.len()).collect();
+        }
+        if let Some(res) = self.block_cache.borrow_mut().get(&q).cloned() {
+            return res;
+        }
+        let result = {
+            let tokens: Vec<&str> = q.split_whitespace().collect();
+            if let Some(index) = self.block_index.as_ref() {
+                let res = index.search(&q);
+                if res.is_empty() {
+                    self
+                        .palette
+                        .iter()
+                        .enumerate()
+                        .filter_map(|(i, b)| {
+                            if crate::visual::palette::matches_block(b, &tokens) {
+                                Some(i)
+                            } else {
+                                None
+                            }
+                        })
+                        .collect()
+                } else {
+                    res
+                }
+            } else {
+                self
+                    .palette
+                    .iter()
+                    .enumerate()
+                    .filter_map(|(i, b)| {
+                        if crate::visual::palette::matches_block(b, &tokens) {
+                            Some(i)
+                        } else {
+                            None
+                        }
+                    })
+                    .collect()
+            }
+        };
+        self.block_cache.borrow_mut().put(q.clone(), result.clone());
+        result
+    }
 }
 
 impl Drop for MulticodeApp {
@@ -517,7 +625,10 @@ mod tests {
     use crate::app::events::Message;
     use crate::search::hotkeys::KeyCombination;
     use tokio::sync::broadcast;
+    use std::cell::RefCell;
     use std::collections::{HashMap, HashSet, VecDeque};
+    use lru::LruCache;
+    use std::num::NonZeroUsize;
 
     fn build_app() -> MulticodeApp {
         let (sender, _) = broadcast::channel(1);
@@ -577,6 +688,10 @@ mod tests {
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),
             command_trigrams: HashMap::new(),
+            command_index: None,
+            block_index: None,
+            command_cache: RefCell::new(LruCache::new(NonZeroUsize::new(1).unwrap())),
+            block_cache: RefCell::new(LruCache::new(NonZeroUsize::new(1).unwrap())),
         }
     }
 

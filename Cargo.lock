@@ -1585,6 +1585,7 @@ dependencies = [
  "core",
  "directories",
  "iced",
+ "lru",
  "once_cell",
  "pulldown-cmark",
  "regex",

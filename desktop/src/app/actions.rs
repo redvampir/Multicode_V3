@@ -1,4 +1,6 @@
+use std::cell::RefCell;
 use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use iced::futures::stream;
@@ -8,9 +10,11 @@ use tokio::sync::broadcast;
 use super::events::Message;
 use super::command_palette::COMMANDS;
 use super::command_translations::command_name;
-use super::{AppTheme, CreateTarget, EditorMode, LogLevel, MulticodeApp, Screen, UserSettings};
-use crate::search::fuzzy;
+use super::{AppTheme, CreateTarget, EditorMode, LogLevel, MulticodeApp, Screen, UserSettings, Language};
+use crate::search::{fuzzy, index::SearchIndex};
 use crate::visual::palette::{PaletteBlock, DEFAULT_CATEGORY};
+use crate::visual::translations::block_synonyms;
+use lru::LruCache;
 use multicode_core::parse_blocks;
 
 impl Application for MulticodeApp {
@@ -24,6 +28,8 @@ impl Application for MulticodeApp {
         if let Some(path) = flags {
             settings.add_recent_folder(path);
         }
+        let use_index = settings.search.use_index;
+        let cache_size = settings.search.cache_size;
         let (sender, _) = broadcast::channel(100);
         let fav_files = settings.favorites.clone();
         let (palette, palette_categories) = load_palette();
@@ -38,6 +44,42 @@ impl Application for MulticodeApp {
             let name = command_name(cmd, settings.language);
             command_trigrams.insert(cmd.id, fuzzy::trigram_set(&name));
         }
+
+        let mut command_index = SearchIndex::new();
+        let mut block_index = SearchIndex::new();
+        if use_index {
+            for cmd in COMMANDS {
+                let en = command_name(cmd, Language::English);
+                let ru = command_name(cmd, Language::Russian);
+                for kw in en.split_whitespace().chain(ru.split_whitespace()) {
+                    command_index.insert(kw, cmd.id);
+                }
+            }
+            for (i, block) in palette.iter().enumerate() {
+                if let Some(en) = block.info.translations.get("en") {
+                    for kw in en.to_lowercase().split_whitespace() {
+                        block_index.insert(kw, i);
+                    }
+                }
+                if let Some(ru) = block.info.translations.get("ru") {
+                    for kw in ru.to_lowercase().split_whitespace() {
+                        block_index.insert(kw, i);
+                    }
+                }
+                for kw in block.info.kind.to_lowercase().split_whitespace() {
+                    block_index.insert(kw, i);
+                }
+                for tag in &block.info.tags {
+                    block_index.insert(&tag.to_lowercase(), i);
+                }
+                if let Some(syns) = block_synonyms(&block.info.kind) {
+                    for s in syns {
+                        block_index.insert(s, i);
+                    }
+                }
+            }
+        }
+        let cap = NonZeroUsize::new(cache_size).unwrap_or_else(|| NonZeroUsize::new(1).unwrap());
 
         let view_mode = settings.last_view_mode;
         let screen = if let Some(path) = settings.last_folders.first().cloned() {
@@ -106,6 +148,10 @@ impl Application for MulticodeApp {
             recent_commands,
             command_counts,
             command_trigrams,
+            command_index: if use_index { Some(command_index) } else { None },
+            block_index: if use_index { Some(block_index) } else { None },
+            command_cache: RefCell::new(LruCache::new(cap)),
+            block_cache: RefCell::new(LruCache::new(cap)),
         };
 
         let cmd = match &app.screen {

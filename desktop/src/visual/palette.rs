@@ -78,6 +78,7 @@ pub struct BlockPalette<'a> {
     categories: &'a [(String, Vec<usize>)],
     favorites: &'a [String],
     query: &'a str,
+    indices: Vec<usize>,
     selected: Option<&'a str>,
     language: Language,
 }
@@ -88,6 +89,7 @@ impl<'a> BlockPalette<'a> {
         categories: &'a [(String, Vec<usize>)],
         favorites: &'a [String],
         query: &'a str,
+        indices: Vec<usize>,
         selected: Option<&'a str>,
         language: Language,
     ) -> Self {
@@ -96,25 +98,10 @@ impl<'a> BlockPalette<'a> {
             categories,
             favorites,
             query,
+            indices,
             selected,
             language,
         }
-    }
-
-    fn filter_indices(&self) -> Vec<usize> {
-        let q = self.query.trim().to_lowercase();
-        let tokens: Vec<_> = q.split_whitespace().collect();
-        self.blocks
-            .iter()
-            .enumerate()
-            .filter_map(|(i, b)| {
-                if tokens.is_empty() || matches_block(b, &tokens) {
-                    Some(i)
-                } else {
-                    None
-                }
-            })
-            .collect()
     }
 
     pub fn view(self) -> Element<'a, PaletteMessage> {
@@ -134,8 +121,9 @@ impl<'a> BlockPalette<'a> {
         let suggestion_set: HashSet<_> = suggestions.iter().copied().collect();
 
         let indices: Vec<_> = self
-            .filter_indices()
-            .into_iter()
+            .indices
+            .iter()
+            .copied()
             .filter(|i| !suggestion_set.contains(i))
             .collect();
         let index_set: HashSet<_> = indices.iter().copied().collect();
@@ -255,7 +243,7 @@ impl<'a> BlockPalette<'a> {
     }
 }
 
-fn matches_block(block: &PaletteBlock, tokens: &[&str]) -> bool {
+pub fn matches_block(block: &PaletteBlock, tokens: &[&str]) -> bool {
     let syns = block_synonyms(&block.info.kind);
     tokens.iter().all(|q| {
         if block.lower_en.contains(q)
@@ -288,7 +276,7 @@ mod tests {
     use iced::mouse;
     use iced::widget::Space;
     use iced::{Length, Point, Rectangle, Size, Theme};
-    use std::collections::{HashMap, HashSet};
+    use std::collections::HashMap;
 
     fn make_block(kind: &str, en: &str, ru: &str) -> PaletteBlock {
         let mut translations = HashMap::new();
@@ -323,85 +311,6 @@ mod tests {
         assert!(!matches_block(&block, &[q.as_str()]));
     }
 
-    #[test]
-    fn filter_indices_multiple_tokens() {
-        let blocks = vec![
-            make_block_with_tags("Loop", "Repeat", "Повторение", vec!["control"]),
-            make_block_with_tags("Arithmetic", "Add", "Сложение", vec!["math"]),
-        ];
-        let categories = vec![];
-        let favorites = vec![];
-        let palette = BlockPalette::new(
-            &blocks,
-            &categories,
-            &favorites,
-            "repeat loop control",
-            None,
-            Language::English,
-        );
-        assert_eq!(palette.filter_indices(), vec![0]);
-
-        let palette = BlockPalette::new(
-            &blocks,
-            &categories,
-            &favorites,
-            "repeat math",
-            None,
-            Language::English,
-        );
-        assert!(palette.filter_indices().is_empty());
-    }
-
-    #[test]
-    fn filter_indices_favorites_and_categories() {
-        let blocks = vec![
-            make_block("Arithmetic", "Add", "Сложение"),
-            make_block("Loop", "Repeat", "Повторение"),
-        ];
-        let categories = vec![
-            ("Arithmetic".to_string(), vec![0]),
-            ("Loops".to_string(), vec![1]),
-        ];
-        let favorites = vec!["Loop".to_string()];
-        let palette = BlockPalette::new(
-            &blocks,
-            &categories,
-            &favorites,
-            "",
-            None,
-            Language::English,
-        );
-        let indices = palette.filter_indices();
-        assert_eq!(indices, vec![0, 1]);
-
-        let index_set: HashSet<_> = indices.iter().copied().collect();
-        let fav_blocks: Vec<_> = indices
-            .iter()
-            .copied()
-            .filter(|i| favorites.contains(&blocks[*i].info.kind))
-            .collect();
-        assert_eq!(fav_blocks, vec![1]);
-
-        let mut cat_map = Vec::new();
-        for (cat, cat_indices) in categories.iter() {
-            let cat_blocks: Vec<_> = cat_indices
-                .iter()
-                .copied()
-                .filter(|i| index_set.contains(i))
-                .collect();
-            if !cat_blocks.is_empty() {
-                cat_map.push((cat.clone(), cat_blocks));
-            }
-        }
-        assert_eq!(
-            cat_map,
-            vec![
-                ("Arithmetic".to_string(), vec![0]),
-                ("Loops".to_string(), vec![1]),
-            ]
-        );
-    }
-
     fn make_block_with_tags(kind: &str, en: &str, ru: &str, tags: Vec<&str>) -> PaletteBlock {
         let mut translations = HashMap::new();
         translations.insert("en".to_string(), en.to_string());
@@ -420,29 +329,6 @@ mod tests {
             tags: tags.into_iter().map(|s| s.to_string()).collect(),
             links: vec![],
         })
-    }
-
-    #[test]
-    fn filter_indices_match_tags() {
-        let blocks = vec![
-            make_block_with_tags("Add", "Add", "Сложить", vec!["math", "math"]),
-            make_block_with_tags("Loop", "Repeat", "Повторение", vec!["control"]),
-        ];
-        let categories = vec![
-            ("Arithmetic".to_string(), vec![0]),
-            ("Loops".to_string(), vec![1]),
-        ];
-        let favorites = vec![];
-        let palette = BlockPalette::new(
-            &blocks,
-            &categories,
-            &favorites,
-            "math",
-            None,
-            Language::English,
-        );
-        let indices = palette.filter_indices();
-        assert_eq!(indices, vec![0]);
     }
 
     #[test]
