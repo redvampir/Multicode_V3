@@ -1,6 +1,7 @@
 use chrono::Utc;
 use once_cell::sync::Lazy;
 use serde::Serialize;
+use tracing::error;
 use std::collections::HashSet;
 use std::sync::Mutex;
 mod comment_detector;
@@ -118,9 +119,16 @@ pub fn upsert(content: &str, meta: &VisualMeta) -> String {
     let marker = format!("<!-- {} ", MARKER);
     let mut meta = meta.clone();
     meta.updated_at = Utc::now();
+    if let Err(errs) = validate(&meta) {
+        error!("невалидный VisualMeta: {:?}", errs);
+        return content.to_string();
+    }
     let serialized = match serde_json::to_string(&meta) {
         Ok(s) => s,
-        Err(_) => return content.to_string(),
+        Err(e) => {
+            error!("не удалось сериализовать VisualMeta: {e}");
+            return content.to_string();
+        }
     };
 
     let mut out = String::new();
@@ -316,11 +324,12 @@ fn unique_id() -> String {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::Utc;
-    use serde_json::json;
-    use std::collections::HashMap;
+  mod tests {
+      use super::*;
+      use chrono::Utc;
+      use serde_json::json;
+      use std::collections::HashMap;
+      use tracing_test::traced_test;
 
     #[test]
     fn upsert_and_read_roundtrip() {
@@ -459,8 +468,8 @@ mod tests {
         assert!(dups.is_empty());
     }
 
-    #[test]
-    fn validate_reports_errors() {
+      #[test]
+      fn validate_reports_errors() {
         let meta = VisualMeta {
             version: 1,
             id: "".into(),
@@ -484,5 +493,30 @@ mod tests {
         assert!(errs.iter().any(|e| e.field == "links"));
         assert!(errs.iter().any(|e| e.field == "anchors"));
         assert!(errs.iter().any(|e| e.field == "extends"));
-    }
-}
+      }
+
+      #[test]
+      #[traced_test]
+      fn upsert_logs_error_on_invalid_meta() {
+          let meta = VisualMeta {
+              version: 1,
+              id: "".into(),
+              x: f64::NAN,
+              y: 0.0,
+              tags: vec![],
+              links: vec![],
+              anchors: vec![],
+              tests: vec![],
+              extends: Some("".into()),
+              origin: None,
+              translations: HashMap::new(),
+              ai: None,
+              extras: None,
+              updated_at: Utc::now(),
+          };
+          let content = "test";
+          let out = upsert(content, &meta);
+          assert_eq!(out, content);
+          assert!(logs_contain("невалидный VisualMeta"));
+      }
+  }
