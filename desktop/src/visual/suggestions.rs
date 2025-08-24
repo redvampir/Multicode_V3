@@ -12,6 +12,18 @@ pub fn suggest_blocks(
     limit: usize,
 ) -> Vec<usize> {
     if let Some(kind) = selected {
+        let in_categories = categories
+            .iter()
+            .any(|(_, indices)| indices.iter().any(|&i| blocks[i].info.kind == kind));
+
+        if !in_categories {
+            return categories
+                .iter()
+                .find(|(cat, _)| cat == DEFAULT_CATEGORY)
+                .map(|(_, indices)| indices.iter().copied().take(limit).collect())
+                .unwrap_or_default();
+        }
+
         if let Some(selected_block) = blocks.iter().find(|b| b.info.kind == kind) {
             let tag_set: HashSet<String> = selected_block
                 .info
@@ -145,6 +157,14 @@ mod tests {
         ];
         let res = suggest_blocks(&blocks, &categories, Some("Add"), SUGGESTION_LIMIT);
         assert_eq!(res, vec![1]);
+    }
+
+    #[test]
+    fn empty_when_selected_not_in_categories() {
+        let blocks = vec![make_block("Add"), make_block("Subtract")];
+        let categories = vec![("Arithmetic".to_string(), vec![1])];
+        let res = suggest_blocks(&blocks, &categories, Some("Add"), SUGGESTION_LIMIT);
+        assert!(res.is_empty());
     }
 
     #[test]
