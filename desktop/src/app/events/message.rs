@@ -2,9 +2,7 @@ use iced::{widget::text_editor, Event};
 use std::path::PathBuf;
 
 use crate::app::diff::DiffView;
-use crate::app::{
-    AppTheme, CreateTarget, Diagnostic, FileEntry, HotkeyField, Language, LogLevel, ViewMode,
-};
+use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, Language, LogLevel, ViewMode};
 use crate::editor::EditorTheme;
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::palette::PaletteMessage;
@@ -115,7 +113,6 @@ pub enum Message {
     MetaLinksChanged(String),
     MetaCommentChanged(String),
     SaveMeta,
-    StartCaptureHotkey(HotkeyField),
     StartCaptureShortcut(String),
     SwitchToTextEditor,
     SwitchToVisualEditor,

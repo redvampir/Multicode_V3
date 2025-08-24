@@ -1,5 +1,5 @@
 use crate::visual::connections::Connection;
-use crate::search::fuzzy::TrigramSet;
+use crate::search::{fuzzy::TrigramSet, hotkeys::{HotkeyContext, HotkeyManager}};
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use iced::{widget::text_editor, Color};
@@ -146,7 +146,6 @@ pub struct MulticodeApp {
     pub(super) show_delete_confirm: bool,
     /// ожидаемое действие при подтверждении потери изменений
     pub(super) pending_action: Option<PendingAction>,
-    pub(super) hotkey_capture: Option<HotkeyField>,
     pub(super) shortcut_capture: Option<String>,
     pub(super) settings_warning: Option<String>,
     pub(super) loading: bool,
@@ -257,110 +256,6 @@ impl ToString for CreateTarget {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct Hotkey {
-    pub key: String,
-    pub ctrl: bool,
-    pub alt: bool,
-    pub shift: bool,
-}
-
-impl Hotkey {
-    pub fn matches(&self, key: &iced::keyboard::Key, modifiers: iced::keyboard::Modifiers) -> bool {
-        self.ctrl == modifiers.control()
-            && self.alt == modifiers.alt()
-            && self.shift == modifiers.shift()
-            && match key {
-                iced::keyboard::Key::Character(c) => c.eq_ignore_ascii_case(&self.key),
-                iced::keyboard::Key::Named(named) => {
-                    self.key.eq_ignore_ascii_case(&format!("{:?}", named))
-                }
-                _ => false,
-            }
-    }
-}
-
-impl fmt::Display for Hotkey {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let mut parts = Vec::new();
-        if self.ctrl {
-            parts.push("Ctrl".to_string());
-        }
-        if self.alt {
-            parts.push("Alt".to_string());
-        }
-        if self.shift {
-            parts.push("Shift".to_string());
-        }
-        parts.push(self.key.clone());
-        write!(f, "{}", parts.join("+"))
-    }
-}
-
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[serde(default)]
-pub struct Hotkeys {
-    pub create_file: Hotkey,
-    pub save_file: Hotkey,
-    pub rename_file: Hotkey,
-    pub delete_file: Hotkey,
-    pub next_diff: Hotkey,
-    pub prev_diff: Hotkey,
-}
-
-impl Default for Hotkeys {
-    fn default() -> Self {
-        Self {
-            create_file: Hotkey {
-                key: "N".into(),
-                ctrl: true,
-                alt: false,
-                shift: false,
-            },
-            save_file: Hotkey {
-                key: "S".into(),
-                ctrl: true,
-                alt: false,
-                shift: false,
-            },
-            rename_file: Hotkey {
-                key: "F2".into(),
-                ctrl: false,
-                alt: false,
-                shift: false,
-            },
-            delete_file: Hotkey {
-                key: "Delete".into(),
-                ctrl: false,
-                alt: false,
-                shift: false,
-            },
-            next_diff: Hotkey {
-                key: "F8".into(),
-                ctrl: false,
-                alt: false,
-                shift: false,
-            },
-            prev_diff: Hotkey {
-                key: "F7".into(),
-                ctrl: false,
-                alt: false,
-                shift: false,
-            },
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum HotkeyField {
-    CreateFile,
-    SaveFile,
-    RenameFile,
-    DeleteFile,
-    NextDiff,
-    PrevDiff,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EditorMode {
     Text,
@@ -428,9 +323,7 @@ pub struct UserSettings {
     #[serde(default)]
     pub default_entry: Option<PathBuf>,
     #[serde(default)]
-    pub hotkeys: Hotkeys,
-    #[serde(default)]
-    pub shortcuts: HashMap<String, Hotkey>,
+    pub hotkeys: HotkeyManager,
     #[serde(default)]
     pub editor_mode: EditorMode,
     #[serde(default = "default_view_mode")]
@@ -468,8 +361,7 @@ impl Default for UserSettings {
         Self {
             last_folders: Vec::new(),
             default_entry: None,
-            hotkeys: Hotkeys::default(),
-            shortcuts: HashMap::new(),
+            hotkeys: HotkeyManager::default(),
             editor_mode: EditorMode::Text,
             last_view_mode: ViewMode::Code,
             theme: AppTheme::default(),
@@ -582,6 +474,13 @@ impl MulticodeApp {
             .unwrap_or_default()
     }
 
+    pub fn hotkey_context(&self) -> HotkeyContext {
+        match self.screen {
+            Screen::Diff(_) => HotkeyContext::Diff,
+            _ => HotkeyContext::Global,
+        }
+    }
+
     pub fn search_results(&self) -> &[(usize, Range<usize>)] {
         &self.search_results
     }
@@ -655,7 +554,6 @@ mod tests {
             show_create_file_confirm: false,
             show_delete_confirm: false,
             pending_action: None,
-            hotkey_capture: None,
             shortcut_capture: None,
             settings_warning: None,
             loading: false,

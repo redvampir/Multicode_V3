@@ -9,7 +9,8 @@ use iced::widget::{
 use iced::{alignment, theme, Element, Length};
 
 use super::events::Message;
-use super::{AppTheme, CreateTarget, HotkeyField, Language, MulticodeApp, Screen, ViewMode};
+use super::{AppTheme, CreateTarget, Language, MulticodeApp, Screen, ViewMode};
+use crate::search::hotkeys::HotkeyContext;
 use crate::editor::{CodeEditor, EditorTheme, THEME_SET};
 use crate::components::file_manager;
 
@@ -397,35 +398,53 @@ impl MulticodeApp {
             }
             Screen::Settings => {
                 let hotkeys = &self.settings.hotkeys;
-                let create_label = if self.hotkey_capture == Some(HotkeyField::CreateFile) {
+                let create_label = if self.shortcut_capture.as_deref() == Some("create_file") {
                     String::from("...")
                 } else {
-                    hotkeys.create_file.to_string()
+                    hotkeys
+                        .binding(HotkeyContext::Global, "create_file")
+                        .map(|h| h.to_string())
+                        .unwrap_or_else(|| "-".into())
                 };
-                let save_label = if self.hotkey_capture == Some(HotkeyField::SaveFile) {
+                let save_label = if self.shortcut_capture.as_deref() == Some("save_file") {
                     String::from("...")
                 } else {
-                    hotkeys.save_file.to_string()
+                    hotkeys
+                        .binding(HotkeyContext::Global, "save_file")
+                        .map(|h| h.to_string())
+                        .unwrap_or_else(|| "-".into())
                 };
-                let rename_label = if self.hotkey_capture == Some(HotkeyField::RenameFile) {
+                let rename_label = if self.shortcut_capture.as_deref() == Some("rename_file") {
                     String::from("...")
                 } else {
-                    hotkeys.rename_file.to_string()
+                    hotkeys
+                        .binding(HotkeyContext::Global, "rename_file")
+                        .map(|h| h.to_string())
+                        .unwrap_or_else(|| "-".into())
                 };
-                let delete_label = if self.hotkey_capture == Some(HotkeyField::DeleteFile) {
+                let delete_label = if self.shortcut_capture.as_deref() == Some("delete_file") {
                     String::from("...")
                 } else {
-                    hotkeys.delete_file.to_string()
+                    hotkeys
+                        .binding(HotkeyContext::Global, "delete_file")
+                        .map(|h| h.to_string())
+                        .unwrap_or_else(|| "-".into())
                 };
-                let next_diff_label = if self.hotkey_capture == Some(HotkeyField::NextDiff) {
+                let next_diff_label = if self.shortcut_capture.as_deref() == Some("next_diff") {
                     String::from("...")
                 } else {
-                    hotkeys.next_diff.to_string()
+                    hotkeys
+                        .binding(HotkeyContext::Diff, "next_diff")
+                        .map(|h| h.to_string())
+                        .unwrap_or_else(|| "-".into())
                 };
-                let prev_diff_label = if self.hotkey_capture == Some(HotkeyField::PrevDiff) {
+                let prev_diff_label = if self.shortcut_capture.as_deref() == Some("prev_diff") {
                     String::from("...")
                 } else {
-                    hotkeys.prev_diff.to_string()
+                    hotkeys
+                        .binding(HotkeyContext::Diff, "prev_diff")
+                        .map(|h| h.to_string())
+                        .unwrap_or_else(|| "-".into())
                 };
                 let syntect_themes: Vec<String> = THEME_SET.themes.keys().cloned().collect();
                 let warning: Element<_> = if let Some(w) = &self.settings_warning {
@@ -535,37 +554,37 @@ impl MulticodeApp {
                     row![
                         text("Создать файл"),
                         button(text(create_label))
-                            .on_press(Message::StartCaptureHotkey(HotkeyField::CreateFile))
+                            .on_press(Message::StartCaptureShortcut("create_file".into()))
                     ]
                     .spacing(10),
                     row![
                         text("Сохранить файл"),
                         button(text(save_label))
-                            .on_press(Message::StartCaptureHotkey(HotkeyField::SaveFile))
+                            .on_press(Message::StartCaptureShortcut("save_file".into()))
                     ]
                     .spacing(10),
                     row![
                         text("Переименовать файл"),
                         button(text(rename_label))
-                            .on_press(Message::StartCaptureHotkey(HotkeyField::RenameFile))
+                            .on_press(Message::StartCaptureShortcut("rename_file".into()))
                     ]
                     .spacing(10),
                     row![
                         text("Удалить файл"),
                         button(text(delete_label))
-                            .on_press(Message::StartCaptureHotkey(HotkeyField::DeleteFile))
+                            .on_press(Message::StartCaptureShortcut("delete_file".into()))
                     ]
                     .spacing(10),
                     row![
                         text("Следующее отличие"),
                         button(text(next_diff_label))
-                            .on_press(Message::StartCaptureHotkey(HotkeyField::NextDiff))
+                            .on_press(Message::StartCaptureShortcut("next_diff".into()))
                     ]
                     .spacing(10),
                     row![
                         text("Предыдущее отличие"),
                         button(text(prev_diff_label))
-                            .on_press(Message::StartCaptureHotkey(HotkeyField::PrevDiff))
+                            .on_press(Message::StartCaptureShortcut("prev_diff".into()))
                     ]
                     .spacing(10),
                     self.shortcuts_settings_component(),
