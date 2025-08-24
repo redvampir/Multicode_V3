@@ -354,8 +354,10 @@ impl MulticodeApp {
         } else {
             None
         };
-        let mut items: Vec<_> = COMMANDS
+        let candidates = self.search_commands(&self.query);
+        let mut items: Vec<_> = candidates
             .iter()
+            .filter_map(|id| COMMANDS.iter().find(|c| c.id == *id))
             .map(|cmd| {
                 let name = command_name(cmd, self.settings.language);
                 let desc = command_description(cmd, self.settings.language);
@@ -445,11 +447,13 @@ impl MulticodeApp {
         if !self.show_block_palette {
             return content;
         }
+        let indices = self.search_blocks(&self.palette_query);
         let pal: Element<_> = BlockPalette::new(
             &self.palette,
             &self.palette_categories,
             &self.settings.block_favorites,
             &self.palette_query,
+            indices,
             None,
             self.settings.language,
         )
@@ -490,9 +494,12 @@ mod tests {
     use super::super::{CreateTarget, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
     use crate::app::command_palette::COMMANDS;
     use crate::components::file_manager::ContextMenu;
+    use std::cell::RefCell;
     use std::collections::{HashMap, HashSet, VecDeque};
     use std::path::PathBuf;
     use tokio::sync::broadcast;
+    use lru::LruCache;
+    use std::num::NonZeroUsize;
 
     #[test]
     fn context_menu_creation() {
@@ -563,6 +570,10 @@ mod tests {
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),
             command_trigrams: HashMap::new(),
+            command_index: None,
+            block_index: None,
+            command_cache: RefCell::new(LruCache::new(NonZeroUsize::new(1).unwrap())),
+            block_cache: RefCell::new(LruCache::new(NonZeroUsize::new(1).unwrap())),
         }
     }
 
