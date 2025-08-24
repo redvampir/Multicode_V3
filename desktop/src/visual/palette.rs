@@ -14,7 +14,7 @@ pub struct PaletteBlock {
     lower_en: String,
     lower_ru: String,
     lower_kind: String,
-    tags: Vec<String>,
+    tags: HashSet<String>,
 }
 
 impl PaletteBlock {
@@ -30,7 +30,11 @@ impl PaletteBlock {
             .map(|s| s.to_lowercase())
             .unwrap_or_default();
         let lower_kind = info.kind.to_lowercase();
-        let tags = info.tags.iter().map(|t| t.to_lowercase()).collect();
+        let tags = info
+            .tags
+            .iter()
+            .map(|t| t.to_lowercase())
+            .collect::<HashSet<_>>();
         Self {
             info,
             lower_en,
@@ -118,8 +122,12 @@ impl<'a> BlockPalette<'a> {
         let q = self.query.trim().to_lowercase();
         let tokens: Vec<_> = q.split_whitespace().collect();
 
-        let mut suggestions =
-            suggest_blocks(self.blocks, self.categories, self.selected, SUGGESTION_LIMIT);
+        let mut suggestions = suggest_blocks(
+            self.blocks,
+            self.categories,
+            self.selected,
+            SUGGESTION_LIMIT,
+        );
         if !tokens.is_empty() {
             suggestions.retain(|&i| matches_block(&self.blocks[i], &tokens));
         }
@@ -253,6 +261,7 @@ fn matches_block(block: &PaletteBlock, tokens: &[&str]) -> bool {
         if block.lower_en.contains(q)
             || block.lower_ru.contains(q)
             || block.lower_kind.contains(q)
+            || block.tags.contains(*q)
             || block.tags.iter().any(|t| t.contains(q))
         {
             return true;
@@ -416,7 +425,7 @@ mod tests {
     #[test]
     fn filter_indices_match_tags() {
         let blocks = vec![
-            make_block_with_tags("Add", "Add", "Сложить", vec!["math"]),
+            make_block_with_tags("Add", "Add", "Сложить", vec!["math", "math"]),
             make_block_with_tags("Loop", "Repeat", "Повторение", vec!["control"]),
         ];
         let categories = vec![
@@ -434,6 +443,12 @@ mod tests {
         );
         let indices = palette.filter_indices();
         assert_eq!(indices, vec![0]);
+    }
+
+    #[test]
+    fn palette_block_tags_are_unique() {
+        let block = make_block_with_tags("Add", "Add", "Сложить", vec!["math", "math", "math"]);
+        assert_eq!(block.tags.len(), 1);
     }
 
     #[test]
