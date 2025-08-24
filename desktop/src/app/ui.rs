@@ -449,6 +449,7 @@ impl MulticodeApp {
             &self.palette_categories,
             &self.settings.block_favorites,
             &self.palette_query,
+            None,
             self.settings.language,
         )
         .view()
@@ -486,8 +487,8 @@ impl MulticodeApp {
 #[cfg(test)]
 mod tests {
     use super::super::{CreateTarget, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
-    use crate::components::file_manager::ContextMenu;
     use crate::app::command_palette::COMMANDS;
+    use crate::components::file_manager::ContextMenu;
     use std::collections::{HashMap, HashSet, VecDeque};
     use std::path::PathBuf;
     use tokio::sync::broadcast;
