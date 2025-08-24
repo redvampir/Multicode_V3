@@ -477,6 +477,9 @@ impl MulticodeApp {
     pub fn hotkey_context(&self) -> HotkeyContext {
         match self.screen {
             Screen::Diff(_) => HotkeyContext::Diff,
+            Screen::TextEditor { .. } => HotkeyContext::TextEditor,
+            Screen::VisualEditor { .. } | Screen::Split { .. } => HotkeyContext::VisualEditor,
+            Screen::Settings => HotkeyContext::Settings,
             _ => HotkeyContext::Global,
         }
     }
@@ -650,4 +653,21 @@ mod tests {
             Some(&diff_combo)
         );
     }
+
+#[test]
+fn hotkey_context_per_screen() {
+    use crate::app::diff::DiffView;
+    let mut app = build_app();
+    assert_eq!(app.hotkey_context(), HotkeyContext::Global);
+    app.screen = Screen::TextEditor { root: std::path::PathBuf::new() };
+    assert_eq!(app.hotkey_context(), HotkeyContext::TextEditor);
+    app.screen = Screen::VisualEditor { root: std::path::PathBuf::new() };
+    assert_eq!(app.hotkey_context(), HotkeyContext::VisualEditor);
+    app.screen = Screen::Split { root: std::path::PathBuf::new() };
+    assert_eq!(app.hotkey_context(), HotkeyContext::VisualEditor);
+    app.screen = Screen::Settings;
+    assert_eq!(app.hotkey_context(), HotkeyContext::Settings);
+    app.screen = Screen::Diff(DiffView::new(String::new(), String::new(), false));
+    assert_eq!(app.hotkey_context(), HotkeyContext::Diff);
+}
 }
