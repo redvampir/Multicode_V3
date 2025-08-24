@@ -161,3 +161,16 @@ pub fn translate_kind(kind: &str, lang: Language) -> Option<&'static str> {
     };
     translate(bt, lang)
 }
+
+pub const BLOCK_SYNONYMS: &[(&str, &[&str])] = &[
+    ("Add", &["plus", "sum", "сложить", "прибавить"]),
+    ("Subtract", &["minus", "difference", "вычесть", "минус"]),
+    ("Loop", &["repeat", "повтор", "цикл"]),
+];
+
+pub fn block_synonyms(kind: &str) -> Option<&'static [&'static str]> {
+    BLOCK_SYNONYMS
+        .iter()
+        .find(|(k, _)| *k == kind)
+        .map(|(_, v)| *v)
+}

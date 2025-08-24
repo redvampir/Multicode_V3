@@ -2,7 +2,10 @@ use iced::widget::{column, row, scrollable, text, text_input, MouseArea};
 use iced::{theme, Color, Element, Length};
 use multicode_core::BlockInfo;
 
-use super::translations::Language;
+use super::{
+    suggestions::suggest_blocks,
+    translations::{block_synonyms, Language},
+};
 use std::collections::HashSet;
 
 #[derive(Debug, Clone)]
@@ -11,6 +14,7 @@ pub struct PaletteBlock {
     lower_en: String,
     lower_ru: String,
     lower_kind: String,
+    tags: Vec<String>,
 }
 
 impl PaletteBlock {
@@ -26,11 +30,13 @@ impl PaletteBlock {
             .map(|s| s.to_lowercase())
             .unwrap_or_default();
         let lower_kind = info.kind.to_lowercase();
+        let tags = info.tags.iter().map(|t| t.to_lowercase()).collect();
         Self {
             info,
             lower_en,
             lower_ru,
             lower_kind,
+            tags,
         }
     }
 }
@@ -68,6 +74,7 @@ pub struct BlockPalette<'a> {
     categories: &'a [(String, Vec<usize>)],
     favorites: &'a [String],
     query: &'a str,
+    selected: Option<&'a str>,
     language: Language,
 }
 
@@ -77,6 +84,7 @@ impl<'a> BlockPalette<'a> {
         categories: &'a [(String, Vec<usize>)],
         favorites: &'a [String],
         query: &'a str,
+        selected: Option<&'a str>,
         language: Language,
     ) -> Self {
         Self {
@@ -84,6 +92,7 @@ impl<'a> BlockPalette<'a> {
             categories,
             favorites,
             query,
+            selected,
             language,
         }
     }
@@ -105,10 +114,53 @@ impl<'a> BlockPalette<'a> {
 
     pub fn view(self) -> Element<'a, PaletteMessage> {
         let search = text_input("search", self.query).on_input(PaletteMessage::SearchChanged);
+        let q = self.query.trim().to_lowercase();
 
-        let indices = self.filter_indices();
+        let mut suggestions = suggest_blocks(self.blocks, self.categories, self.selected);
+        if !q.is_empty() {
+            suggestions.retain(|&i| matches_block(&self.blocks[i], &q));
+        }
+        let suggestion_set: HashSet<_> = suggestions.iter().copied().collect();
+
+        let indices: Vec<_> = self
+            .filter_indices()
+            .into_iter()
+            .filter(|i| !suggestion_set.contains(i))
+            .collect();
         let index_set: HashSet<_> = indices.iter().copied().collect();
         let mut col = column![];
+
+        if !suggestions.is_empty() {
+            let title = if self.language == Language::Russian {
+                "Подсказки"
+            } else {
+                "Suggestions"
+            };
+            col = col.push(text(title));
+            for i in suggestions {
+                let name = self.blocks[i]
+                    .info
+                    .translations
+                    .get(self.language.code())
+                    .cloned()
+                    .unwrap_or_else(|| self.blocks[i].info.kind.clone());
+                let fav = self.favorites.contains(&self.blocks[i].info.kind);
+                let star = if fav { "★" } else { "☆" };
+                let star_txt = text(star);
+                let star_txt = if fav {
+                    star_txt.style(theme::Text::Color(Color::from_rgb(1.0, 0.8, 0.0)))
+                } else {
+                    star_txt
+                };
+                col = col.push(
+                    row![
+                        MouseArea::new(star_txt).on_press(PaletteMessage::ToggleFavorite(i)),
+                        MouseArea::new(text(name)).on_press(PaletteMessage::StartDrag(i)),
+                    ]
+                    .spacing(5),
+                );
+            }
+        }
 
         if !self.favorites.is_empty() {
             let fav_blocks: Vec<_> = indices
@@ -193,7 +245,18 @@ impl<'a> BlockPalette<'a> {
 }
 
 fn matches_block(block: &PaletteBlock, q: &str) -> bool {
-    block.lower_en.contains(q) || block.lower_ru.contains(q) || block.lower_kind.contains(q)
+    if block.lower_en.contains(q)
+        || block.lower_ru.contains(q)
+        || block.lower_kind.contains(q)
+        || block.tags.iter().any(|t| t.contains(q))
+    {
+        return true;
+    }
+    if let Some(syns) = block_synonyms(&block.info.kind) {
+        syns.iter().any(|s| s.contains(q))
+    } else {
+        false
+    }
 }
 
 #[cfg(test)]
@@ -204,8 +267,7 @@ mod tests {
         layout::{Layout, Node},
         renderer::Null,
         widget::Tree,
-        Shell,
-        Widget,
+        Shell, Widget,
     };
     use iced::event::Event;
     use iced::mouse;
@@ -253,7 +315,14 @@ mod tests {
             ("Loops".to_string(), vec![1]),
         ];
         let favorites = vec!["Loop".to_string()];
-        let palette = BlockPalette::new(&blocks, &categories, &favorites, "", Language::English);
+        let palette = BlockPalette::new(
+            &blocks,
+            &categories,
+            &favorites,
+            "",
+            None,
+            Language::English,
+        );
         let indices = palette.filter_indices();
         assert_eq!(indices, vec![0, 1]);
 
@@ -285,13 +354,55 @@ mod tests {
         );
     }
 
+    fn make_block_with_tags(kind: &str, en: &str, ru: &str, tags: Vec<&str>) -> PaletteBlock {
+        let mut translations = HashMap::new();
+        translations.insert("en".to_string(), en.to_string());
+        translations.insert("ru".to_string(), ru.to_string());
+        PaletteBlock::new(BlockInfo {
+            visual_id: String::new(),
+            node_id: None,
+            kind: kind.to_string(),
+            translations,
+            range: (0, 0),
+            anchors: vec![],
+            x: 0.0,
+            y: 0.0,
+            ports: vec![],
+            ai: None,
+            tags: tags.into_iter().map(|s| s.to_string()).collect(),
+            links: vec![],
+        })
+    }
+
+    #[test]
+    fn filter_indices_match_tags() {
+        let blocks = vec![
+            make_block_with_tags("Add", "Add", "Сложить", vec!["math"]),
+            make_block_with_tags("Loop", "Repeat", "Повторение", vec!["control"]),
+        ];
+        let categories = vec![
+            ("Arithmetic".to_string(), vec![0]),
+            ("Loops".to_string(), vec![1]),
+        ];
+        let favorites = vec![];
+        let palette = BlockPalette::new(
+            &blocks,
+            &categories,
+            &favorites,
+            "math",
+            None,
+            Language::English,
+        );
+        let indices = palette.filter_indices();
+        assert_eq!(indices, vec![0]);
+    }
+
     #[test]
     fn start_drag_message_on_press() {
         let content = Space::new(Length::Fixed(10.0), Length::Fixed(10.0));
         let mut widget = MouseArea::new(content).on_press(PaletteMessage::StartDrag(0));
         let renderer = Null::new();
-        let mut tree =
-            Tree::new(&widget as &dyn Widget<PaletteMessage, Theme, Null>);
+        let mut tree = Tree::new(&widget as &dyn Widget<PaletteMessage, Theme, Null>);
         let node = Node::new(Size::new(10.0, 10.0));
         let layout = Layout::new(&node);
 
