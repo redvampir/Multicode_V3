@@ -25,6 +25,12 @@ impl Application for MulticodeApp {
         let fav_files = settings.favorites.clone();
         let (palette, palette_categories) = load_palette();
 
+        let recent_commands: VecDeque<String> = settings.recent_commands.clone().into();
+        let mut command_counts: HashMap<String, usize> = HashMap::new();
+        for cmd in &recent_commands {
+            *command_counts.entry(cmd.clone()).or_insert(0) += 1;
+        }
+
         let view_mode = settings.last_view_mode;
         let screen = if let Some(path) = settings.last_folders.first().cloned() {
             match settings.editor_mode {
@@ -90,8 +96,8 @@ impl Application for MulticodeApp {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
-            recent_commands: VecDeque::new(),
-            command_counts: HashMap::new(),
+            recent_commands,
+            command_counts,
         };
 
         let cmd = match &app.screen {
