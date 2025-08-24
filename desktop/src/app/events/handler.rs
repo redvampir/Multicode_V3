@@ -10,6 +10,7 @@ use crate::editor::meta_integration::validate_meta_json;
 use crate::search::hotkeys::{HotkeyContext, KeyCombination};
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::palette::PaletteMessage;
+use crate::sync::SyncMessage;
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -42,16 +43,51 @@ fn push_with_limit(stack: &mut VecDeque<String>, value: String) {
 }
 
 impl MulticodeApp {
+    fn block_to_meta(block: &BlockInfo) -> VisualMeta {
+        VisualMeta {
+            version: DEFAULT_VERSION,
+            id: block.visual_id.clone(),
+            x: block.x,
+            y: block.y,
+            tags: block.tags.clone(),
+            links: block.links.clone(),
+            anchors: Vec::new(),
+            tests: Vec::new(),
+            extends: None,
+            origin: None,
+            translations: block.translations.clone(),
+            ai: None,
+            extras: None,
+            updated_at: Utc::now(),
+        }
+    }
     pub fn handle_message(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::CanvasEvent(event) => {
                 match event {
                     CanvasMessage::BlockDragged { index, position } => {
-                        if let Some(tab) = self.current_file_mut() {
-                            if let Some(block) = tab.blocks.get_mut(index) {
-                                block.x = position.x as f64;
-                                block.y = position.y as f64;
-                                tab.dirty = true;
+                        if let Some(i) = self.active_tab {
+                            let meta = if let Some(tab) = self.tabs.get_mut(i) {
+                                if let Some(block) = tab.blocks.get_mut(index) {
+                                    block.x = position.x as f64;
+                                    block.y = position.y as f64;
+                                    tab.dirty = true;
+                                    Some(Self::block_to_meta(block))
+                                } else {
+                                    None
+                                }
+                            } else {
+                                None
+                            };
+                            if let Some(meta) = meta {
+                                if let Some(code) =
+                                    self.sync_engine.handle(SyncMessage::VisualChanged(meta))
+                                {
+                                    if let Some(tab) = self.tabs.get_mut(i) {
+                                        tab.content = code;
+                                        tab.editor = Content::with_text(&tab.content);
+                                    }
+                                }
                             }
                         }
                     }
@@ -59,9 +95,20 @@ impl MulticodeApp {
                         if let Some(mut block) = self.palette_drag.take() {
                             block.x = position.x as f64;
                             block.y = position.y as f64;
-                            if let Some(tab) = self.current_file_mut() {
-                                tab.blocks.push(block);
-                                tab.dirty = true;
+                            if let Some(i) = self.active_tab {
+                                let meta = Self::block_to_meta(&block);
+                                if let Some(tab) = self.tabs.get_mut(i) {
+                                    tab.blocks.push(block);
+                                    tab.dirty = true;
+                                }
+                                if let Some(code) =
+                                    self.sync_engine.handle(SyncMessage::VisualChanged(meta))
+                                {
+                                    if let Some(tab) = self.tabs.get_mut(i) {
+                                        tab.content = code;
+                                        tab.editor = Content::with_text(&tab.content);
+                                    }
+                                }
                             }
                         }
                     }
@@ -112,6 +159,15 @@ impl MulticodeApp {
                     PaletteMessage::Close => {
                         self.show_block_palette = false;
                         self.palette_query.clear();
+                    }
+                }
+                Command::none()
+            }
+            Message::Sync(msg) => {
+                if let Some(code) = self.sync_engine.handle(msg) {
+                    if let Some(tab) = self.current_file_mut() {
+                        tab.content = code;
+                        tab.editor = Content::with_text(&tab.content);
                     }
                 }
                 Command::none()
@@ -813,6 +869,8 @@ impl MulticodeApp {
                         }
                         f.editor.perform(action);
                         f.content = f.editor.text();
+                        self.sync_engine
+                            .handle(SyncMessage::TextChanged(f.content.clone()));
                         if is_edit {
                             f.dirty = true;
                         }

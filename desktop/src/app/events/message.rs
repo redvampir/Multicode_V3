@@ -6,6 +6,7 @@ use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, Language, LogLev
 use crate::editor::EditorTheme;
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::palette::PaletteMessage;
+use crate::sync::SyncMessage;
 use multicode_core::BlockInfo;
 
 #[derive(Debug, Clone)]
@@ -143,4 +144,5 @@ pub enum Message {
     NavigateBack,
     CanvasEvent(CanvasMessage),
     PaletteEvent(PaletteMessage),
+    Sync(SyncMessage),
 }

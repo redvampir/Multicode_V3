@@ -16,6 +16,7 @@ use crate::visual::palette::{PaletteBlock, DEFAULT_CATEGORY};
 use crate::visual::translations::block_synonyms;
 use lru::LruCache;
 use multicode_core::parse_blocks;
+use crate::sync::SyncEngine;
 
 pub(super) fn build_command_index() -> SearchIndex<&'static str> {
     let mut index = SearchIndex::new();
@@ -164,6 +165,7 @@ impl Application for MulticodeApp {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
+            sync_engine: SyncEngine::new(),
             recent_commands,
             command_counts,
             command_trigrams,

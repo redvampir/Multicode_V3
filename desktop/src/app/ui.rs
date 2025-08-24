@@ -494,6 +494,7 @@ mod tests {
     use super::super::{CreateTarget, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
     use crate::app::command_palette::COMMANDS;
     use crate::components::file_manager::ContextMenu;
+    use crate::sync::SyncEngine;
     use std::cell::RefCell;
     use std::collections::{HashMap, HashSet, VecDeque};
     use std::path::PathBuf;
@@ -507,6 +508,7 @@ mod tests {
         assert!(cm.hovered.borrow().is_none());
     }
 
+    #[cfg(test)]
     fn build_app(screen: Screen) -> MulticodeApp {
         let (sender, _) = broadcast::channel(1);
         let view_mode = match screen {
@@ -567,6 +569,7 @@ mod tests {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
+            sync_engine: SyncEngine::new(),
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),
             command_trigrams: HashMap::new(),

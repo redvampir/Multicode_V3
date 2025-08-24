@@ -5,3 +5,4 @@ pub mod modal;
 pub mod visual;
 pub mod ui;
 pub mod search;
+pub mod sync;
