@@ -121,6 +121,23 @@ impl HotkeyManager {
         true
     }
 
+    pub fn unbind(&mut self, ctx: HotkeyContext, id: &str) -> bool {
+        match ctx {
+            HotkeyContext::Global => self.global.remove(id).is_some(),
+            _ => {
+                if let Some(map) = self.contexts.get_mut(&ctx) {
+                    let removed = map.remove(id).is_some();
+                    if map.is_empty() {
+                        self.contexts.remove(&ctx);
+                    }
+                    removed
+                } else {
+                    false
+                }
+            }
+        }
+    }
+
     pub fn binding(&self, ctx: HotkeyContext, id: &str) -> Option<&KeyCombination> {
         match ctx {
             HotkeyContext::Global => self.global.get(id),
@@ -273,5 +290,25 @@ mod tests {
         let combo = KeyCombination::parse("Ctrl+S").unwrap();
         assert!(!mgr.bind(HotkeyContext::Diff, "other".into(), combo,));
         assert!(mgr.binding(HotkeyContext::Diff, "other").is_none());
+    }
+
+    #[test]
+    fn unbind_removes_binding() {
+        let mut mgr = HotkeyManager::default();
+        assert!(mgr.binding(HotkeyContext::Global, "save_file").is_some());
+        assert!(mgr.unbind(HotkeyContext::Global, "save_file"));
+        assert!(mgr.binding(HotkeyContext::Global, "save_file").is_none());
+    }
+
+    #[test]
+    fn unbinding_frees_combination() {
+        let mut mgr = HotkeyManager::default();
+        let combo = mgr
+            .binding(HotkeyContext::Global, "save_file")
+            .cloned()
+            .unwrap();
+        assert!(!mgr.bind(HotkeyContext::Diff, "other".into(), combo.clone()));
+        assert!(mgr.unbind(HotkeyContext::Global, "save_file"));
+        assert!(mgr.bind(HotkeyContext::Diff, "other".into(), combo));
     }
 }

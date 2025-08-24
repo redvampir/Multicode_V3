@@ -126,16 +126,26 @@ impl MulticodeApp {
                     }
                 }
                 if let Some(id) = self.shortcut_capture.take() {
-                    if let Some(hk) = KeyCombination::from_event(&key, modifiers) {
-                        let ctx = match id.as_str() {
-                            "next_diff" | "prev_diff" => HotkeyContext::Diff,
-                            _ => HotkeyContext::Global,
-                        };
-                        if !self.settings.hotkeys.bind(ctx, id, hk) {
-                            self.settings_warning =
-                                Some("Сочетания клавиш должны быть уникальными".into());
-                        } else {
+                    let ctx = match id.as_str() {
+                        "next_diff" | "prev_diff" => HotkeyContext::Diff,
+                        _ => HotkeyContext::Global,
+                    };
+                    match key {
+                        keyboard::Key::Named(keyboard::key::Named::Backspace)
+                            if !modifiers.control() && !modifiers.alt() && !modifiers.shift() =>
+                        {
+                            self.settings.hotkeys.unbind(ctx, &id);
                             self.settings_warning = None;
+                        }
+                        _ => {
+                            if let Some(hk) = KeyCombination::from_event(&key, modifiers) {
+                                if !self.settings.hotkeys.bind(ctx, id, hk) {
+                                    self.settings_warning =
+                                        Some("Сочетания клавиш должны быть уникальными".into());
+                                } else {
+                                    self.settings_warning = None;
+                                }
+                            }
                         }
                     }
                     return Command::none();
