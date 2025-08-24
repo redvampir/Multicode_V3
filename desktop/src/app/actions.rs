@@ -17,6 +17,49 @@ use crate::visual::translations::block_synonyms;
 use lru::LruCache;
 use multicode_core::parse_blocks;
 
+pub(super) fn build_command_index() -> SearchIndex<&'static str> {
+    let mut index = SearchIndex::new();
+    for cmd in COMMANDS {
+        let en = command_name(cmd, Language::English).to_lowercase();
+        let ru = command_name(cmd, Language::Russian).to_lowercase();
+        for kw in en.split_whitespace().chain(ru.split_whitespace()) {
+            index.insert(kw, cmd.id);
+        }
+    }
+    index
+}
+
+pub(super) fn build_block_index(palette: &[PaletteBlock]) -> SearchIndex<usize> {
+    let mut index = SearchIndex::new();
+    for (i, block) in palette.iter().enumerate() {
+        if let Some(en) = block.info.translations.get("en") {
+            let en = en.to_lowercase();
+            for kw in en.split_whitespace() {
+                index.insert(kw, i);
+            }
+        }
+        if let Some(ru) = block.info.translations.get("ru") {
+            let ru = ru.to_lowercase();
+            for kw in ru.split_whitespace() {
+                index.insert(kw, i);
+            }
+        }
+        let kind = block.info.kind.to_lowercase();
+        for kw in kind.split_whitespace() {
+            index.insert(kw, i);
+        }
+        for tag in &block.info.tags {
+            index.insert(&tag.to_lowercase(), i);
+        }
+        if let Some(syns) = block_synonyms(&block.info.kind) {
+            for s in syns {
+                index.insert(&s.to_lowercase(), i);
+            }
+        }
+    }
+    index
+}
+
 impl Application for MulticodeApp {
     type Executor = iced::executor::Default;
     type Message = Message;
@@ -45,40 +88,16 @@ impl Application for MulticodeApp {
             command_trigrams.insert(cmd.id, fuzzy::trigram_set(&name));
         }
 
-        let mut command_index = SearchIndex::new();
-        let mut block_index = SearchIndex::new();
-        if use_index {
-            for cmd in COMMANDS {
-                let en = command_name(cmd, Language::English);
-                let ru = command_name(cmd, Language::Russian);
-                for kw in en.split_whitespace().chain(ru.split_whitespace()) {
-                    command_index.insert(kw, cmd.id);
-                }
-            }
-            for (i, block) in palette.iter().enumerate() {
-                if let Some(en) = block.info.translations.get("en") {
-                    for kw in en.to_lowercase().split_whitespace() {
-                        block_index.insert(kw, i);
-                    }
-                }
-                if let Some(ru) = block.info.translations.get("ru") {
-                    for kw in ru.to_lowercase().split_whitespace() {
-                        block_index.insert(kw, i);
-                    }
-                }
-                for kw in block.info.kind.to_lowercase().split_whitespace() {
-                    block_index.insert(kw, i);
-                }
-                for tag in &block.info.tags {
-                    block_index.insert(&tag.to_lowercase(), i);
-                }
-                if let Some(syns) = block_synonyms(&block.info.kind) {
-                    for s in syns {
-                        block_index.insert(s, i);
-                    }
-                }
-            }
-        }
+        let command_index = if use_index {
+            Some(build_command_index())
+        } else {
+            None
+        };
+        let block_index = if use_index {
+            Some(build_block_index(&palette))
+        } else {
+            None
+        };
         let cap = NonZeroUsize::new(cache_size).unwrap_or_else(|| NonZeroUsize::new(1).unwrap());
 
         let view_mode = settings.last_view_mode;
@@ -148,8 +167,8 @@ impl Application for MulticodeApp {
             recent_commands,
             command_counts,
             command_trigrams,
-            command_index: if use_index { Some(command_index) } else { None },
-            block_index: if use_index { Some(block_index) } else { None },
+            command_index,
+            block_index,
             command_cache: RefCell::new(LruCache::new(cap)),
             block_cache: RefCell::new(LruCache::new(cap)),
         };

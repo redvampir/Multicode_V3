@@ -16,9 +16,11 @@ impl<ID: Eq + Hash + Clone> SearchIndex<ID> {
     }
 
     /// Insert identifier for given keyword.
+    ///
+    /// The keyword is expected to be already in lowercase to avoid
+    /// repeated allocation and conversions.
     pub fn insert(&mut self, keyword: &str, id: ID) {
-        let key = keyword.to_lowercase();
-        let ids = self.map.entry(key).or_default();
+        let ids = self.map.entry(keyword.to_string()).or_default();
         if !ids.contains(&id) {
             ids.push(id);
         }
