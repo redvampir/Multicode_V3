@@ -10,22 +10,27 @@ pub struct SearchIndex<ID: Eq + Hash + Clone> {
 impl<ID: Eq + Hash + Clone> SearchIndex<ID> {
     /// Create empty index.
     pub fn new() -> Self {
-        Self { map: HashMap::new() }
+        Self {
+            map: HashMap::new(),
+        }
     }
 
     /// Insert identifier for given keyword.
     pub fn insert(&mut self, keyword: &str, id: ID) {
         let key = keyword.to_lowercase();
-        self.map.entry(key).or_default().push(id);
+        let ids = self.map.entry(key).or_default();
+        if !ids.contains(&id) {
+            ids.push(id);
+        }
     }
 
     /// Search index using whitespace separated query.
     /// Returns identifiers matching all query tokens.
-    pub fn search(&self, query: &str) -> Vec<ID> {
-        let tokens: Vec<_> = query
-            .split_whitespace()
-            .map(|s| s.to_lowercase())
-            .collect();
+    pub fn search(&self, query: &str) -> Vec<ID>
+    where
+        ID: Ord,
+    {
+        let tokens: Vec<_> = query.split_whitespace().map(|s| s.to_lowercase()).collect();
         if tokens.is_empty() {
             return Vec::new();
         }
@@ -47,7 +52,9 @@ impl<ID: Eq + Hash + Clone> SearchIndex<ID> {
                     break;
                 }
             }
-            result.into_iter().collect()
+            let mut ids: Vec<ID> = result.into_iter().collect();
+            ids.sort();
+            ids
         } else {
             Vec::new()
         }
@@ -75,5 +82,24 @@ mod tests {
         assert_eq!(res, vec![2]);
         let res = idx.search("missing");
         assert!(res.is_empty());
+    }
+
+    #[test]
+    fn avoids_duplicate_ids() {
+        let mut idx = SearchIndex::new();
+        idx.insert("open", 1);
+        idx.insert("open", 1);
+        let res = idx.search("open");
+        assert_eq!(res, vec![1]);
+    }
+
+    #[test]
+    fn search_with_repeated_keywords_sorted() {
+        let mut idx = SearchIndex::new();
+        idx.insert("open", 2);
+        idx.insert("open", 1);
+        idx.insert("open", 2);
+        let res = idx.search("open open");
+        assert_eq!(res, vec![1, 2]);
     }
 }
