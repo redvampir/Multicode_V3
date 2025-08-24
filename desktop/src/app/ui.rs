@@ -21,7 +21,6 @@ use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::connections::Connection;
 use crate::visual::palette::{BlockPalette, PaletteMessage};
 use multicode_core::BlockInfo;
-use std::collections::HashMap;
 
 const OPEN_ICON: &[u8] = include_bytes!("../../assets/open.svg");
 const SAVE_ICON: &[u8] = include_bytes!("../../assets/save.svg");
@@ -347,10 +346,7 @@ impl MulticodeApp {
             "command"
         };
         let query_input = text_input(placeholder, &self.query).on_input(Message::QueryChanged);
-        let mut freq: HashMap<&str, usize> = HashMap::new();
-        for cmd in &self.recent_commands {
-            *freq.entry(cmd.as_str()).or_insert(0) += 1;
-        }
+        let freq = &self.command_counts;
         let mut items: Vec<_> = COMMANDS
             .iter()
             .map(|cmd| {
@@ -479,7 +475,7 @@ impl MulticodeApp {
 mod tests {
     use super::super::{CreateTarget, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
     use crate::components::file_manager::ContextMenu;
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet, VecDeque};
     use std::path::PathBuf;
     use tokio::sync::broadcast;
 
@@ -550,7 +546,8 @@ mod tests {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
-            recent_commands: Vec::new(),
+            recent_commands: VecDeque::new(),
+            command_counts: HashMap::new(),
         }
     }
 

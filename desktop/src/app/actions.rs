@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet, VecDeque};
 use std::path::PathBuf;
 
 use iced::futures::stream;
@@ -90,7 +90,8 @@ impl Application for MulticodeApp {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
-            recent_commands: Vec::new(),
+            recent_commands: VecDeque::new(),
+            command_counts: HashMap::new(),
         };
 
         let cmd = match &app.screen {
