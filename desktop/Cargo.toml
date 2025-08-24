@@ -18,6 +18,8 @@ chrono = { version = "0.4", default-features = false, features = ["clock"] }
 pulldown-cmark = "0.9"
 regex = "1"
 lru = "0.12"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 # app modules: state, actions, view
 
