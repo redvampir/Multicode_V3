@@ -22,7 +22,7 @@ impl KeyCombination {
         };
         Some(Self {
             key: key_str,
-            ctrl: modifiers.control(),
+            ctrl: modifiers.control() || modifiers.command(),
             alt: modifiers.alt(),
             shift: modifiers.shift(),
         })
@@ -53,7 +53,8 @@ impl KeyCombination {
 
     /// Check if given key/modifiers match this combination
     pub fn matches(&self, key: &Key, modifiers: Modifiers) -> bool {
-        self.ctrl == modifiers.control()
+        let ctrl = modifiers.control() || modifiers.command();
+        self.ctrl == ctrl
             && self.alt == modifiers.alt()
             && self.shift == modifiers.shift()
             && match key {
@@ -68,7 +69,11 @@ impl fmt::Display for KeyCombination {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let mut parts = Vec::new();
         if self.ctrl {
-            parts.push("Ctrl".to_string());
+            parts.push(if cfg!(target_os = "macos") {
+                "Cmd".to_string()
+            } else {
+                "Ctrl".to_string()
+            });
         }
         if self.alt {
             parts.push("Alt".to_string());
@@ -228,5 +233,25 @@ mod tests {
             mgr.get_command(HotkeyContext::Global, &key_n, Modifiers::CTRL),
             Some("create_file"),
         );
+    }
+
+    #[test]
+    fn command_key_from_event_and_match() {
+        let key_s = Key::Character("S".into());
+        let combo = KeyCombination::from_event(&key_s, Modifiers::COMMAND).unwrap();
+        assert_eq!(combo, KeyCombination::parse("Ctrl+S").unwrap());
+        assert!(combo.matches(&key_s, Modifiers::COMMAND));
+    }
+
+    #[test]
+    fn parse_and_display_cmd() {
+        let combo_cmd = KeyCombination::parse("Cmd+S").unwrap();
+        let combo_ctrl = KeyCombination::parse("Ctrl+S").unwrap();
+        assert_eq!(combo_cmd, combo_ctrl);
+        if cfg!(target_os = "macos") {
+            assert_eq!(combo_cmd.to_string(), "Cmd+S");
+        } else {
+            assert_eq!(combo_cmd.to_string(), "Ctrl+S");
+        }
     }
 }
