@@ -1,32 +1,33 @@
-use crate::visual::connections::Connection;
 use crate::search::{
     fuzzy::TrigramSet,
     hotkeys::{HotkeyContext, HotkeyManager},
     index::SearchIndex,
     settings::SearchSettings,
 };
+use crate::visual::connections::Connection;
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use iced::{widget::text_editor, Color};
+use lru::LruCache;
 use multicode_core::{git, meta::VisualMeta, BlockInfo};
 use serde::{Deserialize, Serialize};
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet, VecDeque};
-use lru::LruCache;
 use std::fmt;
+use std::hash::Hash;
 use std::ops::Range;
 use std::path::PathBuf;
 use tokio::{fs, process::Child, sync::broadcast};
 
+use super::actions::{build_block_index, build_command_index};
+use super::command_palette::COMMANDS;
+use super::command_translations::command_name;
 use super::log_translations::LogMessage;
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
 use crate::editor::{AutocompleteState, EditorSettings};
 use crate::visual::palette::PaletteBlock;
 use crate::visual::translations::Language;
-use super::command_palette::COMMANDS;
-use super::command_translations::command_name;
-use super::actions::{build_block_index, build_command_index};
 
 mod serde_color {
     use iced::Color;
@@ -96,6 +97,34 @@ impl LogEntry {
             timestamp,
         }
     }
+}
+
+fn cached_search<T, F>(
+    query: &str,
+    index: Option<&SearchIndex<T>>,
+    cache: &RefCell<LruCache<String, Vec<T>>>,
+    fallback: F,
+) -> Vec<T>
+where
+    T: Clone + Eq + Hash + Ord,
+    F: Fn(&[&str]) -> Vec<T>,
+{
+    if let Some(res) = cache.borrow_mut().get(query).cloned() {
+        return res;
+    }
+    let tokens: Vec<&str> = query.split_whitespace().collect();
+    let result = if let Some(idx) = index {
+        let res = idx.search(query);
+        if res.is_empty() {
+            fallback(&tokens)
+        } else {
+            res
+        }
+    } else {
+        fallback(&tokens)
+    };
+    cache.borrow_mut().put(query.to_string(), result.clone());
+    result
 }
 
 #[derive(Debug)]
@@ -536,13 +565,11 @@ impl MulticodeApp {
         if q.is_empty() {
             return COMMANDS.iter().map(|c| c.id).collect();
         }
-        if let Some(res) = self.command_cache.borrow_mut().get(&q).cloned() {
-            return res;
-        }
-        let tokens: Vec<&str> = q.split_whitespace().collect();
-        let ids = if let Some(index) = self.command_index.as_ref() {
-            let res = index.search(&q);
-            if res.is_empty() {
+        cached_search(
+            &q,
+            self.command_index.as_ref(),
+            &self.command_cache,
+            |tokens| {
                 COMMANDS
                     .iter()
                     .filter(|cmd| {
@@ -551,21 +578,8 @@ impl MulticodeApp {
                     })
                     .map(|cmd| cmd.id)
                     .collect()
-            } else {
-                res
-            }
-        } else {
-            COMMANDS
-                .iter()
-                .filter(|cmd| {
-                    let name = command_name(cmd, self.settings.language).to_lowercase();
-                    tokens.iter().all(|t| name.contains(t))
-                })
-                .map(|cmd| cmd.id)
-                .collect()
-        };
-        self.command_cache.borrow_mut().put(q.clone(), ids.clone());
-        ids
+            },
+        )
     }
 
     /// Search block indices using pre-built index and cache.
@@ -574,46 +588,19 @@ impl MulticodeApp {
         if q.is_empty() {
             return (0..self.palette.len()).collect();
         }
-        if let Some(res) = self.block_cache.borrow_mut().get(&q).cloned() {
-            return res;
-        }
-        let result = {
-            let tokens: Vec<&str> = q.split_whitespace().collect();
-            if let Some(index) = self.block_index.as_ref() {
-                let res = index.search(&q);
-                if res.is_empty() {
-                    self
-                        .palette
-                        .iter()
-                        .enumerate()
-                        .filter_map(|(i, b)| {
-                            if crate::visual::palette::matches_block(b, &tokens) {
-                                Some(i)
-                            } else {
-                                None
-                            }
-                        })
-                        .collect()
-                } else {
-                    res
-                }
-            } else {
-                self
-                    .palette
-                    .iter()
-                    .enumerate()
-                    .filter_map(|(i, b)| {
-                        if crate::visual::palette::matches_block(b, &tokens) {
-                            Some(i)
-                        } else {
-                            None
-                        }
-                    })
-                    .collect()
-            }
-        };
-        self.block_cache.borrow_mut().put(q.clone(), result.clone());
-        result
+        cached_search(&q, self.block_index.as_ref(), &self.block_cache, |tokens| {
+            self.palette
+                .iter()
+                .enumerate()
+                .filter_map(|(i, b)| {
+                    if crate::visual::palette::matches_block(b, tokens) {
+                        Some(i)
+                    } else {
+                        None
+                    }
+                })
+                .collect()
+        })
     }
 }
 
@@ -632,11 +619,11 @@ mod tests {
     use super::*;
     use crate::app::events::Message;
     use crate::search::hotkeys::KeyCombination;
-    use tokio::sync::broadcast;
+    use lru::LruCache;
     use std::cell::RefCell;
     use std::collections::{HashMap, HashSet, VecDeque};
-    use lru::LruCache;
     use std::num::NonZeroUsize;
+    use tokio::sync::broadcast;
 
     fn build_app() -> MulticodeApp {
         let (sender, _) = broadcast::channel(1);
@@ -707,7 +694,10 @@ mod tests {
     fn execute_command_updates_history() {
         let mut app = build_app();
         let _ = app.handle_message(Message::ExecuteCommand("test_cmd".into()));
-        assert_eq!(app.recent_commands, VecDeque::from(vec!["test_cmd".to_string()]));
+        assert_eq!(
+            app.recent_commands,
+            VecDeque::from(vec!["test_cmd".to_string()])
+        );
         assert_eq!(app.command_counts.get("test_cmd"), Some(&1));
     }
 
@@ -777,20 +767,57 @@ mod tests {
         );
     }
 
-#[test]
-fn hotkey_context_per_screen() {
-    use crate::app::diff::DiffView;
-    let mut app = build_app();
-    assert_eq!(app.hotkey_context(), HotkeyContext::Global);
-    app.screen = Screen::TextEditor { root: std::path::PathBuf::new() };
-    assert_eq!(app.hotkey_context(), HotkeyContext::TextEditor);
-    app.screen = Screen::VisualEditor { root: std::path::PathBuf::new() };
-    assert_eq!(app.hotkey_context(), HotkeyContext::VisualEditor);
-    app.screen = Screen::Split { root: std::path::PathBuf::new() };
-    assert_eq!(app.hotkey_context(), HotkeyContext::VisualEditor);
-    app.screen = Screen::Settings;
-    assert_eq!(app.hotkey_context(), HotkeyContext::Settings);
-    app.screen = Screen::Diff(DiffView::new(String::new(), String::new(), false));
-    assert_eq!(app.hotkey_context(), HotkeyContext::Diff);
-}
+    #[test]
+    fn search_commands_uses_cache() {
+        let mut app = build_app();
+        let query = "open";
+        let first = app.search_commands(query);
+        assert_eq!(app.command_cache.borrow().len(), 1);
+        assert!(!first.contains(&"dummy"));
+
+        let mut idx = SearchIndex::new();
+        idx.insert(query, "dummy");
+        app.command_index = Some(idx);
+
+        let second = app.search_commands(query);
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn search_blocks_uses_cache() {
+        let mut app = build_app();
+        let query = "test";
+        let first = app.search_blocks(query);
+        assert_eq!(app.block_cache.borrow().len(), 1);
+
+        let mut idx = SearchIndex::new();
+        idx.insert(query, 42);
+        app.block_index = Some(idx);
+
+        let second = app.search_blocks(query);
+        assert_eq!(first, second);
+    }
+
+    #[test]
+    fn hotkey_context_per_screen() {
+        use crate::app::diff::DiffView;
+        let mut app = build_app();
+        assert_eq!(app.hotkey_context(), HotkeyContext::Global);
+        app.screen = Screen::TextEditor {
+            root: std::path::PathBuf::new(),
+        };
+        assert_eq!(app.hotkey_context(), HotkeyContext::TextEditor);
+        app.screen = Screen::VisualEditor {
+            root: std::path::PathBuf::new(),
+        };
+        assert_eq!(app.hotkey_context(), HotkeyContext::VisualEditor);
+        app.screen = Screen::Split {
+            root: std::path::PathBuf::new(),
+        };
+        assert_eq!(app.hotkey_context(), HotkeyContext::VisualEditor);
+        app.screen = Screen::Settings;
+        assert_eq!(app.hotkey_context(), HotkeyContext::Settings);
+        app.screen = Screen::Diff(DiffView::new(String::new(), String::new(), false));
+        assert_eq!(app.hotkey_context(), HotkeyContext::Diff);
+    }
 }
