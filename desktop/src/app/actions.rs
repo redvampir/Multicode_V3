@@ -6,7 +6,10 @@ use iced::{event, subscription, Application, Command, Element, Subscription, The
 use tokio::sync::broadcast;
 
 use super::events::Message;
+use super::command_palette::COMMANDS;
+use super::command_translations::command_name;
 use super::{AppTheme, CreateTarget, EditorMode, LogLevel, MulticodeApp, Screen, UserSettings};
+use crate::search::fuzzy;
 use crate::visual::palette::{PaletteBlock, DEFAULT_CATEGORY};
 use multicode_core::parse_blocks;
 
@@ -29,6 +32,11 @@ impl Application for MulticodeApp {
         let mut command_counts: HashMap<String, usize> = HashMap::new();
         for cmd in &recent_commands {
             *command_counts.entry(cmd.clone()).or_insert(0) += 1;
+        }
+        let mut command_trigrams: HashMap<&'static str, fuzzy::TrigramSet> = HashMap::new();
+        for cmd in COMMANDS {
+            let name = command_name(cmd, settings.language);
+            command_trigrams.insert(cmd.id, fuzzy::trigram_set(&name));
         }
 
         let view_mode = settings.last_view_mode;
@@ -98,6 +106,7 @@ impl Application for MulticodeApp {
             palette_drag: None,
             recent_commands,
             command_counts,
+            command_trigrams,
         };
 
         let cmd = match &app.screen {
