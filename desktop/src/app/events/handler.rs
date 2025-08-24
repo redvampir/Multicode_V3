@@ -1795,7 +1795,18 @@ impl MulticodeApp {
             }
             Message::ExecuteCommand(cmd) => {
                 self.show_command_palette = false;
-                self.recent_commands.push(cmd.clone());
+                self.recent_commands.push_back(cmd.clone());
+                *self.command_counts.entry(cmd.clone()).or_insert(0) += 1;
+                if self.recent_commands.len() > 50 {
+                    if let Some(old) = self.recent_commands.pop_front() {
+                        if let Some(count) = self.command_counts.get_mut(&old) {
+                            *count -= 1;
+                            if *count == 0 {
+                                self.command_counts.remove(&old);
+                            }
+                        }
+                    }
+                }
                 match cmd.as_str() {
                     "open_file" => return self.handle_message(Message::PickFile),
                     "save_file" => return self.handle_message(Message::SaveFile),

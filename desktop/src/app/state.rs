@@ -163,7 +163,9 @@ pub struct MulticodeApp {
     pub(super) palette_query: String,
     pub(super) palette_drag: Option<BlockInfo>,
     /// history of executed commands
-    pub(super) recent_commands: Vec<String>,
+    pub(super) recent_commands: VecDeque<String>,
+    /// usage count for executed commands
+    pub(super) command_counts: HashMap<String, usize>,
 }
 
 #[derive(Debug, Clone)]
@@ -606,7 +608,7 @@ mod tests {
     use super::*;
     use crate::app::events::Message;
     use tokio::sync::broadcast;
-    use std::collections::HashSet;
+    use std::collections::{HashMap, HashSet, VecDeque};
 
     fn build_app() -> MulticodeApp {
         let (sender, _) = broadcast::channel(1);
@@ -664,7 +666,8 @@ mod tests {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
-            recent_commands: Vec::new(),
+            recent_commands: VecDeque::new(),
+            command_counts: HashMap::new(),
         }
     }
 
@@ -672,6 +675,19 @@ mod tests {
     fn execute_command_updates_history() {
         let mut app = build_app();
         let _ = app.handle_message(Message::ExecuteCommand("test_cmd".into()));
-        assert_eq!(app.recent_commands, vec!["test_cmd".to_string()]);
+        assert_eq!(app.recent_commands, VecDeque::from(vec!["test_cmd".to_string()]));
+        assert_eq!(app.command_counts.get("test_cmd"), Some(&1));
+    }
+
+    #[test]
+    fn recent_commands_are_limited_and_counts_updated() {
+        let mut app = build_app();
+        for i in 0..60 {
+            let cmd = if i < 55 { "a" } else { "b" };
+            let _ = app.handle_message(Message::ExecuteCommand(cmd.into()));
+        }
+        assert_eq!(app.recent_commands.len(), 50);
+        assert_eq!(app.command_counts.get("a"), Some(&45));
+        assert_eq!(app.command_counts.get("b"), Some(&5));
     }
 }
