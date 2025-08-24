@@ -1,4 +1,5 @@
 use crate::visual::connections::Connection;
+use crate::search::fuzzy::TrigramSet;
 use chrono::{DateTime, Utc};
 use directories::ProjectDirs;
 use iced::{widget::text_editor, Color};
@@ -166,6 +167,8 @@ pub struct MulticodeApp {
     pub(super) recent_commands: VecDeque<String>,
     /// usage count for executed commands
     pub(super) command_counts: HashMap<String, usize>,
+    /// precomputed trigram sets for command names
+    pub(super) command_trigrams: HashMap<&'static str, TrigramSet>,
 }
 
 #[derive(Debug, Clone)]
@@ -671,6 +674,7 @@ mod tests {
             palette_drag: None,
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),
+            command_trigrams: HashMap::new(),
         }
     }
 

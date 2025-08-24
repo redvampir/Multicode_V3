@@ -1,6 +1,35 @@
 use std::cmp::Ordering;
 use std::collections::HashSet;
 
+/// Set of cached trigrams used for fuzzy search
+pub type TrigramSet = HashSet<[u8; 3]>;
+
+/// Generate a trigram set for the given string
+pub fn trigram_set(s: &str) -> TrigramSet {
+    let bytes = s.to_lowercase().into_bytes();
+    if bytes.len() < 3 {
+        return HashSet::new();
+    }
+    bytes
+        .windows(3)
+        .map(|w| [w[0], w[1], w[2]])
+        .collect::<TrigramSet>()
+}
+
+/// Calculate trigram similarity between two sets
+pub fn trigram_similarity(a: &TrigramSet, b: &TrigramSet) -> f32 {
+    if a.is_empty() || b.is_empty() {
+        return 0.0;
+    }
+    let inter = a.intersection(b).count() as f32;
+    let union = (a.len() + b.len()) as f32 - inter;
+    if union == 0.0 {
+        0.0
+    } else {
+        inter / union
+    }
+}
+
 /// Generate a set of n-grams for the given string
 fn ngrams(s: &str, n: usize) -> HashSet<String> {
     let chars: Vec<char> = s.chars().collect();
@@ -80,5 +109,16 @@ mod tests {
         let results = search("ab", items.iter().map(|s| *s));
         assert_eq!(results[0].0, "ab");
         assert_eq!(results.len(), 2);
+    }
+
+    #[test]
+    fn trigram_cache_matches_original() {
+        let a = "open file";
+        let b = "open folder";
+        let ta = trigram_set(a);
+        let tb = trigram_set(b);
+        let cached = trigram_similarity(&ta, &tb);
+        let direct = similarity(a, b, 3);
+        assert!((cached - direct).abs() < f32::EPSILON);
     }
 }

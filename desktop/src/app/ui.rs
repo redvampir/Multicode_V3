@@ -347,6 +347,12 @@ impl MulticodeApp {
         };
         let query_input = text_input(placeholder, &self.query).on_input(Message::QueryChanged);
         let freq = &self.command_counts;
+        let n = self.query.chars().count().min(3).max(1);
+        let query_trigrams = if n == 3 {
+            Some(fuzzy::trigram_set(&self.query))
+        } else {
+            None
+        };
         let mut items: Vec<_> = COMMANDS
             .iter()
             .map(|cmd| {
@@ -354,8 +360,14 @@ impl MulticodeApp {
                 let desc = command_description(cmd, self.settings.language);
                 let score = if self.query.is_empty() {
                     0.0
+                } else if n == 3 {
+                    let cached = self.command_trigrams.get(cmd.id);
+                    if let (Some(qt), Some(ct)) = (query_trigrams.as_ref(), cached) {
+                        fuzzy::trigram_similarity(qt, ct)
+                    } else {
+                        0.0
+                    }
                 } else {
-                    let n = self.query.chars().count().min(3).max(1);
                     fuzzy::similarity(&self.query, &name, n)
                 };
                 (cmd, name, desc, score)
@@ -548,6 +560,7 @@ mod tests {
             palette_drag: None,
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),
+            command_trigrams: HashMap::new(),
         }
     }
 
