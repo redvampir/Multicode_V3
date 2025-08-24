@@ -7,9 +7,9 @@ use crate::app::{
 use crate::components::file_manager::{self, ContextMenu};
 use crate::editor::autocomplete::{self, AutocompleteState};
 use crate::editor::meta_integration::validate_meta_json;
+use crate::search::hotkeys::{HotkeyContext, KeyCombination};
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::palette::PaletteMessage;
-use crate::search::hotkeys::{HotkeyContext, KeyCombination};
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -131,7 +131,12 @@ impl MulticodeApp {
                             "next_diff" | "prev_diff" => HotkeyContext::Diff,
                             _ => HotkeyContext::Global,
                         };
-                        self.settings.hotkeys.bind(ctx, id, hk);
+                        if !self.settings.hotkeys.bind(ctx, id, hk) {
+                            self.settings_warning =
+                                Some("Сочетания клавиш должны быть уникальными".into());
+                        } else {
+                            self.settings_warning = None;
+                        }
                     }
                     return Command::none();
                 }
@@ -144,13 +149,11 @@ impl MulticodeApp {
                     }
                 }
                 if let Some(cmd) =
-                    self
-                        .settings
+                    self.settings
                         .hotkeys
                         .get_command(self.hotkey_context(), &key, modifiers)
                 {
-                    return self
-                        .handle_message(Message::ExecuteCommand(cmd.to_string()));
+                    return self.handle_message(Message::ExecuteCommand(cmd.to_string()));
                 }
                 if !matches!(
                     self.screen,
@@ -1744,8 +1747,7 @@ impl MulticodeApp {
                         }
                     }
                 }
-                self.settings.recent_commands =
-                    self.recent_commands.iter().cloned().collect();
+                self.settings.recent_commands = self.recent_commands.iter().cloned().collect();
                 let save_cmd =
                     Command::perform(self.settings.clone().save(), |_| Message::SettingsSaved);
                 let action_cmd = match cmd.as_str() {
@@ -1759,15 +1761,9 @@ impl MulticodeApp {
                     "delete_file" => self.handle_message(Message::RequestDeleteFile),
                     "next_diff" => self.handle_message(Message::NextDiff),
                     "prev_diff" => self.handle_message(Message::PrevDiff),
-                    "toggle_command_palette" => {
-                        self.handle_message(Message::ToggleCommandPalette)
-                    }
-                    "switch_to_text_editor" => {
-                        self.handle_message(Message::SwitchToTextEditor)
-                    }
-                    "switch_to_visual_editor" => {
-                        self.handle_message(Message::SwitchToVisualEditor)
-                    }
+                    "toggle_command_palette" => self.handle_message(Message::ToggleCommandPalette),
+                    "switch_to_text_editor" => self.handle_message(Message::SwitchToTextEditor),
+                    "switch_to_visual_editor" => self.handle_message(Message::SwitchToVisualEditor),
                     "switch_to_split" => {
                         self.handle_message(Message::SwitchViewMode(ViewMode::Split))
                     }

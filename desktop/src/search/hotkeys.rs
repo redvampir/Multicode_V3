@@ -103,7 +103,13 @@ pub struct HotkeyManager {
 }
 
 impl HotkeyManager {
-    pub fn bind(&mut self, ctx: HotkeyContext, id: String, combo: KeyCombination) {
+    pub fn bind(&mut self, ctx: HotkeyContext, id: String, combo: KeyCombination) -> bool {
+        if self.binding(ctx, &id).map_or(false, |c| c == &combo) {
+            return true;
+        }
+        if self.has_duplicate(&combo) {
+            return false;
+        }
         match ctx {
             HotkeyContext::Global => {
                 self.global.insert(id, combo);
@@ -112,6 +118,7 @@ impl HotkeyManager {
                 self.contexts.entry(ctx).or_default().insert(id, combo);
             }
         }
+        true
     }
 
     pub fn binding(&self, ctx: HotkeyContext, id: &str) -> Option<&KeyCombination> {
@@ -122,12 +129,7 @@ impl HotkeyManager {
     }
 
     /// Resolve a command id for given key and context
-    pub fn get_command(
-        &self,
-        ctx: HotkeyContext,
-        key: &Key,
-        modifiers: Modifiers,
-    ) -> Option<&str> {
+    pub fn get_command(&self, ctx: HotkeyContext, key: &Key, modifiers: Modifiers) -> Option<&str> {
         if let Some(map) = self.contexts.get(&ctx) {
             for (id, combo) in map {
                 if combo.matches(key, modifiers) {
@@ -151,6 +153,12 @@ impl HotkeyManager {
             list.extend(m.values().map(|c| c.to_string()));
         }
         list
+    }
+
+    /// Check if the given combination already exists among bindings
+    pub fn has_duplicate(&self, combo: &KeyCombination) -> bool {
+        let target = combo.to_string();
+        self.all_bindings().iter().any(|c| c == &target)
     }
 }
 
@@ -214,11 +222,11 @@ mod tests {
     #[test]
     fn matches_in_contexts() {
         let mut mgr = HotkeyManager::default();
-        mgr.bind(
+        assert!(mgr.bind(
             HotkeyContext::Diff,
             "special".into(),
-            KeyCombination::parse("Ctrl+N").unwrap(),
-        );
+            KeyCombination::parse("Ctrl+Alt+N").unwrap(),
+        ));
         let key_s = Key::Character("S".into());
         assert_eq!(
             mgr.get_command(HotkeyContext::Global, &key_s, Modifiers::CTRL),
@@ -227,11 +235,15 @@ mod tests {
         let key_n = Key::Character("N".into());
         assert_eq!(
             mgr.get_command(HotkeyContext::Diff, &key_n, Modifiers::CTRL),
-            Some("special"),
+            Some("create_file"),
         );
         assert_eq!(
-            mgr.get_command(HotkeyContext::Global, &key_n, Modifiers::CTRL),
-            Some("create_file"),
+            mgr.get_command(
+                HotkeyContext::Diff,
+                &key_n,
+                Modifiers::CTRL | Modifiers::ALT
+            ),
+            Some("special"),
         );
     }
 
@@ -253,5 +265,13 @@ mod tests {
         } else {
             assert_eq!(combo_cmd.to_string(), "Ctrl+S");
         }
+    }
+
+    #[test]
+    fn detects_conflict() {
+        let mut mgr = HotkeyManager::default();
+        let combo = KeyCombination::parse("Ctrl+S").unwrap();
+        assert!(!mgr.bind(HotkeyContext::Diff, "other".into(), combo,));
+        assert!(mgr.binding(HotkeyContext::Diff, "other").is_none());
     }
 }
