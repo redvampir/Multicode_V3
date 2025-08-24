@@ -97,6 +97,7 @@ pub enum Message {
     SyntectThemeSelected(String),
     LanguageSelected(Language),
     ToggleSearchIndex(bool),
+    CacheSizeChanged(String),
     FontSizeChanged(String),
     TabWidthChanged(String),
     ToggleAutoIndent(bool),
