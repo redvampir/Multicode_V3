@@ -45,10 +45,10 @@ for node in tree.nodes {
 ## Пример
 
 ```rust
-use desktop::sync::{SyncEngine, SyncMessage};
+use desktop::sync::{ResolutionPolicy, SyncEngine, SyncMessage};
 use multicode_core::parser::Lang;
 
-let mut engine = SyncEngine::new(Lang::Rust);
+let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
 let (_code, metas) = engine
     .handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust))
     .unwrap();
