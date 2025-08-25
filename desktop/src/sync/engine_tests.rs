@@ -1,4 +1,4 @@
-use super::{SyncEngine, SyncMessage};
+use super::{ResolutionPolicy, SyncEngine, SyncMessage};
 use chrono::Utc;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
@@ -25,7 +25,7 @@ fn make_meta(id: &str, version: u32) -> VisualMeta {
 
 #[test]
 fn text_changed_returns_metas() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let meta = make_meta("test", DEFAULT_VERSION);
     let code = meta::upsert("", &meta);
     let (ret_code, metas) = engine
@@ -39,7 +39,7 @@ fn text_changed_returns_metas() {
 
 #[test]
 fn visual_changed_updates_state_code() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let _ = engine.handle(SyncMessage::TextChanged(String::new(), Lang::Rust));
     let meta = make_meta("block", DEFAULT_VERSION);
     let (result, metas) = engine
@@ -56,7 +56,7 @@ fn visual_changed_updates_state_code() {
 
 #[test]
 fn visual_changed_does_not_duplicate_meta() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let meta = make_meta("block", DEFAULT_VERSION);
     let code = meta::upsert("", &meta);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
@@ -73,7 +73,7 @@ fn visual_changed_does_not_duplicate_meta() {
 
 #[test]
 fn visual_changed_zeros_version_defaults_to_constant() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let _ = engine.handle(SyncMessage::TextChanged(String::new(), Lang::Rust));
     let meta = make_meta("zero", 0);
     let _ = engine.handle(SyncMessage::VisualChanged(meta));
@@ -89,7 +89,7 @@ fn visual_changed_zeros_version_defaults_to_constant() {
 
 #[test]
 fn process_changes_stores_ids() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     engine.process_changes(vec!["t1".into()], vec!["v1".into(), "v2".into()]);
     assert_eq!(engine.last_text_changes(), &["t1".to_string()]);
     assert_eq!(
@@ -100,14 +100,14 @@ fn process_changes_stores_ids() {
 
 #[test]
 fn text_changed_updates_syntax_tree() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let _ = engine.handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust));
     assert!(!engine.state().syntax.nodes.is_empty());
 }
 
 #[test]
 fn element_mapper_maps_ids_and_ranges() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let meta = make_meta("0", DEFAULT_VERSION);
     let code = meta::upsert("fn main() {}", &meta);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
@@ -117,7 +117,7 @@ fn element_mapper_maps_ids_and_ranges() {
 
 #[test]
 fn id_at_position_finds_id_by_coordinates() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let meta = make_meta("0", DEFAULT_VERSION);
     let code = meta::upsert("fn main() {}\n", &meta);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
@@ -127,7 +127,7 @@ fn id_at_position_finds_id_by_coordinates() {
 
 #[test]
 fn conflict_resolver_applies_strategies() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let mut base = make_meta("c", DEFAULT_VERSION);
     base.translations
         .insert("rust".into(), "fn main() {}".into());
@@ -149,7 +149,7 @@ fn conflict_resolver_applies_strategies() {
 
 #[test]
 fn text_changed_identifies_orphaned_blocks() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let mapped = make_meta("0", DEFAULT_VERSION);
     let orphan = make_meta("orphan", DEFAULT_VERSION);
     let code = meta::upsert("fn main() {}", &mapped);
@@ -160,7 +160,7 @@ fn text_changed_identifies_orphaned_blocks() {
 
 #[test]
 fn text_changed_reports_unmapped_code() {
-    let mut engine = SyncEngine::new(Lang::Rust);
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let root = make_meta("0", DEFAULT_VERSION);
     let code = meta::upsert("fn a() {}\nfn b() {}", &root);
     let _ = engine.handle(SyncMessage::TextChanged(code.clone(), Lang::Rust));

@@ -26,7 +26,7 @@ use super::log_translations::LogMessage;
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
 use crate::editor::{AutocompleteState, EditorSettings};
-use crate::sync::{ChangeTracker, SyncEngine};
+use crate::sync::{ChangeTracker, ResolutionPolicy, SyncEngine};
 use crate::visual::palette::PaletteBlock;
 use crate::visual::translations::Language;
 
@@ -686,7 +686,7 @@ mod tests {
             palette_query: String::new(),
             palette_drag: None,
             change_tracker: ChangeTracker::default(),
-            sync_engine: SyncEngine::new(Lang::Rust),
+            sync_engine: SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText),
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),
             command_trigrams: HashMap::new(),

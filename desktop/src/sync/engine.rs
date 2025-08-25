@@ -6,11 +6,11 @@
 //!
 //! # Пример использования
 //! ```rust
-//! use desktop::sync::{SyncEngine, SyncMessage};
+//! use desktop::sync::{ResolutionPolicy, SyncEngine, SyncMessage};
 //!
 //! use multicode_core::parser::Lang;
 //!
-//! let mut engine = SyncEngine::new(Lang::Rust);
+//! let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
 //! engine.handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust));
 //! // далее полученные данные могут быть переданы визуальному редактору
 //! ```
@@ -18,7 +18,7 @@
 //! Дополнительные детали описаны в `docs/sync.md`.
 
 use super::ast_parser::{ASTParser, SyntaxTree};
-use super::conflict_resolver::{ConflictResolver, ConflictType};
+use super::conflict_resolver::{ConflictResolver, ConflictType, ResolutionPolicy};
 use super::element_mapper::ElementMapper;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
@@ -60,11 +60,12 @@ pub struct SyncEngine {
     /// Последние обработанные идентификаторы метаданных из визуального редактора.
     last_visual_ids: Vec<String>,
     mapper: ElementMapper,
+    policy: ResolutionPolicy,
 }
 
 impl SyncEngine {
     /// Создаёт новый движок синхронизации.
-    pub fn new(lang: Lang) -> Self {
+    pub fn new(lang: Lang, policy: ResolutionPolicy) -> Self {
         Self {
             state: SyncState::default(),
             parser: ASTParser::new(lang),
@@ -72,6 +73,7 @@ impl SyncEngine {
             last_text_ids: Vec::new(),
             last_visual_ids: Vec::new(),
             mapper: ElementMapper::default(),
+            policy,
         }
     }
 
@@ -90,7 +92,7 @@ impl SyncEngine {
                 for mut m in meta::read_all(&code) {
                     if let Some(old) = previous.get(&m.id) {
                         if old.version != m.version {
-                            let (resolved, conflict) = resolver.resolve(&m, old);
+                            let (resolved, conflict) = resolver.resolve(&m, old, self.policy);
                             match conflict.conflict_type {
                                 ConflictType::Structural => tracing::warn!(
                                     id = %conflict.id,
@@ -122,7 +124,7 @@ impl SyncEngine {
                 if let Some(existing) = self.state.metas.get(&meta.id).cloned() {
                     if existing.version != meta.version {
                         let (resolved, conflict) =
-                            ConflictResolver::default().resolve(&existing, &meta);
+                            ConflictResolver::default().resolve(&existing, &meta, self.policy);
                         match conflict.conflict_type {
                             ConflictType::Structural => tracing::warn!(
                                 id = %conflict.id,

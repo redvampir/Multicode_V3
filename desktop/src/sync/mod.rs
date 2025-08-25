@@ -8,10 +8,10 @@
 //!
 //! # Пример
 //! ```rust
-//! use desktop::sync::{SyncEngine, SyncMessage};
+//! use desktop::sync::{ResolutionPolicy, SyncEngine, SyncMessage};
 //! use multicode_core::parser::Lang;
 //!
-//! let mut engine = SyncEngine::new(Lang::Rust);
+//! let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
 //! // текстовый редактор сообщает об изменении
 //! let (_code, _metas) = engine
 //!     .handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust))
@@ -30,7 +30,9 @@ pub mod engine;
 pub use ast_parser::{ASTParser, SyntaxNode, SyntaxTree};
 pub use change_tracker::{ChangeTracker, TextDelta, VisualDelta};
 pub use code_generator::{format_generated_code, CodeGenerator, FormattingStyle};
-pub use conflict_resolver::{ConflictResolver, ConflictType, ResolutionOption, SyncConflict};
+pub use conflict_resolver::{
+    ConflictResolver, ConflictType, ResolutionOption, ResolutionPolicy, SyncConflict,
+};
 pub use element_mapper::ElementMapper;
 pub use engine::{SyncEngine, SyncMessage, SyncState};
 

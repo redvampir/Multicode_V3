@@ -14,7 +14,7 @@ use super::{
     AppTheme, CreateTarget, EditorMode, Language, LogLevel, MulticodeApp, Screen, UserSettings,
 };
 use crate::search::{fuzzy, index::SearchIndex};
-use crate::sync::{ChangeTracker, SyncEngine};
+use crate::sync::{ChangeTracker, ResolutionPolicy, SyncEngine};
 use crate::visual::palette::{PaletteBlock, DEFAULT_CATEGORY};
 use crate::visual::translations::block_synonyms;
 use lru::LruCache;
@@ -169,7 +169,7 @@ impl Application for MulticodeApp {
             palette_query: String::new(),
             palette_drag: None,
             change_tracker: ChangeTracker::default(),
-            sync_engine: SyncEngine::new(Lang::Rust),
+            sync_engine: SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText),
             recent_commands,
             command_counts,
             command_trigrams,

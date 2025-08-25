@@ -1,7 +1,7 @@
+use indexmap::IndexSet;
 use multicode_core::meta::{AiNote, VisualMeta};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use indexmap::IndexSet;
 use std::hash::Hash;
 
 /// Type of conflict detected between text and visual representations.
@@ -26,6 +26,15 @@ pub enum ResolutionOption {
     Merge,
 }
 
+/// Global policy describing which representation has priority.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum ResolutionPolicy {
+    /// Textual representation takes precedence in conflicts.
+    PreferText,
+    /// Visual representation takes precedence in conflicts.
+    PreferVisual,
+}
+
 /// Conflict description bound to a specific `VisualMeta` identifier.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SyncConflict {
@@ -43,7 +52,12 @@ pub struct ConflictResolver;
 
 impl ConflictResolver {
     /// Resolve conflict between text and visual versions of a metadata entry.
-    pub fn resolve(&self, text: &VisualMeta, visual: &VisualMeta) -> (VisualMeta, SyncConflict) {
+    pub fn resolve(
+        &self,
+        text: &VisualMeta,
+        visual: &VisualMeta,
+        policy: ResolutionPolicy,
+    ) -> (VisualMeta, SyncConflict) {
         use ConflictType::*;
         use ResolutionOption::*;
 
@@ -59,25 +73,32 @@ impl ConflictResolver {
             || text.origin != visual.origin;
 
         let mut resolved = text.clone();
-        if movement {
-            resolved.x = visual.x;
-            resolved.y = visual.y;
-        }
-        if meta_diff {
-            resolved.tags = merge_strings(&text.tags, &visual.tags);
-            resolved.links = merge_strings(&text.links, &visual.links);
-            resolved.anchors = merge_strings(&text.anchors, &visual.anchors);
-            resolved.tests = merge_strings(&text.tests, &visual.tests);
-            resolved.ai = merge_ai(&text.ai, &visual.ai);
-            resolved.extras = merge_json(&text.extras, &visual.extras);
-        }
-
         let (conflict_type, resolution) = if structural_diff {
-            (Structural, Text)
-        } else if movement {
-            (Movement, if meta_diff { Merge } else { Visual })
+            let (res, option) = match policy {
+                ResolutionPolicy::PreferText => (text.clone(), Text),
+                ResolutionPolicy::PreferVisual => (visual.clone(), Visual),
+            };
+            resolved = res;
+            (Structural, option)
         } else {
-            (MetaComment, Merge)
+            if movement {
+                resolved.x = visual.x;
+                resolved.y = visual.y;
+            }
+            if meta_diff {
+                resolved.tags = merge_strings(&text.tags, &visual.tags);
+                resolved.links = merge_strings(&text.links, &visual.links);
+                resolved.anchors = merge_strings(&text.anchors, &visual.anchors);
+                resolved.tests = merge_strings(&text.tests, &visual.tests);
+                resolved.ai = merge_ai(&text.ai, &visual.ai);
+                resolved.extras = merge_json(&text.extras, &visual.extras);
+            }
+
+            if movement {
+                (Movement, if meta_diff { Merge } else { Visual })
+            } else {
+                (MetaComment, Merge)
+            }
         };
 
         match conflict_type {
@@ -177,7 +198,8 @@ mod tests {
         visual.version = 2;
         visual.x = 10.0;
         visual.y = 5.0;
-        let (resolved, conflict) = ConflictResolver::default().resolve(&text, &visual);
+        let (resolved, conflict) =
+            ConflictResolver::default().resolve(&text, &visual, ResolutionPolicy::PreferText);
         assert_eq!(resolved.x, 10.0);
         assert_eq!(resolved.y, 5.0);
         assert_eq!(conflict.conflict_type, ConflictType::Movement);
@@ -191,7 +213,8 @@ mod tests {
         let mut visual = meta("1");
         visual.version = 2;
         visual.tags = vec!["b".into()];
-        let (resolved, conflict) = ConflictResolver::default().resolve(&text, &visual);
+        let (resolved, conflict) =
+            ConflictResolver::default().resolve(&text, &visual, ResolutionPolicy::PreferText);
         assert_eq!(resolved.tags, vec!["a".to_string(), "b".to_string()]);
         assert_eq!(conflict.conflict_type, ConflictType::MetaComment);
         assert_eq!(conflict.resolution, ResolutionOption::Merge);
@@ -202,7 +225,10 @@ mod tests {
         let text = vec!["a".to_string(), "c".to_string()];
         let visual = vec!["c".to_string(), "b".to_string()];
         let merged = super::merge_strings(&text, &visual);
-        assert_eq!(merged, vec!["a".to_string(), "c".to_string(), "b".to_string()]);
+        assert_eq!(
+            merged,
+            vec!["a".to_string(), "c".to_string(), "b".to_string()]
+        );
     }
 
     #[test]
@@ -213,7 +239,8 @@ mod tests {
         let mut visual = meta("1");
         visual.version = 2;
         visual.translations.insert("rust".into(), "changed".into());
-        let (resolved, conflict) = ConflictResolver::default().resolve(&text, &visual);
+        let (resolved, conflict) =
+            ConflictResolver::default().resolve(&text, &visual, ResolutionPolicy::PreferText);
         assert_eq!(resolved.translations.get("rust").unwrap(), "fn main() {}");
         assert_eq!(conflict.conflict_type, ConflictType::Structural);
         assert_eq!(conflict.resolution, ResolutionOption::Text);
@@ -226,7 +253,8 @@ mod tests {
         let mut visual = meta("1");
         visual.version = 2;
         visual.extends = Some("changed".into());
-        let (_, conflict) = ConflictResolver::default().resolve(&text, &visual);
+        let (_, conflict) =
+            ConflictResolver::default().resolve(&text, &visual, ResolutionPolicy::PreferText);
         assert_eq!(conflict.conflict_type, ConflictType::Structural);
         assert_eq!(conflict.resolution, ResolutionOption::Text);
     }
@@ -238,7 +266,8 @@ mod tests {
         let mut visual = meta("1");
         visual.version = 2;
         visual.links = vec!["b".into()];
-        let (_, conflict) = ConflictResolver::default().resolve(&text, &visual);
+        let (_, conflict) =
+            ConflictResolver::default().resolve(&text, &visual, ResolutionPolicy::PreferText);
         assert_eq!(conflict.conflict_type, ConflictType::MetaComment);
         assert_eq!(conflict.resolution, ResolutionOption::Merge);
     }
