@@ -114,3 +114,13 @@ fn text_changed_updates_syntax_tree() {
     let _ = engine.handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust));
     assert!(!engine.state().syntax.nodes.is_empty());
 }
+
+#[test]
+fn element_mapper_maps_ids_and_ranges() {
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let meta = make_meta("0", DEFAULT_VERSION);
+    let code = meta::upsert("fn main() {}", &meta);
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    let range = engine.range_of("0").expect("range");
+    assert_eq!(engine.id_at(range.start), Some("0"));
+}
