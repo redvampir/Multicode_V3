@@ -18,6 +18,7 @@
 //! Дополнительные детали описаны в `docs/sync.md`.
 
 use super::ast_parser::{ASTParser, SyntaxTree};
+use super::conflict_resolver::ConflictResolver;
 use super::element_mapper::ElementMapper;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
@@ -83,10 +84,18 @@ impl SyncEngine {
                     self.lang = lang;
                     self.parser = ASTParser::new(lang);
                 }
-                self.state.metas = meta::read_all(&code)
-                    .into_iter()
-                    .map(|m| (m.id.clone(), m))
-                    .collect();
+                let previous = self.state.metas.clone();
+                let resolver = ConflictResolver::default();
+                let mut map = HashMap::new();
+                for mut m in meta::read_all(&code) {
+                    if let Some(old) = previous.get(&m.id) {
+                        if old.version != m.version {
+                            m = resolver.resolve(&m, old).0;
+                        }
+                    }
+                    map.insert(m.id.clone(), m);
+                }
+                self.state.metas = map;
                 self.state.code = code;
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
@@ -96,6 +105,11 @@ impl SyncEngine {
             SyncMessage::VisualChanged(mut meta) => {
                 if meta.version == 0 {
                     meta.version = DEFAULT_VERSION;
+                }
+                if let Some(existing) = self.state.metas.get(&meta.id).cloned() {
+                    if existing.version != meta.version {
+                        meta = ConflictResolver::default().resolve(&existing, &meta).0;
+                    }
                 }
                 self.state.code = meta::upsert(&self.state.code, &meta);
                 self.state.metas.insert(meta.id.clone(), meta.clone());
