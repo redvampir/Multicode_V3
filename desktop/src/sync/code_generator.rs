@@ -191,6 +191,32 @@ mod tests {
     }
 
     #[test]
+    fn sorts_metas_by_y_then_x() {
+        let lang = Lang::Rust;
+        let mut meta1 = make_meta("1", "alpha", lang);
+        meta1.x = 2.0;
+        meta1.y = 2.0;
+        let mut meta2 = make_meta("2", "beta", lang);
+        meta2.x = 3.0;
+        meta2.y = 1.0;
+        let mut meta3 = make_meta("3", "gamma", lang);
+        meta3.x = 1.0;
+        meta3.y = 1.0;
+
+        // Metas are provided in a shuffled order.
+        let metas = vec![meta1, meta2, meta3];
+        let blocks = vec![dummy_block("1"), dummy_block("2"), dummy_block("3")];
+
+        let gen = CodeGenerator::new(lang);
+        let out = gen.generate(&metas, &blocks).unwrap();
+
+        let pos_gamma = out.find("gamma").unwrap();
+        let pos_beta = out.find("beta").unwrap();
+        let pos_alpha = out.find("alpha").unwrap();
+        assert!(pos_gamma < pos_beta && pos_beta < pos_alpha);
+    }
+
+    #[test]
     fn formats_code_with_spaces() {
         let code = "line1\nline2";
         let formatted = format_generated_code(code, 2, FormattingStyle::Spaces, 1);
