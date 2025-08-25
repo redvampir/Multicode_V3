@@ -96,7 +96,7 @@ let blocks = [Block {
     anchors: vec![],
 }];
 
-let gen = CodeGenerator::new(Lang::Rust);
+let gen = CodeGenerator::new(Lang::Rust, true);
 let code = gen.generate(&metas, &blocks).unwrap();
 let formatted = format_generated_code(&code, 1, FormattingStyle::Spaces, 4);
 ```

@@ -25,13 +25,15 @@ impl fmt::Display for FormattingStyle {
 /// parsed blocks.
 ///
 /// The generator looks up blocks by their `visual_id` and, for each metadata
-/// entry, inserts an `@VISUAL_META` comment using [`meta::upsert`]. The actual
-/// code for a block is taken from the `translations` map inside [`VisualMeta`].
-/// If a translation for the target language is missing, an empty snippet is
-/// inserted which still carries the meta comment.
+/// entry, optionally inserts an `@VISUAL_META` comment using [`meta::upsert`].
+/// The actual code for a block is taken from the `translations` map inside
+/// [`VisualMeta`]. If a translation for the target language is missing, an
+/// empty snippet is inserted which still carries the meta comment when this
+/// feature is enabled.
 #[derive(Debug, Clone)]
 pub struct CodeGenerator {
     lang: Lang,
+    insert_meta: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -53,8 +55,12 @@ impl std::error::Error for CodeGenError {}
 
 impl CodeGenerator {
     /// Create a new generator for `lang`.
-    pub fn new(lang: Lang) -> Self {
-        Self { lang }
+    ///
+    /// If `insert_meta` is `true`, the generator will inject visual metadata
+    /// comments into the resulting snippets. When `false`, the snippets are
+    /// returned unchanged.
+    pub fn new(lang: Lang, insert_meta: bool) -> Self {
+        Self { lang, insert_meta }
     }
 
     /// Generate source code from `metas` and `blocks`.
@@ -86,7 +92,11 @@ impl CodeGenerator {
                 .get(&lang_key)
                 .cloned()
                 .unwrap_or_default();
-            let snippet = meta::upsert(&snippet, &meta);
+            let snippet = if self.insert_meta {
+                meta::upsert(&snippet, &meta)
+            } else {
+                snippet
+            };
             if !output.is_empty() && !output.ends_with('\n') {
                 output.push('\n');
             }
@@ -175,9 +185,20 @@ mod tests {
         let lang = Lang::Rust;
         let meta = make_meta("1", "fn main() {}", lang);
         let block = dummy_block("1");
-        let gen = CodeGenerator::new(lang);
+        let gen = CodeGenerator::new(lang, true);
         let out = gen.generate(&[meta.clone()], &[block]).unwrap();
         assert!(out.contains("@VISUAL_META"));
+        assert!(out.contains("fn main()"));
+    }
+
+    #[test]
+    fn generates_code_without_meta() {
+        let lang = Lang::Rust;
+        let meta = make_meta("1", "fn main() {}", lang);
+        let block = dummy_block("1");
+        let gen = CodeGenerator::new(lang, false);
+        let out = gen.generate(&[meta.clone()], &[block]).unwrap();
+        assert!(!out.contains("@VISUAL_META"));
         assert!(out.contains("fn main()"));
     }
 
@@ -185,7 +206,7 @@ mod tests {
     fn errors_on_missing_blocks() {
         let lang = Lang::Rust;
         let meta = make_meta("1", "fn main() {}", lang);
-        let gen = CodeGenerator::new(lang);
+        let gen = CodeGenerator::new(lang, true);
         let err = gen.generate(&[meta], &[]).unwrap_err();
         assert_eq!(err, CodeGenError::MissingBlocks(vec!["1".into()]));
     }
@@ -207,7 +228,7 @@ mod tests {
         let metas = vec![meta1, meta2, meta3];
         let blocks = vec![dummy_block("1"), dummy_block("2"), dummy_block("3")];
 
-        let gen = CodeGenerator::new(lang);
+        let gen = CodeGenerator::new(lang, true);
         let out = gen.generate(&metas, &blocks).unwrap();
 
         let pos_gamma = out.find("gamma").unwrap();
