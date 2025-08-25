@@ -136,3 +136,27 @@ fn conflict_resolver_applies_strategies() {
     assert!(resolved.tags.contains(&"v".to_string())); // meta merge
     assert_eq!(resolved.translations.get("rust").unwrap(), "fn main() {}"); // structural prefers text
 }
+
+#[test]
+fn text_changed_identifies_orphaned_blocks() {
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let mapped = make_meta("0", DEFAULT_VERSION);
+    let orphan = make_meta("orphan", DEFAULT_VERSION);
+    let code = meta::upsert("fn main() {}", &mapped);
+    let code = meta::upsert(&code, &orphan);
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    assert_eq!(engine.orphaned_blocks(), &["orphan".to_string()]);
+}
+
+#[test]
+fn text_changed_reports_unmapped_code() {
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let root = make_meta("0", DEFAULT_VERSION);
+    let code = meta::upsert("fn a() {}\nfn b() {}", &root);
+    let _ = engine.handle(SyncMessage::TextChanged(code.clone(), Lang::Rust));
+    let offset = code.find("fn b()").expect("offset of second function");
+    assert!(engine
+        .unmapped_code()
+        .iter()
+        .any(|r| offset >= r.start && offset < r.end));
+}
