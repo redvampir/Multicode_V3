@@ -18,6 +18,7 @@
 //! Дополнительные детали описаны в `docs/sync.md`.
 
 use super::ast_parser::{ASTParser, SyntaxTree};
+use super::conflict_resolver::{ConflictResolver, ResolutionOption};
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
 use std::collections::HashMap;
@@ -80,11 +81,30 @@ impl SyncEngine {
                     self.lang = lang;
                     self.parser = ASTParser::new(lang);
                 }
-                self.state.metas = meta::read_all(&code)
-                    .into_iter()
-                    .map(|m| (m.id.clone(), m))
-                    .collect();
-                self.state.code = code;
+                let parsed = meta::read_all(&code);
+                let mut new_code = code.clone();
+                let mut metas_map = HashMap::new();
+                for mut m in parsed {
+                    if let Some(old) = self.state.metas.get(&m.id) {
+                        if old.version != m.version {
+                            let (option, _) = ConflictResolver::resolve(&m, old);
+                            m = match option {
+                                ResolutionOption::UseText(t) => t,
+                                ResolutionOption::UseVisual(v) => {
+                                    new_code = meta::upsert(&new_code, &v);
+                                    v
+                                }
+                                ResolutionOption::Merge(merged) => {
+                                    new_code = meta::upsert(&new_code, &merged);
+                                    merged
+                                }
+                            };
+                        }
+                    }
+                    metas_map.insert(m.id.clone(), m);
+                }
+                self.state.metas = metas_map;
+                self.state.code = new_code;
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
                 Some((self.state.code.clone(), metas_vec))
@@ -92,6 +112,16 @@ impl SyncEngine {
             SyncMessage::VisualChanged(mut meta) => {
                 if meta.version == 0 {
                     meta.version = DEFAULT_VERSION;
+                }
+                if let Some(text_meta) = self.state.metas.get(&meta.id).cloned() {
+                    if text_meta.version != meta.version {
+                        let (option, _) = ConflictResolver::resolve(&text_meta, &meta);
+                        meta = match option {
+                            ResolutionOption::UseText(t) => t,
+                            ResolutionOption::UseVisual(v) => v,
+                            ResolutionOption::Merge(m) => m,
+                        };
+                    }
                 }
                 self.state.code = meta::upsert(&self.state.code, &meta);
                 self.state.metas.insert(meta.id.clone(), meta.clone());

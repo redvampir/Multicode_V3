@@ -3,6 +3,7 @@ use chrono::Utc;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
 use std::collections::HashMap;
+use serde_json::json;
 
 fn make_meta(id: &str, version: u32) -> VisualMeta {
     VisualMeta {
@@ -21,6 +22,67 @@ fn make_meta(id: &str, version: u32) -> VisualMeta {
         extras: None,
         updated_at: Utc::now(),
     }
+}
+
+#[test]
+fn conflict_structural_prefers_text() {
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let meta1 = make_meta("block", 1);
+    let code1 = meta::upsert("", &meta1);
+    let _ = engine.handle(SyncMessage::TextChanged(code1, Lang::Rust));
+
+    let mut meta2 = make_meta("block", 2);
+    meta2.extras = Some(json!({"k": "text"}));
+    let code2 = meta::upsert("", &meta2);
+    let (_, metas) = engine
+        .handle(SyncMessage::TextChanged(code2.clone(), Lang::Rust))
+        .unwrap();
+    assert_eq!(metas[0].version, 2);
+    assert_eq!(metas[0].extras.as_ref().unwrap()["k"], "text");
+}
+
+#[test]
+fn conflict_block_move_prefers_visual() {
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let meta1 = make_meta("id", 1);
+    let code1 = meta::upsert("", &meta1);
+    let _ = engine.handle(SyncMessage::TextChanged(code1.clone(), Lang::Rust));
+    let old_code = code1.clone();
+
+    let mut vmeta = make_meta("id", 2);
+    vmeta.x = 10.0;
+    vmeta.y = 10.0;
+    let _ = engine.handle(SyncMessage::VisualChanged(vmeta));
+
+    let (_, metas) = engine
+        .handle(SyncMessage::TextChanged(old_code, Lang::Rust))
+        .unwrap();
+    assert_eq!(metas[0].x, 10.0);
+    assert_eq!(metas[0].version, 2);
+}
+
+#[test]
+fn conflict_meta_comment_merges() {
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let meta1 = make_meta("id", 1);
+    let code1 = meta::upsert("", &meta1);
+    let _ = engine.handle(SyncMessage::TextChanged(code1.clone(), Lang::Rust));
+    let old_code = code1.clone();
+
+    let mut vmeta = make_meta("id", 2);
+    vmeta.tags = vec!["visual".into()];
+    let _ = engine.handle(SyncMessage::VisualChanged(vmeta));
+
+    let mut tmeta = make_meta("id", 3);
+    tmeta.tags = vec!["text".into()];
+    let code_text = meta::upsert(&old_code, &tmeta);
+    let (_, metas) = engine
+        .handle(SyncMessage::TextChanged(code_text, Lang::Rust))
+        .unwrap();
+    assert_eq!(metas[0].version, 3);
+    assert!(metas[0].tags.contains(&"visual".to_string()));
+    assert!(metas[0].tags.contains(&"text".to_string()));
+    assert_eq!(metas[0].tags.len(), 2);
 }
 
 #[test]
