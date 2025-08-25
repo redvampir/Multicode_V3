@@ -14,6 +14,8 @@ pub struct ElementMapper {
     pub orphaned_blocks: Vec<String>,
     /// Code ranges that have no corresponding metadata.
     pub unmapped_code: Vec<Range<usize>>,
+    /// Pairs of metadata identifiers whose ranges overlap.
+    pub overlapping_blocks: Vec<(String, String)>,
 }
 
 impl ElementMapper {
@@ -37,6 +39,22 @@ impl ElementMapper {
 
         let mut orphaned_blocks: Vec<String> = meta_ids.into_iter().collect();
         ranges.sort_by_key(|(r, _)| r.start);
+
+        let mut overlapping_blocks = Vec::new();
+        for pair in ranges.windows(2) {
+            let (prev_range, prev_id) = &pair[0];
+            let (range, id) = &pair[1];
+            if range.start < prev_range.end {
+                overlapping_blocks.push((prev_id.clone(), id.clone()));
+                tracing::warn!(
+                    prev_id = %prev_id,
+                    prev_range = ?prev_range,
+                    id = %id,
+                    range = ?range,
+                    "Overlapping metadata ranges detected"
+                );
+            }
+        }
 
         // Sort and merge unmapped code ranges, combining overlapping or adjacent ones
         unmapped_code.sort_by_key(|r| r.start);
@@ -62,6 +80,7 @@ impl ElementMapper {
             ranges,
             orphaned_blocks,
             unmapped_code: merged,
+            overlapping_blocks,
         }
     }
 
@@ -197,5 +216,18 @@ mod tests {
         let metas: Vec<VisualMeta> = Vec::new();
         let mapper = ElementMapper::new("", &syntax, &metas);
         assert_eq!(mapper.unmapped_code, vec![0..10, 15..25]);
+    }
+
+    #[test]
+    fn detects_overlapping_blocks() {
+        let syntax = SyntaxTree {
+            nodes: vec![node(0..5, "a", 0), node(3..8, "b", 1)],
+        };
+        let metas = vec![meta("a"), meta("b")];
+        let mapper = ElementMapper::new("", &syntax, &metas);
+        assert_eq!(
+            mapper.overlapping_blocks,
+            vec![("a".to_string(), "b".to_string())]
+        );
     }
 }
