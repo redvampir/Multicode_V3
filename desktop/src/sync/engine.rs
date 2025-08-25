@@ -18,6 +18,7 @@
 //! Дополнительные детали описаны в `docs/sync.md`.
 
 use super::ast_parser::{ASTParser, SyntaxTree};
+use super::element_mapper::ElementMapper;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
 use std::collections::HashMap;
@@ -57,6 +58,7 @@ pub struct SyncEngine {
     last_text_ids: Vec<String>,
     /// Последние обработанные идентификаторы метаданных из визуального редактора.
     last_visual_ids: Vec<String>,
+    mapper: ElementMapper,
 }
 
 impl SyncEngine {
@@ -68,6 +70,7 @@ impl SyncEngine {
             lang,
             last_text_ids: Vec::new(),
             last_visual_ids: Vec::new(),
+            mapper: ElementMapper::default(),
         }
     }
 
@@ -87,6 +90,7 @@ impl SyncEngine {
                 self.state.code = code;
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
+                self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax);
                 Some((self.state.code.clone(), metas_vec))
             }
             SyncMessage::VisualChanged(mut meta) => {
@@ -97,6 +101,7 @@ impl SyncEngine {
                 self.state.metas.insert(meta.id.clone(), meta.clone());
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
+                self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax);
                 Some((self.state.code.clone(), metas_vec))
             }
         }
@@ -124,5 +129,25 @@ impl SyncEngine {
     /// Возвращает последние обработанные идентификаторы из визуального редактора.
     pub fn last_visual_changes(&self) -> &[String] {
         &self.last_visual_ids
+    }
+
+    /// Returns the metadata identifier associated with a byte offset.
+    pub fn id_at(&self, offset: usize) -> Option<&str> {
+        self.mapper.id_at(offset)
+    }
+
+    /// Returns the byte range corresponding to the given metadata identifier.
+    pub fn range_of(&self, id: &str) -> Option<std::ops::Range<usize>> {
+        self.mapper.range_of(id)
+    }
+
+    /// Metadata identifiers that don't map to any code block.
+    pub fn orphaned_blocks(&self) -> &[String] {
+        &self.mapper.orphaned_blocks
+    }
+
+    /// Code ranges that don't have associated metadata.
+    pub fn unmapped_code(&self) -> &[std::ops::Range<usize>] {
+        &self.mapper.unmapped_code
     }
 }
