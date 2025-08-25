@@ -6,11 +6,12 @@ use crate::app::{
 };
 use crate::components::file_manager::{self, ContextMenu};
 use crate::editor::autocomplete::{self, AutocompleteState};
-use crate::editor::meta_integration::validate_meta_json;
+use crate::editor::meta_integration::{changed_meta_ids, validate_meta_json};
 use crate::search::hotkeys::{HotkeyContext, KeyCombination};
+use crate::sync::{SyncMessage, TextDelta};
 use crate::visual::canvas::CanvasMessage;
+use crate::visual::change::delta_from_meta;
 use crate::visual::palette::PaletteMessage;
-use crate::sync::SyncMessage;
 use chrono::Utc;
 use iced::widget::{
     scrollable,
@@ -25,8 +26,8 @@ use multicode_core::{
 };
 use serde_json::json;
 use std::collections::{HashMap, HashSet, VecDeque};
-use std::path::{Path, PathBuf};
 use std::num::NonZeroUsize;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use tokio::fs;
 use tokio::io::{AsyncBufReadExt, BufReader};
@@ -80,6 +81,7 @@ impl MulticodeApp {
                                 None
                             };
                             if let Some(meta) = meta {
+                                let delta = delta_from_meta(&meta);
                                 if let Some((code, _)) =
                                     self.sync_engine.handle(SyncMessage::VisualChanged(meta))
                                 {
@@ -88,6 +90,7 @@ impl MulticodeApp {
                                         tab.editor = Content::with_text(&tab.content);
                                     }
                                 }
+                                self.change_tracker.record_visual(delta);
                             }
                         }
                     }
@@ -97,6 +100,7 @@ impl MulticodeApp {
                             block.y = position.y as f64;
                             if let Some(i) = self.active_tab {
                                 let meta = Self::block_to_meta(&block);
+                                let delta = delta_from_meta(&meta);
                                 if let Some(tab) = self.tabs.get_mut(i) {
                                     tab.blocks.push(block);
                                     tab.dirty = true;
@@ -109,6 +113,7 @@ impl MulticodeApp {
                                         tab.editor = Content::with_text(&tab.content);
                                     }
                                 }
+                                self.change_tracker.record_visual(delta);
                             }
                         }
                     }
@@ -370,8 +375,7 @@ impl MulticodeApp {
             Message::CacheSizeChanged(value) => {
                 if let Ok(v) = value.parse() {
                     self.settings.search.cache_size = v;
-                    let cap = NonZeroUsize::new(v)
-                        .unwrap_or_else(|| NonZeroUsize::new(1).unwrap());
+                    let cap = NonZeroUsize::new(v).unwrap_or_else(|| NonZeroUsize::new(1).unwrap());
                     self.command_cache.borrow_mut().resize(cap);
                     self.block_cache.borrow_mut().resize(cap);
                     self.command_cache.borrow_mut().clear();
@@ -873,14 +877,22 @@ impl MulticodeApp {
                 if let Some(i) = self.active_tab {
                     if let Some(f) = self.tabs.get_mut(i) {
                         let is_edit = action.is_edit();
+                        let old_content = f.content.clone();
                         if is_edit {
-                            push_with_limit(&mut f.undo_stack, f.content.clone());
+                            push_with_limit(&mut f.undo_stack, old_content.clone());
                             f.redo_stack.clear();
                         }
                         f.editor.perform(action);
                         f.content = f.editor.text();
-                        if let Some((_, metas)) =
-                            self.sync_engine.handle(SyncMessage::TextChanged(f.content.clone()))
+                        let changed_ids = changed_meta_ids(&old_content, &f.content);
+                        if !changed_ids.is_empty() {
+                            self.change_tracker.record_text(TextDelta {
+                                meta_ids: changed_ids,
+                            });
+                        }
+                        if let Some((_, metas)) = self
+                            .sync_engine
+                            .handle(SyncMessage::TextChanged(f.content.clone()))
                         {
                             for block in &mut f.blocks {
                                 if let Some(meta) = metas.iter().find(|m| m.id == block.visual_id) {

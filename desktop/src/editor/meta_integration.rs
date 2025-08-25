@@ -1,5 +1,6 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
+use std::collections::HashMap;
 use std::ops::Range;
 
 use multicode_core::meta::{self, VisualMeta};
@@ -20,6 +21,30 @@ pub fn find_meta_comments(content: &str) -> Vec<(usize, Range<usize>, String)> {
         }
     }
     out
+}
+
+/// Determine which `@VISUAL_META` comments changed between two versions of
+/// the content and return their identifiers.
+pub fn changed_meta_ids(old: &str, new: &str) -> Vec<String> {
+    let mut old_map = HashMap::new();
+    for (_, _, json) in find_meta_comments(old) {
+        if let Ok(meta) = serde_json::from_str::<VisualMeta>(&json) {
+            old_map.insert(meta.id, json);
+        }
+    }
+    let mut new_map = HashMap::new();
+    for (_, _, json) in find_meta_comments(new) {
+        if let Ok(meta) = serde_json::from_str::<VisualMeta>(&json) {
+            new_map.insert(meta.id, json);
+        }
+    }
+    let mut changed = Vec::new();
+    for id in old_map.keys().chain(new_map.keys()) {
+        if old_map.get(id) != new_map.get(id) {
+            changed.push(id.clone());
+        }
+    }
+    changed
 }
 
 /// Insert a new visual meta comment into `content`.
