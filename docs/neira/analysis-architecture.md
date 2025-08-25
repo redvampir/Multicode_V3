@@ -84,6 +84,9 @@ AnalysisNode
    └─ DomainSpecificNode
 ```
 
+Логические уровни образуют цепочку `Binary` → `Artistic`, а маршрутизация определяет переходы между ними в зависимости от входных данных.
+На каждом уровне узлы возвращают `quality_metrics`, `reasoning_chain` и `uncertainty_score`.
+
 ## Пример расширения на Rust
 
 ```rust
