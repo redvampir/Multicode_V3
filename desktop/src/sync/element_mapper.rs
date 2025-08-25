@@ -9,7 +9,7 @@ use super::SyntaxTree;
 #[derive(Debug, Default)]
 pub struct ElementMapper {
     id_to_range: HashMap<String, Range<usize>>,
-    ranges: Vec<(Range<usize>, String)>,
+    ranges: Vec<(Range<usize>, String)>, // sorted by `Range::start`
     /// Metadata entries that couldn't be matched with any AST block.
     pub orphaned_blocks: Vec<String>,
     /// Code ranges that have no corresponding metadata.
@@ -50,16 +50,78 @@ impl ElementMapper {
 
     /// Finds a metadata identifier for the given byte offset.
     pub fn id_at(&self, offset: usize) -> Option<&str> {
-        for (range, id) in &self.ranges {
-            if range.start <= offset && offset < range.end {
-                return Some(id.as_str());
-            }
+        let idx = match self
+            .ranges
+            .binary_search_by(|(range, _)| range.start.cmp(&offset))
+        {
+            Ok(i) => i,
+            Err(i) if i > 0 => i - 1,
+            Err(_) => return None,
+        };
+        let (range, id) = &self.ranges[idx];
+        if offset < range.end {
+            Some(id.as_str())
+        } else {
+            None
         }
-        None
     }
 
     /// Returns the byte range associated with the given metadata identifier.
     pub fn range_of(&self, id: &str) -> Option<Range<usize>> {
         self.id_to_range.get(id).cloned()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sync::SyntaxNode;
+    use chrono::Utc;
+    use multicode_core::meta::VisualMeta;
+    use multicode_core::parser::Block;
+    use std::collections::HashMap;
+
+    fn meta(id: &str) -> VisualMeta {
+        VisualMeta {
+            version: 1,
+            id: id.to_string(),
+            x: 0.0,
+            y: 0.0,
+            tags: Vec::new(),
+            links: Vec::new(),
+            anchors: Vec::new(),
+            tests: Vec::new(),
+            extends: None,
+            origin: None,
+            translations: HashMap::new(),
+            ai: None,
+            extras: None,
+            updated_at: Utc::now(),
+        }
+    }
+
+    fn node(range: Range<usize>, id: &str, node_id: u32) -> SyntaxNode {
+        SyntaxNode {
+            block: Block {
+                visual_id: id.to_string(),
+                node_id,
+                kind: String::new(),
+                range,
+                anchors: Vec::new(),
+            },
+            meta: Some(meta(id)),
+        }
+    }
+
+    #[test]
+    fn id_at_binary_searches_ranges() {
+        let syntax = SyntaxTree {
+            nodes: vec![node(0..5, "a", 0), node(10..20, "b", 1)],
+        };
+        let mapper = ElementMapper::new("", &syntax);
+        assert_eq!(mapper.id_at(3), Some("a"));
+        assert_eq!(mapper.id_at(15), Some("b"));
+        assert_eq!(mapper.id_at(5), None);
+        assert_eq!(mapper.id_at(25), None);
     }
 }
