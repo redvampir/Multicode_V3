@@ -202,6 +202,29 @@ fn text_changed_reports_unmapped_code() {
 }
 
 #[test]
+fn unmapped_code_has_exact_second_function_range() {
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+    let code = "fn a() {}\nfn b() {}\n";
+    let _ = engine.handle(SyncMessage::TextChanged(code.into(), Lang::Rust));
+    let mut fns = engine
+        .state()
+        .syntax
+        .nodes
+        .iter()
+        .filter(|n| n.block.kind == "Function/Define");
+    let first = fns.next().expect("first function");
+    let second = fns.next().expect("second function");
+    let first_id = first.block.visual_id.clone();
+    let second_range = second.block.range.clone();
+    let mut code_with_meta = meta::upsert(code, &make_meta("0", DEFAULT_VERSION));
+    code_with_meta = meta::upsert(&code_with_meta, &make_meta(&first_id, DEFAULT_VERSION));
+    let (_, _, diag) = engine
+        .handle(SyncMessage::TextChanged(code_with_meta, Lang::Rust))
+        .unwrap();
+    assert_eq!(diag.unmapped_code, vec![second_range]);
+}
+
+#[test]
 #[traced_test]
 fn logs_warnings_for_mapping_issues() {
     let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
