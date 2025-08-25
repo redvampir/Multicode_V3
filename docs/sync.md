@@ -55,11 +55,13 @@ let (_code, metas) = engine
 // передать metas визуальному редактору
 ```
 
-## Генерация кода
+## Генерация и форматирование кода
 
 `CodeGenerator` восстанавливает исходный текст из набора `VisualMeta` и
-соответствующих узлов `Block`. Полученный результат можно выровнять функцией
-`format_generated_code`.
+соответствующих узлов `Block`. После генерации полученную строку можно выровнять
+и добавить отступы с помощью `format_generated_code`.
+
+### Пример
 
 ```rust
 use desktop::sync::{CodeGenerator, format_generated_code, FormattingStyle};
@@ -71,7 +73,7 @@ use std::collections::HashMap;
 let mut translations = HashMap::new();
 translations.insert("rust".into(), "fn main() {}".into());
 
-let metas = [VisualMeta {
+let metas = vec![VisualMeta {
     version: 1,
     id: "1".into(),
     x: 0.0,
@@ -88,7 +90,7 @@ let metas = [VisualMeta {
     updated_at: Utc::now(),
 }];
 
-let blocks = [Block {
+let blocks = vec![Block {
     visual_id: "1".into(),
     node_id: 0,
     kind: String::new(),
@@ -98,5 +100,6 @@ let blocks = [Block {
 
 let gen = CodeGenerator::new(Lang::Rust, true);
 let code = gen.generate(&metas, &blocks).unwrap();
-let formatted = format_generated_code(&code, 1, FormattingStyle::Spaces, 4);
+let formatted = format_generated_code(&code, 0, FormattingStyle::Spaces, 4);
+assert_eq!(formatted.trim(), "fn main() {}");
 ```
