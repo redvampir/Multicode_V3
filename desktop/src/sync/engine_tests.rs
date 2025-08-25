@@ -116,6 +116,16 @@ fn element_mapper_maps_ids_and_ranges() {
 }
 
 #[test]
+fn id_at_position_finds_id_by_coordinates() {
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let meta = make_meta("0", DEFAULT_VERSION);
+    let code = meta::upsert("fn main() {}\n", &meta);
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    assert_eq!(engine.id_at_position(0, 0), Some("0"));
+    assert_eq!(engine.id_at_position(10, 0), None);
+}
+
+#[test]
 fn conflict_resolver_applies_strategies() {
     let mut engine = SyncEngine::new(Lang::Rust);
     let mut base = make_meta("c", DEFAULT_VERSION);
