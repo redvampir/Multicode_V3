@@ -79,6 +79,8 @@ struct QualityMetrics {
 
 Поля `id` и `output` обязательны и сериализуются строками. `quality_metrics` — объект с числовыми метриками; отсутствующие показатели опускаются. `status` фиксирует состояние узла (`draft`, `active`, `deprecated`, `error`), `reasoning_chain` сохраняет этапы вывода, `links` перечисляет связанные узлы, `explanation` содержит краткое пояснение, а `uncertainty_score` отражает уровень сомнения (`0` — полная уверенность). `metadata.schema` указывает версию формата.
 
+Поле `analysis_type` относится к описанию узла и в `AnalysisResult` не сериализуется.
+
 После выполнения `analyze()` узел анализа всегда передаёт рассчитанные
 `QualityMetrics` и `uncertainty_score` в связанный `MemoryNode`, например через метод
 `push_metrics()`.
