@@ -26,9 +26,9 @@ use super::log_translations::LogMessage;
 use crate::app::diff::DiffView;
 use crate::components::file_manager::ContextMenu;
 use crate::editor::{AutocompleteState, EditorSettings};
+use crate::sync::{ChangeTracker, SyncEngine};
 use crate::visual::palette::PaletteBlock;
 use crate::visual::translations::Language;
-use crate::sync::SyncEngine;
 
 mod serde_color {
     use iced::Color;
@@ -203,6 +203,7 @@ pub struct MulticodeApp {
     pub(super) palette_query: String,
     pub(super) palette_drag: Option<BlockInfo>,
     /// движок синхронизации
+    pub(super) change_tracker: ChangeTracker,
     pub(super) sync_engine: SyncEngine,
     /// history of executed commands
     pub(super) recent_commands: VecDeque<String>,
@@ -683,6 +684,7 @@ mod tests {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
+            change_tracker: ChangeTracker::default(),
             sync_engine: SyncEngine::new(),
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),

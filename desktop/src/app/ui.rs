@@ -15,9 +15,9 @@ use crate::app::{
     search_translations::{search_text, SearchText},
     Language, LogLevel, MulticodeApp,
 };
-use crate::search::hotkeys::HotkeyContext;
 use crate::modal::Modal;
 use crate::search::fuzzy;
+use crate::search::hotkeys::HotkeyContext;
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use crate::visual::connections::Connection;
 use crate::visual::palette::{BlockPalette, PaletteMessage};
@@ -494,13 +494,13 @@ mod tests {
     use super::super::{CreateTarget, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
     use crate::app::command_palette::COMMANDS;
     use crate::components::file_manager::ContextMenu;
-    use crate::sync::SyncEngine;
+    use crate::sync::{ChangeTracker, SyncEngine};
+    use lru::LruCache;
     use std::cell::RefCell;
     use std::collections::{HashMap, HashSet, VecDeque};
+    use std::num::NonZeroUsize;
     use std::path::PathBuf;
     use tokio::sync::broadcast;
-    use lru::LruCache;
-    use std::num::NonZeroUsize;
 
     #[test]
     fn context_menu_creation() {
@@ -569,6 +569,7 @@ mod tests {
             show_block_palette: false,
             palette_query: String::new(),
             palette_drag: None,
+            change_tracker: ChangeTracker::default(),
             sync_engine: SyncEngine::new(),
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),

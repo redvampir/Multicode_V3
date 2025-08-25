@@ -19,8 +19,10 @@
 //!
 //! Более подробное описание потоков данных приведено в `docs/sync.md`.
 
+pub mod change_tracker;
 pub mod engine;
 
+pub use change_tracker::{ChangeTracker, TextDelta, VisualDelta};
 pub use engine::{SyncEngine, SyncMessage, SyncState};
 
 #[cfg(test)]
