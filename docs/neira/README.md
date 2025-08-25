@@ -13,6 +13,12 @@
 - [Практическое руководство](practical-guide.md)
 - [Глоссарий](glossary.md)
 - [FAQ](faq.md)
+- [Загрузка обучающих данных](training.md)
+- [Развертывание Neira](deployment.md)
+- [Тестирование Neira](testing.md)
+- [Дорожная карта Neira](roadmap.md)
+- [Структура управления Нейры](governance-structure.md)
+- [Мотивация и прогресс Нейры](motivation.md)
 
 ## Оглавление
 - [Назначение](#назначение)
