@@ -125,7 +125,7 @@ fn regenerate_code(content: &str, lang: Lang, metas: &[VisualMeta]) -> Option<St
 fn regenerate_rust(content: &str, metas: &[VisualMeta]) -> Option<String> {
     let mut file: File = syn::parse_file(content).ok()?;
     let tree = parse(content, Lang::Rust, None)?;
-    let blocks = parse_to_blocks(&tree);
+    let blocks = parse_to_blocks(&tree, None);
     let map: HashMap<_, _> = blocks
         .into_iter()
         .map(|b| (b.node_id, b.visual_id))
