@@ -1,4 +1,5 @@
 use serde::Serialize;
+use std::collections::HashMap;
 use std::fmt::{self, Display};
 use std::ops::Range;
 use tree_sitter::{Language, Node, Parser, Tree};
@@ -136,9 +137,11 @@ pub struct Block {
 /// Каждому узлу дерева присваивается последовательный `visual_id`, который
 /// позже может быть связан с записью [`VisualMeta`]. Соответствие между
 /// идентификатором узла tree-sitter и `visual_id` сохраняется в возвращаемых блоках.
-pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
+pub fn parse_to_blocks(tree: &Tree, prev: Option<&HashMap<u32, String>>) -> Vec<Block> {
     let mut blocks = Vec::new();
-    let mut counter: u64 = 0;
+    let mut counter: u64 = prev
+        .and_then(|m| m.values().filter_map(|v| v.parse::<u64>().ok()).max().map(|m| m + 1))
+        .unwrap_or(0);
 
     fn map_kind(kind: &str) -> String {
         match kind {
@@ -162,7 +165,12 @@ pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
         }
     }
 
-    fn walk(node: Node, blocks: &mut Vec<Block>, counter: &mut u64) {
+    fn walk(
+        node: Node,
+        blocks: &mut Vec<Block>,
+        counter: &mut u64,
+        prev: Option<&HashMap<u32, String>>,
+    ) {
         let range = node.byte_range();
         let kind = map_kind(node.kind());
         let anchors = if kind.starts_with("Op/") || kind == "Variable/Get" {
@@ -170,20 +178,35 @@ pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
         } else {
             vec![]
         };
+
+        let node_id = node.id() as u32;
+        let visual_id = if let Some(map) = prev {
+            if let Some(id) = map.get(&node_id) {
+                id.clone()
+            } else {
+                let id = counter.to_string();
+                *counter += 1;
+                id
+            }
+        } else {
+            let id = counter.to_string();
+            *counter += 1;
+            id
+        };
+
         blocks.push(Block {
-            visual_id: counter.to_string(),
-            node_id: node.id() as u32,
+            visual_id,
+            node_id,
             kind,
             range,
             anchors,
         });
-        *counter += 1;
 
         let mut cursor = node.walk();
         if cursor.goto_first_child() {
             loop {
                 let child = cursor.node();
-                walk(child, blocks, counter);
+                walk(child, blocks, counter, prev);
                 if !cursor.goto_next_sibling() {
                     break;
                 }
@@ -191,7 +214,7 @@ pub fn parse_to_blocks(tree: &Tree) -> Vec<Block> {
         }
     }
 
-    walk(tree.root_node(), &mut blocks, &mut counter);
+    walk(tree.root_node(), &mut blocks, &mut counter, prev);
     blocks
 }
 
@@ -242,7 +265,7 @@ mod tests {
 
         for (lang, source) in cases {
             let tree = parse(source, lang, None).expect("не удалось разобрать");
-            let blocks = parse_to_blocks(&tree);
+            let blocks = parse_to_blocks(&tree, None);
             assert!(!blocks.is_empty());
             let mut unique = HashSet::new();
             for block in &blocks {
@@ -256,7 +279,7 @@ mod tests {
     fn parse_expression_into_ops_and_variables() {
         let src = "a + b * c";
         let tree = parse(src, Lang::Python, None).expect("не удалось разобрать");
-        let blocks = parse_to_blocks(&tree);
+        let blocks = parse_to_blocks(&tree, None);
         let mut found = 0;
         for b in &blocks {
             match b.kind.as_str() {
@@ -286,7 +309,7 @@ mod tests {
     fn parse_ternary_expression_into_op() {
         let src = "a ? b : c";
         let tree = parse(src, Lang::JavaScript, None).expect("не удалось разобрать");
-        let blocks = parse_to_blocks(&tree);
+        let blocks = parse_to_blocks(&tree, None);
         assert!(blocks.iter().any(|b| b.kind == "Op/Ternary"));
     }
 }

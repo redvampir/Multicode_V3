@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use multicode_core::parser::{self, Block, Lang};
 use multicode_core::meta::VisualMeta;
+use tree_sitter::Tree;
 
 #[derive(Debug, Clone)]
 pub struct SyntaxNode {
@@ -16,18 +17,29 @@ pub struct SyntaxTree {
 #[derive(Debug)]
 pub struct ASTParser {
     lang: Lang,
+    tree: Option<Tree>,
+    ids: HashMap<u32, String>,
 }
 
 impl ASTParser {
     pub fn new(lang: Lang) -> Self {
-        Self { lang }
+        Self {
+            lang,
+            tree: None,
+            ids: HashMap::new(),
+        }
     }
-    pub fn parse(&self, code: &str, metas: &[VisualMeta]) -> SyntaxTree {
-        let tree = match parser::parse(code, self.lang, None) {
+
+    pub fn parse(&mut self, code: &str, metas: &[VisualMeta]) -> SyntaxTree {
+        let tree = match parser::parse(code, self.lang, self.tree.as_ref()) {
             Some(t) => t,
             None => return SyntaxTree::default(),
         };
-        let blocks = parser::parse_to_blocks(&tree);
+        let blocks = parser::parse_to_blocks(&tree, Some(&self.ids));
+        self.ids = blocks
+            .iter()
+            .map(|b| (b.node_id, b.visual_id.clone()))
+            .collect();
         let meta_map: HashMap<_, _> = metas.iter().cloned().map(|m| (m.id.clone(), m)).collect();
         let nodes = blocks
             .into_iter()
@@ -36,6 +48,7 @@ impl ASTParser {
                 SyntaxNode { block: b, meta }
             })
             .collect();
+        self.tree = Some(tree);
         SyntaxTree { nodes }
     }
 }
@@ -67,7 +80,7 @@ mod tests {
 
     #[test]
     fn parser_links_nodes_with_meta() {
-        let parser = ASTParser::new(Lang::Rust);
+        let mut parser = ASTParser::new(Lang::Rust);
         let m = meta("0");
         let code = multicode_core::meta::upsert("fn main() {}", &m);
         let tree = parser.parse(&code, &[m]);
@@ -75,5 +88,28 @@ mod tests {
             .nodes
             .iter()
             .any(|n| n.block.visual_id == "0" && n.meta.as_ref().map(|m| m.id.as_str()) == Some("0")));
+    }
+
+    #[test]
+    fn preserves_visual_ids_for_unchanged_nodes() {
+        let mut parser = ASTParser::new(Lang::Rust);
+        let code1 = "fn main() {\n    let a = 1;\n}\n";
+        let tree1 = parser.parse(code1, &[]);
+        let old_map: HashMap<_, _> = tree1
+            .nodes
+            .iter()
+            .map(|n| (n.block.node_id, n.block.visual_id.clone()))
+            .collect();
+
+        let code2 = "fn main() {\n    let a = 1;\n    let b = 2;\n}\n";
+        let tree2 = parser.parse(code2, &[]);
+        let mut count = 0;
+        for n in &tree2.nodes {
+            if let Some(id) = old_map.get(&n.block.node_id) {
+                assert_eq!(id, &n.block.visual_id);
+                count += 1;
+            }
+        }
+        assert!(count > 0);
     }
 }

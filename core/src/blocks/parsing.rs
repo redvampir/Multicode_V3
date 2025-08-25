@@ -39,5 +39,5 @@ pub fn parse(content: &str, lang: Lang) -> Option<Vec<Block>> {
         ts_parse(content, lang, None)?
     };
     update_document_tree("current".to_string(), tree.clone());
-    Some(parse_to_blocks(&tree))
+    Some(parse_to_blocks(&tree, None))
 }
