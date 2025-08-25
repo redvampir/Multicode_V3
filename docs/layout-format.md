@@ -1,5 +1,20 @@
 # Layout export format
 
+## Навигация
+- [Обзор Нейры](neira/README.md)
+- [Узлы действий](neira/action-nodes.md)
+- [Узлы анализа](neira/analysis-nodes.md)
+- [Узлы памяти](neira/memory-nodes.md)
+- [Архитектура анализа](neira/analysis-architecture.md)
+- [Поддерживающие системы](neira/support-systems.md)
+- [Личность Нейры](neira/personality.md)
+- [Шаблон узла](neira/node-template.md)
+- [Политика источников](neira/source-policy.md)
+
+## Оглавление
+- [JSON structure](#json-structure)
+- [Example](#example)
+
 The visual editor can save and restore its state through JSON. Use the **Export** and **Import** buttons in the interface or call the methods directly on `VisualCanvas`.
 
 ## JSON structure
