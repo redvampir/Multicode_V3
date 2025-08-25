@@ -132,13 +132,7 @@ impl SyncEngine {
                 self.state.metas = map;
                 self.state.code = code;
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
-                self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
-                self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, &metas_vec);
-                self.log_mapping_issues();
-                let diagnostics = SyncDiagnostics {
-                    orphaned_blocks: self.mapper.orphaned_blocks.clone(),
-                    unmapped_code: self.mapper.unmapped_code.clone(),
-                };
+                let diagnostics = self.update_syntax_and_mapper(&metas_vec);
                 Some((self.state.code.clone(), metas_vec, diagnostics))
             }
             SyncMessage::VisualChanged(mut meta) => {
@@ -167,15 +161,20 @@ impl SyncEngine {
                 self.state.code = meta::upsert(&self.state.code, &meta);
                 self.state.metas.insert(meta.id.clone(), meta.clone());
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
-                self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
-                self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, &metas_vec);
-                self.log_mapping_issues();
-                let diagnostics = SyncDiagnostics {
-                    orphaned_blocks: self.mapper.orphaned_blocks.clone(),
-                    unmapped_code: self.mapper.unmapped_code.clone(),
-                };
+                let diagnostics = self.update_syntax_and_mapper(&metas_vec);
                 Some((self.state.code.clone(), metas_vec, diagnostics))
             }
+        }
+    }
+
+    /// Обновляет синтаксическое дерево, `ElementMapper` и возвращает диагностические данные.
+    fn update_syntax_and_mapper(&mut self, metas: &[VisualMeta]) -> SyncDiagnostics {
+        self.state.syntax = self.parser.parse(&self.state.code, metas);
+        self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, metas);
+        self.log_mapping_issues();
+        SyncDiagnostics {
+            orphaned_blocks: self.mapper.orphaned_blocks.clone(),
+            unmapped_code: self.mapper.unmapped_code.clone(),
         }
     }
 
