@@ -47,12 +47,20 @@ impl ChangeTracker {
     }
 
     /// Returns and clears accumulated text changes.
+    ///
+    /// The returned identifiers are sorted to ensure deterministic order.
     pub fn take_text_changes(&mut self) -> Vec<String> {
-        self.text_changes.drain().collect()
+        let mut changes: Vec<_> = self.text_changes.drain().collect();
+        changes.sort();
+        changes
     }
 
     /// Returns and clears accumulated visual changes.
+    ///
+    /// The returned identifiers are sorted to ensure deterministic order.
     pub fn take_visual_changes(&mut self) -> Vec<String> {
-        self.visual_changes.drain().collect()
+        let mut changes: Vec<_> = self.visual_changes.drain().collect();
+        changes.sort();
+        changes
     }
 }
