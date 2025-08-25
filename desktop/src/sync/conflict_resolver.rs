@@ -201,4 +201,28 @@ mod tests {
         assert_eq!(conflict.conflict_type, ConflictType::Structural);
         assert_eq!(conflict.resolution, ResolutionOption::Text);
     }
+
+    #[test]
+    fn detect_structural_conflict() {
+        let mut text = meta("1");
+        text.extends = Some("base".into());
+        let mut visual = meta("1");
+        visual.version = 2;
+        visual.extends = Some("changed".into());
+        let (_, conflict) = ConflictResolver::default().resolve(&text, &visual);
+        assert_eq!(conflict.conflict_type, ConflictType::Structural);
+        assert_eq!(conflict.resolution, ResolutionOption::Text);
+    }
+
+    #[test]
+    fn detect_meta_comment_conflict() {
+        let mut text = meta("1");
+        text.links = vec!["a".into()];
+        let mut visual = meta("1");
+        visual.version = 2;
+        visual.links = vec!["b".into()];
+        let (_, conflict) = ConflictResolver::default().resolve(&text, &visual);
+        assert_eq!(conflict.conflict_type, ConflictType::MetaComment);
+        assert_eq!(conflict.resolution, ResolutionOption::Merge);
+    }
 }
