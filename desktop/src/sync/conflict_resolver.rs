@@ -79,6 +79,14 @@ impl ConflictResolver {
             (MetaComment, Merge)
         };
 
+        match conflict_type {
+            Structural => tracing::warn!(id = %text.id, "Structural conflict detected"),
+            _ => {
+                tracing::debug!(id = %text.id, conflict_type = ?conflict_type, "Conflict detected")
+            }
+        }
+        tracing::debug!(id = %text.id, resolution = ?resolution, "Conflict resolved");
+
         resolved.version = std::cmp::max(text.version, visual.version);
         let conflict = SyncConflict {
             id: text.id.clone(),
