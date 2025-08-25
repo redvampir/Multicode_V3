@@ -21,9 +21,11 @@
 
 pub mod change_tracker;
 pub mod engine;
+pub mod ast_parser;
 
 pub use change_tracker::{ChangeTracker, TextDelta, VisualDelta};
 pub use engine::{SyncEngine, SyncMessage, SyncState};
+pub use ast_parser::{ASTParser, SyntaxTree, SyntaxNode};
 
 #[cfg(test)]
 mod engine_tests;

@@ -90,3 +90,10 @@ fn process_changes_stores_ids() {
         &["v1".to_string(), "v2".to_string()]
     );
 }
+
+#[test]
+fn text_changed_updates_syntax_tree() {
+    let mut engine = SyncEngine::new();
+    let _ = engine.handle(SyncMessage::TextChanged("fn main() {}".into()));
+    assert!(!engine.state().syntax.nodes.is_empty());
+}

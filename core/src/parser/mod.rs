@@ -7,6 +7,10 @@ pub mod css;
 pub mod go;
 pub mod html;
 pub mod javascript;
+pub mod c;
+pub mod cpp;
+pub mod java;
+pub mod c_sharp;
 pub mod python;
 pub mod rust;
 pub mod typescript;
@@ -22,6 +26,10 @@ pub enum Lang {
     Html,
     Go,
     TypeScript,
+    C,
+    Cpp,
+    Java,
+    CSharp,
 }
 
 impl Display for Lang {
@@ -34,6 +42,10 @@ impl Display for Lang {
             Lang::Html => "html",
             Lang::Go => "go",
             Lang::TypeScript => "typescript",
+            Lang::C => "c",
+            Lang::Cpp => "cpp",
+            Lang::Java => "java",
+            Lang::CSharp => "csharp",
         };
         f.write_str(name)
     }
@@ -51,6 +63,10 @@ impl std::str::FromStr for Lang {
             "html" => Ok(Lang::Html),
             "go" => Ok(Lang::Go),
             "typescript" => Ok(Lang::TypeScript),
+            "c" => Ok(Lang::C),
+            "cpp" | "c++" => Ok(Lang::Cpp),
+            "java" => Ok(Lang::Java),
+            "csharp" | "c#" => Ok(Lang::CSharp),
             _ => Err(()),
         }
     }
@@ -66,6 +82,10 @@ fn language(lang: Lang) -> Language {
         Lang::Html => html::language(),
         Lang::Go => go::language(),
         Lang::TypeScript => typescript::language(),
+        Lang::C => c::language(),
+        Lang::Cpp => cpp::language(),
+        Lang::Java => java::language(),
+        Lang::CSharp => c_sharp::language(),
     }
 }
 
@@ -173,6 +193,10 @@ mod tests {
             (Lang::Html, "html"),
             (Lang::Go, "go"),
             (Lang::TypeScript, "typescript"),
+            (Lang::C, "c"),
+            (Lang::Cpp, "cpp"),
+            (Lang::Java, "java"),
+            (Lang::CSharp, "csharp"),
         ];
         for (lang, name) in cases {
             assert_eq!(lang.to_string(), name);
@@ -193,6 +217,10 @@ mod tests {
                 Lang::TypeScript,
                 "function main(): void { console.log('hi'); }",
             ),
+            (Lang::C, "int main() { return 0; }"),
+            (Lang::Cpp, "int main() { return 0; }"),
+            (Lang::Java, "class Main { public static void main(String[] args) { } }"),
+            (Lang::CSharp, "class Program { static void Main(string[] args) { } }"),
         ];
 
         for (lang, source) in cases {
