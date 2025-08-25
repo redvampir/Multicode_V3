@@ -22,10 +22,12 @@
 
 pub mod ast_parser;
 pub mod change_tracker;
+pub mod code_generator;
 pub mod engine;
 
 pub use ast_parser::{ASTParser, SyntaxNode, SyntaxTree};
 pub use change_tracker::{ChangeTracker, TextDelta, VisualDelta};
+pub use code_generator::{format_generated_code, CodeGenerator, FormattingStyle};
 pub use engine::{SyncEngine, SyncMessage, SyncState};
 
 #[cfg(test)]
