@@ -54,3 +54,49 @@ let (_code, metas) = engine
     .unwrap();
 // передать metas визуальному редактору
 ```
+
+## Генерация кода
+
+`CodeGenerator` восстанавливает исходный текст из набора `VisualMeta` и
+соответствующих узлов `Block`. Полученный результат можно выровнять функцией
+`format_generated_code`.
+
+```rust
+use desktop::sync::{CodeGenerator, format_generated_code, FormattingStyle};
+use multicode_core::meta::VisualMeta;
+use multicode_core::parser::{Block, Lang};
+use chrono::Utc;
+use std::collections::HashMap;
+
+let mut translations = HashMap::new();
+translations.insert("rust".into(), "fn main() {}".into());
+
+let metas = [VisualMeta {
+    version: 1,
+    id: "1".into(),
+    x: 0.0,
+    y: 0.0,
+    tags: vec![],
+    links: vec![],
+    anchors: vec![],
+    tests: vec![],
+    extends: None,
+    origin: None,
+    translations,
+    ai: None,
+    extras: None,
+    updated_at: Utc::now(),
+}];
+
+let blocks = [Block {
+    visual_id: "1".into(),
+    node_id: 0,
+    kind: String::new(),
+    range: 0..0,
+    anchors: vec![],
+}];
+
+let gen = CodeGenerator::new(Lang::Rust);
+let code = gen.generate(&metas, &blocks).unwrap();
+let formatted = format_generated_code(&code, 1, FormattingStyle::Spaces, 4);
+```
