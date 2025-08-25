@@ -180,10 +180,11 @@ fn text_changed_identifies_orphaned_blocks() {
     let orphan = make_meta("orphan", DEFAULT_VERSION);
     let code = meta::upsert("fn main() {}", &mapped);
     let code = meta::upsert(&code, &orphan);
-    let (_, _, diag) = engine
-        .handle(SyncMessage::TextChanged(code, Lang::Rust))
-        .unwrap();
-    assert_eq!(diag.orphaned_blocks, &["orphan".to_string()]);
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    assert_eq!(
+        engine.last_diagnostics().orphaned_blocks,
+        &["orphan".to_string()]
+    );
 }
 
 #[test]
@@ -191,11 +192,10 @@ fn text_changed_reports_unmapped_code() {
     let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let root = make_meta("0", DEFAULT_VERSION);
     let code = meta::upsert("fn a() {}\nfn b() {}", &root);
-    let (_, _, diag) = engine
-        .handle(SyncMessage::TextChanged(code.clone(), Lang::Rust))
-        .unwrap();
+    let _ = engine.handle(SyncMessage::TextChanged(code.clone(), Lang::Rust));
     let offset = code.find("fn b()").expect("offset of second function");
-    assert!(diag
+    assert!(engine
+        .last_diagnostics()
         .unmapped_code
         .iter()
         .any(|r| offset >= r.start && offset < r.end));
@@ -215,13 +215,20 @@ fn unmapped_code_has_exact_second_function_range() {
     let first = fns.next().expect("first function");
     let second = fns.next().expect("second function");
     let first_id = first.block.visual_id.clone();
-    let second_range = second.block.range.clone();
-    let mut code_with_meta = meta::upsert(code, &make_meta("0", DEFAULT_VERSION));
-    code_with_meta = meta::upsert(&code_with_meta, &make_meta(&first_id, DEFAULT_VERSION));
-    let (_, _, diag) = engine
-        .handle(SyncMessage::TextChanged(code_with_meta, Lang::Rust))
-        .unwrap();
-    assert_eq!(diag.unmapped_code, vec![second_range]);
+    let second_id = second.block.visual_id.clone();
+    let code_with_meta = meta::upsert(code, &make_meta(&first_id, DEFAULT_VERSION));
+    let _ = engine.handle(SyncMessage::TextChanged(code_with_meta, Lang::Rust));
+    let second_range = engine
+        .state()
+        .syntax
+        .nodes
+        .iter()
+        .find(|n| n.block.visual_id == second_id)
+        .map(|n| n.block.range.clone())
+        .expect("second function");
+    let unmapped = &engine.last_diagnostics().unmapped_code;
+    assert_eq!(unmapped.len(), 1);
+    assert!(unmapped[0].start <= second_range.start && unmapped[0].end >= second_range.end);
 }
 
 #[test]

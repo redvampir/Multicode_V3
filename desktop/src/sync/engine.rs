@@ -77,6 +77,8 @@ pub struct SyncEngine {
     last_visual_ids: Vec<String>,
     mapper: ElementMapper,
     policy: ResolutionPolicy,
+    /// Последние полученные диагностические данные.
+    last_diagnostics: SyncDiagnostics,
 }
 
 impl SyncEngine {
@@ -90,6 +92,7 @@ impl SyncEngine {
             last_visual_ids: Vec::new(),
             mapper: ElementMapper::default(),
             policy,
+            last_diagnostics: SyncDiagnostics::default(),
         }
     }
 
@@ -133,6 +136,7 @@ impl SyncEngine {
                 self.state.code = code;
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 let diagnostics = self.update_syntax_and_mapper(&metas_vec);
+                self.last_diagnostics = diagnostics.clone();
                 Some((self.state.code.clone(), metas_vec, diagnostics))
             }
             SyncMessage::VisualChanged(mut meta) => {
@@ -162,6 +166,7 @@ impl SyncEngine {
                 self.state.metas.insert(meta.id.clone(), meta.clone());
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 let diagnostics = self.update_syntax_and_mapper(&metas_vec);
+                self.last_diagnostics = diagnostics.clone();
                 Some((self.state.code.clone(), metas_vec, diagnostics))
             }
         }
@@ -216,6 +221,11 @@ impl SyncEngine {
     /// Возвращает последние обработанные идентификаторы из визуального редактора.
     pub fn last_visual_changes(&self) -> &[String] {
         &self.last_visual_ids
+    }
+
+    /// Возвращает последние диагностические данные.
+    pub fn last_diagnostics(&self) -> &SyncDiagnostics {
+        &self.last_diagnostics
     }
 
     /// Returns the metadata identifier associated with a byte offset in the
