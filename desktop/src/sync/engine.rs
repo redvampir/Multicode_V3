@@ -20,12 +20,13 @@
 use super::ast_parser::{ASTParser, SyntaxTree};
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
+use std::collections::HashMap;
 
 /// Состояние синхронизации между текстовым и визуальным представлениями.
 #[derive(Debug, Clone, Default)]
 pub struct SyncState {
-    /// Текущие метаданные, извлечённые из текста.
-    pub metas: Vec<VisualMeta>,
+    /// Текущие метаданные, извлечённые из текста, индексированные по идентификатору.
+    pub metas: HashMap<String, VisualMeta>,
     /// Последняя версия текста, известная движку.
     pub code: String,
     /// Последнее разобранное синтаксическое дерево.
@@ -79,23 +80,24 @@ impl SyncEngine {
                     self.lang = lang;
                     self.parser = ASTParser::new(lang);
                 }
-                self.state.metas = meta::read_all(&code);
+                self.state.metas = meta::read_all(&code)
+                    .into_iter()
+                    .map(|m| (m.id.clone(), m))
+                    .collect();
                 self.state.code = code;
-                self.state.syntax = self.parser.parse(&self.state.code, &self.state.metas);
-                Some((self.state.code.clone(), self.state.metas.clone()))
+                let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
+                self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
+                Some((self.state.code.clone(), metas_vec))
             }
             SyncMessage::VisualChanged(mut meta) => {
                 if meta.version == 0 {
                     meta.version = DEFAULT_VERSION;
                 }
                 self.state.code = meta::upsert(&self.state.code, &meta);
-                if let Some(existing) = self.state.metas.iter_mut().find(|m| m.id == meta.id) {
-                    *existing = meta.clone();
-                } else {
-                    self.state.metas.push(meta.clone());
-                }
-                self.state.syntax = self.parser.parse(&self.state.code, &self.state.metas);
-                Some((self.state.code.clone(), self.state.metas.clone()))
+                self.state.metas.insert(meta.id.clone(), meta.clone());
+                let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
+                self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
+                Some((self.state.code.clone(), metas_vec))
             }
         }
     }
