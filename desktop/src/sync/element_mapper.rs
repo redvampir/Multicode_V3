@@ -87,6 +87,34 @@ impl ElementMapper {
     pub fn range_of(&self, id: &str) -> Option<Range<usize>> {
         self.id_to_range.get(id).cloned()
     }
+
+    /// Converts a zero-based `(line, column)` pair to a byte offset within the
+    /// provided source code. Returns `None` if the position is out of bounds.
+    pub fn offset_at(code: &str, line: usize, column: usize) -> Option<usize> {
+        let mut current_line = 0;
+        let mut current_col = 0;
+        for (idx, ch) in code.char_indices() {
+            if current_line == line && current_col == column {
+                return Some(idx);
+            }
+            if ch == '\n' {
+                current_line += 1;
+                current_col = 0;
+            } else {
+                current_col += 1;
+            }
+        }
+        if current_line == line && current_col == column {
+            Some(code.len())
+        } else {
+            None
+        }
+    }
+
+    /// Finds a metadata identifier for the given source position.
+    pub fn id_at_position(&self, code: &str, line: usize, column: usize) -> Option<&str> {
+        Self::offset_at(code, line, column).and_then(|offset| self.id_at(offset))
+    }
 }
 
 #[cfg(test)]

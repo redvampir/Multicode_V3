@@ -177,6 +177,11 @@ impl SyncEngine {
         self.mapper.id_at(offset)
     }
 
+    /// Returns the metadata identifier at the given `(line, column)` position.
+    pub fn id_at_position(&self, line: usize, column: usize) -> Option<&str> {
+        self.mapper.id_at_position(&self.state.code, line, column)
+    }
+
     /// Returns the byte range corresponding to the given metadata identifier.
     pub fn range_of(&self, id: &str) -> Option<std::ops::Range<usize>> {
         self.mapper.range_of(id)
