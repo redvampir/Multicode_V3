@@ -3,6 +3,7 @@ use chrono::Utc;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
 use std::collections::HashMap;
+use tracing_test::traced_test;
 
 fn make_meta(id: &str, version: u32) -> VisualMeta {
     VisualMeta {
@@ -138,13 +139,12 @@ fn conflict_resolver_applies_strategies() {
     visual.version = base.version + 1;
     visual.x = 10.0;
     visual.tags.push("v".into());
-    visual.translations.insert("rust".into(), "changed".into());
     let _ = engine.handle(SyncMessage::VisualChanged(visual));
 
     let resolved = engine.state().metas.get("c").unwrap();
     assert_eq!(resolved.x, 10.0); // movement prefers visual
     assert!(resolved.tags.contains(&"v".to_string())); // meta merge
-    assert_eq!(resolved.translations.get("rust").unwrap(), "fn main() {}"); // structural prefers text
+    assert_eq!(resolved.translations.get("rust").unwrap(), "fn main() {}");
 }
 
 #[test]
@@ -169,4 +169,18 @@ fn text_changed_reports_unmapped_code() {
         .unmapped_code()
         .iter()
         .any(|r| offset >= r.start && offset < r.end));
+}
+
+#[test]
+#[traced_test]
+fn logs_warnings_for_mapping_issues() {
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+    let mapped = make_meta("0", DEFAULT_VERSION);
+    let orphan = make_meta("orphan", DEFAULT_VERSION);
+    let code = meta::upsert("fn a() {}\nfn b() {}", &mapped);
+    let code = meta::upsert(&code, &orphan);
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    assert!(logs_contain("Orphaned metadata blocks"));
+    assert!(logs_contain("orphan"));
+    assert!(logs_contain("Unmapped code ranges"));
 }

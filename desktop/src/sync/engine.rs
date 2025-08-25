@@ -115,6 +115,7 @@ impl SyncEngine {
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
                 self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, &metas_vec);
+                self.log_mapping_issues();
                 Some((self.state.code.clone(), metas_vec))
             }
             SyncMessage::VisualChanged(mut meta) => {
@@ -145,8 +146,25 @@ impl SyncEngine {
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
                 self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, &metas_vec);
+                self.log_mapping_issues();
                 Some((self.state.code.clone(), metas_vec))
             }
+        }
+    }
+
+    /// Logs warnings for orphaned metadata blocks or unmapped code ranges.
+    fn log_mapping_issues(&self) {
+        if !self.mapper.orphaned_blocks.is_empty() {
+            tracing::warn!(
+                orphaned = ?self.mapper.orphaned_blocks,
+                "Orphaned metadata blocks"
+            );
+        }
+        if !self.mapper.unmapped_code.is_empty() {
+            tracing::warn!(
+                unmapped = ?self.mapper.unmapped_code,
+                "Unmapped code ranges"
+            );
         }
     }
 
