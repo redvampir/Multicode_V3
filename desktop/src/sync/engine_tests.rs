@@ -29,7 +29,7 @@ fn text_changed_returns_metas() {
     let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let meta = make_meta("test", DEFAULT_VERSION);
     let code = meta::upsert("", &meta);
-    let (ret_code, metas) = engine
+    let (ret_code, metas, _diag) = engine
         .handle(SyncMessage::TextChanged(code.clone(), Lang::Rust))
         .unwrap();
     assert_eq!(ret_code, code);
@@ -43,7 +43,7 @@ fn visual_changed_updates_state_code() {
     let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let _ = engine.handle(SyncMessage::TextChanged(String::new(), Lang::Rust));
     let meta = make_meta("block", DEFAULT_VERSION);
-    let (result, metas) = engine
+    let (result, metas, _diag) = engine
         .handle(SyncMessage::VisualChanged(meta.clone()))
         .unwrap();
     assert!(result.contains("@VISUAL_META"));
@@ -180,8 +180,10 @@ fn text_changed_identifies_orphaned_blocks() {
     let orphan = make_meta("orphan", DEFAULT_VERSION);
     let code = meta::upsert("fn main() {}", &mapped);
     let code = meta::upsert(&code, &orphan);
-    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
-    assert_eq!(engine.orphaned_blocks(), &["orphan".to_string()]);
+    let (_, _, diag) = engine
+        .handle(SyncMessage::TextChanged(code, Lang::Rust))
+        .unwrap();
+    assert_eq!(diag.orphaned_blocks, &["orphan".to_string()]);
 }
 
 #[test]
@@ -189,10 +191,12 @@ fn text_changed_reports_unmapped_code() {
     let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let root = make_meta("0", DEFAULT_VERSION);
     let code = meta::upsert("fn a() {}\nfn b() {}", &root);
-    let _ = engine.handle(SyncMessage::TextChanged(code.clone(), Lang::Rust));
+    let (_, _, diag) = engine
+        .handle(SyncMessage::TextChanged(code.clone(), Lang::Rust))
+        .unwrap();
     let offset = code.find("fn b()").expect("offset of second function");
-    assert!(engine
-        .unmapped_code()
+    assert!(diag
+        .unmapped_code
         .iter()
         .any(|r| offset >= r.start && offset < r.end));
 }
