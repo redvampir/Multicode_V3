@@ -82,7 +82,7 @@ impl MulticodeApp {
                             };
                             if let Some(meta) = meta {
                                 let delta = delta_from_meta(&meta);
-                                if let Some((code, _)) =
+                                if let Some((code, _, _)) =
                                     self.sync_engine.handle(SyncMessage::VisualChanged(meta))
                                 {
                                     if let Some(tab) = self.tabs.get_mut(i) {
@@ -105,7 +105,7 @@ impl MulticodeApp {
                                     tab.blocks.push(block);
                                     tab.dirty = true;
                                 }
-                                if let Some((code, _)) =
+                                if let Some((code, _, _)) =
                                     self.sync_engine.handle(SyncMessage::VisualChanged(meta))
                                 {
                                     if let Some(tab) = self.tabs.get_mut(i) {
@@ -169,7 +169,7 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::Sync(msg) => {
-                if let Some((code, metas)) = self.sync_engine.handle(msg) {
+                if let Some((code, metas, _)) = self.sync_engine.handle(msg) {
                     if let Some(tab) = self.current_file_mut() {
                         tab.content = code;
                         tab.editor = Content::with_text(&tab.content);
@@ -890,10 +890,12 @@ impl MulticodeApp {
                                 meta_ids: changed_ids,
                             });
                         }
-                        if let Some((_, metas)) = self.sync_engine.handle(SyncMessage::TextChanged(
-                            f.content.clone(),
-                            detect_lang(&f.path).unwrap_or(Lang::Rust),
-                        )) {
+                        if let Some((_, metas, _)) =
+                            self.sync_engine.handle(SyncMessage::TextChanged(
+                                f.content.clone(),
+                                detect_lang(&f.path).unwrap_or(Lang::Rust),
+                            ))
+                        {
                             for block in &mut f.blocks {
                                 if let Some(meta) = metas.iter().find(|m| m.id == block.visual_id) {
                                     block.x = meta.x;

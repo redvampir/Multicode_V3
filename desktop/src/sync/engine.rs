@@ -18,7 +18,7 @@
 //! use multicode_core::parser::Lang;
 //!
 //! let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
-//! engine.handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust));
+//! let _ = engine.handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust));
 //! // далее полученные данные могут быть переданы визуальному редактору
 //! ```
 //!
@@ -40,6 +40,15 @@ pub struct SyncState {
     pub code: String,
     /// Последнее разобранное синтаксическое дерево.
     pub syntax: SyntaxTree,
+}
+
+/// Диагностическая информация о сопоставлении кода и метаданных.
+#[derive(Debug, Clone, Default)]
+pub struct SyncDiagnostics {
+    /// Метаданные, для которых не найден соответствующий фрагмент кода.
+    pub orphaned_blocks: Vec<String>,
+    /// Участки кода, не связанные ни с одним блоком метаданных.
+    pub unmapped_code: Vec<std::ops::Range<usize>>,
 }
 
 /// Сообщения для движка синхронизации.
@@ -85,8 +94,11 @@ impl SyncEngine {
     }
 
     /// Обрабатывает входящее сообщение синхронизации.
-    /// Возвращает обновлённый текст и список метаданных.
-    pub fn handle(&mut self, msg: SyncMessage) -> Option<(String, Vec<VisualMeta>)> {
+    /// Возвращает обновлённый текст, список метаданных и диагностические данные.
+    pub fn handle(
+        &mut self,
+        msg: SyncMessage,
+    ) -> Option<(String, Vec<VisualMeta>, SyncDiagnostics)> {
         match msg {
             SyncMessage::TextChanged(code, lang) => {
                 if self.lang != lang {
@@ -123,7 +135,11 @@ impl SyncEngine {
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
                 self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, &metas_vec);
                 self.log_mapping_issues();
-                Some((self.state.code.clone(), metas_vec))
+                let diagnostics = SyncDiagnostics {
+                    orphaned_blocks: self.mapper.orphaned_blocks.clone(),
+                    unmapped_code: self.mapper.unmapped_code.clone(),
+                };
+                Some((self.state.code.clone(), metas_vec, diagnostics))
             }
             SyncMessage::VisualChanged(mut meta) => {
                 if meta.version == 0 {
@@ -154,7 +170,11 @@ impl SyncEngine {
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
                 self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, &metas_vec);
                 self.log_mapping_issues();
-                Some((self.state.code.clone(), metas_vec))
+                let diagnostics = SyncDiagnostics {
+                    orphaned_blocks: self.mapper.orphaned_blocks.clone(),
+                    unmapped_code: self.mapper.unmapped_code.clone(),
+                };
+                Some((self.state.code.clone(), metas_vec, diagnostics))
             }
         }
     }

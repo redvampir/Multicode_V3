@@ -8,12 +8,12 @@
 //!
 //! # Пример
 //! ```rust
-//! use desktop::sync::{ResolutionPolicy, SyncEngine, SyncMessage};
+//! use desktop::sync::{ResolutionPolicy, SyncDiagnostics, SyncEngine, SyncMessage};
 //! use multicode_core::parser::Lang;
 //!
 //! let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
 //! // текстовый редактор сообщает об изменении
-//! let (_code, _metas) = engine
+//! let (_code, _metas, _diag) = engine
 //!     .handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust))
 //!     .unwrap();
 //! ```
@@ -34,7 +34,7 @@ pub use conflict_resolver::{
     ConflictResolver, ConflictType, ResolutionOption, ResolutionPolicy, SyncConflict,
 };
 pub use element_mapper::ElementMapper;
-pub use engine::{SyncEngine, SyncMessage, SyncState};
+pub use engine::{SyncDiagnostics, SyncEngine, SyncMessage, SyncState};
 
 #[cfg(test)]
 mod engine_tests;
