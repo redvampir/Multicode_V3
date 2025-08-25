@@ -7,14 +7,20 @@ use multicode_core::meta::{self, VisualMeta};
 
 use crate::app::Diagnostic;
 
-static META_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"@VISUAL_META\s*(\{.*\})").unwrap());
+static META_REGEX: Lazy<Regex> =
+    Lazy::new(|| Regex::new(r"@VISUAL_META\s*(\{.*?\})").unwrap());
 
 /// Find all `@VISUAL_META` comments in `content`.
 /// Returns tuples of `(line_index, json_range, json)`.
+///
+/// The JSON portion is matched using a non-greedy pattern and therefore
+/// supports multiple `@VISUAL_META` comments per line and ignores trailing
+/// text after the closing brace. Nested braces or braces inside strings are
+/// not handled and may cause incorrect matches.
 pub fn find_meta_comments(content: &str) -> Vec<(usize, Range<usize>, String)> {
     let mut out = Vec::new();
     for (line_idx, line) in content.lines().enumerate() {
-        if let Some(caps) = META_REGEX.captures(line) {
+        for caps in META_REGEX.captures_iter(line) {
             if let Some(m) = caps.get(1) {
                 out.push((line_idx, m.start()..m.end(), m.as_str().to_string()));
             }
