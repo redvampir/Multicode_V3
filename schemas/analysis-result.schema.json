@@ -30,6 +30,11 @@
       "items": { "type": "string" }
     },
     "explanation": { "type": "string" },
+    "uncertainty_score": {
+      "type": "number",
+      "minimum": 0,
+      "maximum": 1
+    },
     "metadata": {
       "type": "object",
       "additionalProperties": true,
