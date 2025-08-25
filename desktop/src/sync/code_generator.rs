@@ -212,6 +212,17 @@ mod tests {
     }
 
     #[test]
+    fn reports_ids_for_missing_blocks_even_when_some_exist() {
+        let lang = Lang::Rust;
+        let m1 = make_meta("1", "fn one() {}", lang);
+        let m2 = make_meta("2", "fn two() {}", lang);
+        let block = dummy_block("1");
+        let gen = CodeGenerator::new(lang, true);
+        let err = gen.generate(&[m1, m2], &[block]).unwrap_err();
+        assert_eq!(err, CodeGenError::MissingBlocks(vec!["2".into()]));
+    }
+
+    #[test]
     fn sorts_metas_by_y_then_x() {
         let lang = Lang::Rust;
         let mut meta1 = make_meta("1", "alpha", lang);
