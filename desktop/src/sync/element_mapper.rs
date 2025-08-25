@@ -38,13 +38,31 @@ impl ElementMapper {
 
         let mut orphaned_blocks: Vec<String> = meta_ids.into_iter().collect();
         ranges.sort_by_key(|(r, _)| r.start);
+
+        // Sort and merge unmapped code ranges, combining overlapping or adjacent ones
+        unmapped_code.sort_by_key(|r| r.start);
+        let mut merged: Vec<Range<usize>> = Vec::new();
+        for range in unmapped_code {
+            if let Some(last) = merged.last_mut() {
+                if range.start <= last.end {
+                    if range.end > last.end {
+                        last.end = range.end;
+                    }
+                } else {
+                    merged.push(range);
+                }
+            } else {
+                merged.push(range);
+            }
+        }
+
         orphaned_blocks.sort();
 
         Self {
             id_to_range,
             ranges,
             orphaned_blocks,
-            unmapped_code,
+            unmapped_code: merged,
         }
     }
 
@@ -113,6 +131,19 @@ mod tests {
         }
     }
 
+    fn unmapped(range: Range<usize>, node_id: u32) -> SyntaxNode {
+        SyntaxNode {
+            block: Block {
+                visual_id: String::new(),
+                node_id,
+                kind: String::new(),
+                range,
+                anchors: Vec::new(),
+            },
+            meta: None,
+        }
+    }
+
     #[test]
     fn id_at_binary_searches_ranges() {
         let syntax = SyntaxTree {
@@ -123,5 +154,19 @@ mod tests {
         assert_eq!(mapper.id_at(15), Some("b"));
         assert_eq!(mapper.id_at(5), None);
         assert_eq!(mapper.id_at(25), None);
+    }
+
+    #[test]
+    fn merges_unmapped_code_ranges() {
+        let syntax = SyntaxTree {
+            nodes: vec![
+                unmapped(15..20, 0),
+                unmapped(0..5, 1),
+                unmapped(5..10, 2),
+                unmapped(18..25, 3),
+            ],
+        };
+        let mapper = ElementMapper::new("", &syntax);
+        assert_eq!(mapper.unmapped_code, vec![0..10, 15..25]);
     }
 }
