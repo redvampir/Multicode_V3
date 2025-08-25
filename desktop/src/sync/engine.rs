@@ -16,6 +16,8 @@
 //! Дополнительные детали описаны в `docs/sync.md`.
 
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
+use multicode_core::parser;
+use super::ast_parser::{ASTParser, SyntaxTree};
 
 /// Состояние синхронизации между текстовым и визуальным представлениями.
 #[derive(Debug, Clone, Default)]
@@ -24,6 +26,8 @@ pub struct SyncState {
     pub metas: Vec<VisualMeta>,
     /// Последняя версия текста, известная движку.
     pub code: String,
+    /// Последнее разобранное синтаксическое дерево.
+    pub syntax: SyntaxTree,
 }
 
 /// Сообщения для движка синхронизации.
@@ -41,9 +45,10 @@ pub enum SyncMessage {
 ///   извлечению метаданных для визуального представления;
 /// - [`SyncMessage::VisualChanged`] поступает от визуального редактора и
 ///   приводит к обновлению исходного текста.
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct SyncEngine {
     state: SyncState,
+    parser: ASTParser,
     /// Последние обработанные идентификаторы метаданных из текстового редактора.
     last_text_ids: Vec<String>,
     /// Последние обработанные идентификаторы метаданных из визуального редактора.
@@ -53,7 +58,12 @@ pub struct SyncEngine {
 impl SyncEngine {
     /// Создаёт новый движок синхронизации.
     pub fn new() -> Self {
-        Self::default()
+        Self {
+            state: SyncState::default(),
+            parser: ASTParser::new(parser::Lang::Rust),
+            last_text_ids: Vec::new(),
+            last_visual_ids: Vec::new(),
+        }
     }
 
     /// Обрабатывает входящее сообщение синхронизации.
@@ -63,6 +73,7 @@ impl SyncEngine {
             SyncMessage::TextChanged(code) => {
                 self.state.metas = meta::read_all(&code);
                 self.state.code = code;
+                self.state.syntax = self.parser.parse(&self.state.code, &self.state.metas);
                 Some((self.state.code.clone(), self.state.metas.clone()))
             }
             SyncMessage::VisualChanged(mut meta) => {
@@ -71,10 +82,11 @@ impl SyncEngine {
                 }
                 self.state.code = meta::upsert(&self.state.code, &meta);
                 if let Some(existing) = self.state.metas.iter_mut().find(|m| m.id == meta.id) {
-                    *existing = meta;
+                    *existing = meta.clone();
                 } else {
-                    self.state.metas.push(meta);
+                    self.state.metas.push(meta.clone());
                 }
+                self.state.syntax = self.parser.parse(&self.state.code, &self.state.metas);
                 Some((self.state.code.clone(), self.state.metas.clone()))
             }
         }
