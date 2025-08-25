@@ -34,6 +34,23 @@ pub struct CodeGenerator {
     lang: Lang,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CodeGenError {
+    MissingBlocks(Vec<String>),
+}
+
+impl fmt::Display for CodeGenError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            CodeGenError::MissingBlocks(ids) => {
+                write!(f, "missing blocks for visual ids: {:?}", ids)
+            }
+        }
+    }
+}
+
+impl std::error::Error for CodeGenError {}
+
 impl CodeGenerator {
     /// Create a new generator for `lang`.
     pub fn new(lang: Lang) -> Self {
@@ -45,7 +62,7 @@ impl CodeGenerator {
     /// The resulting code is ordered by the `y` and `x` coordinates of
     /// [`VisualMeta`]. Only entries that have a corresponding block are
     /// included.
-    pub fn generate(&self, metas: &[VisualMeta], blocks: &[Block]) -> String {
+    pub fn generate(&self, metas: &[VisualMeta], blocks: &[Block]) -> Result<String, CodeGenError> {
         let mut metas: Vec<VisualMeta> = metas.to_vec();
         metas.sort_by(|a, b| {
             a.y.partial_cmp(&b.y)
@@ -53,14 +70,15 @@ impl CodeGenerator {
                 .then_with(|| a.x.partial_cmp(&b.x).unwrap_or(std::cmp::Ordering::Equal))
         });
 
-        let block_map: HashMap<_, _> =
-            blocks.iter().map(|b| (b.visual_id.clone(), b)).collect();
+        let block_map: HashMap<_, _> = blocks.iter().map(|b| (b.visual_id.clone(), b)).collect();
 
         let mut output = String::new();
         let lang_key = self.lang.to_string();
+        let mut missing: Vec<String> = Vec::new();
 
         for meta in metas {
             if block_map.get(&meta.id).is_none() {
+                missing.push(meta.id.clone());
                 continue;
             }
             let snippet = meta
@@ -77,7 +95,13 @@ impl CodeGenerator {
                 output.push('\n');
             }
         }
-        output
+
+        if !missing.is_empty() {
+            tracing::warn!("Missing blocks for visual ids: {:?}", missing);
+            return Err(CodeGenError::MissingBlocks(missing));
+        }
+
+        Ok(output)
     }
 }
 
@@ -152,9 +176,18 @@ mod tests {
         let meta = make_meta("1", "fn main() {}", lang);
         let block = dummy_block("1");
         let gen = CodeGenerator::new(lang);
-        let out = gen.generate(&[meta.clone()], &[block]);
+        let out = gen.generate(&[meta.clone()], &[block]).unwrap();
         assert!(out.contains("@VISUAL_META"));
         assert!(out.contains("fn main()"));
+    }
+
+    #[test]
+    fn errors_on_missing_blocks() {
+        let lang = Lang::Rust;
+        let meta = make_meta("1", "fn main() {}", lang);
+        let gen = CodeGenerator::new(lang);
+        let err = gen.generate(&[meta], &[]).unwrap_err();
+        assert_eq!(err, CodeGenError::MissingBlocks(vec!["1".into()]));
     }
 
     #[test]
@@ -178,4 +211,3 @@ mod tests {
         assert_eq!(formatted, "        line1\n        line2");
     }
 }
-
