@@ -1,7 +1,7 @@
 use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
-use multicode_core::meta;
+use multicode_core::meta::VisualMeta;
 
 use super::SyntaxTree;
 
@@ -18,9 +18,8 @@ pub struct ElementMapper {
 
 impl ElementMapper {
     /// Builds mappings between text ranges and metadata identifiers.
-    pub fn new(code: &str, syntax: &SyntaxTree) -> Self {
-        let metas = meta::read_all(code);
-        let mut meta_ids: HashSet<String> = metas.into_iter().map(|m| m.id).collect();
+    pub fn new(_code: &str, syntax: &SyntaxTree, metas: &[VisualMeta]) -> Self {
+        let mut meta_ids: HashSet<String> = metas.iter().map(|m| m.id.clone()).collect();
         let mut id_to_range = HashMap::new();
         let mut ranges = Vec::new();
         let mut unmapped_code = Vec::new();
@@ -149,7 +148,8 @@ mod tests {
         let syntax = SyntaxTree {
             nodes: vec![node(0..5, "a", 0), node(10..20, "b", 1)],
         };
-        let mapper = ElementMapper::new("", &syntax);
+        let metas = vec![meta("a"), meta("b")];
+        let mapper = ElementMapper::new("", &syntax, &metas);
         assert_eq!(mapper.id_at(3), Some("a"));
         assert_eq!(mapper.id_at(15), Some("b"));
         assert_eq!(mapper.id_at(5), None);
@@ -166,7 +166,8 @@ mod tests {
                 unmapped(18..25, 3),
             ],
         };
-        let mapper = ElementMapper::new("", &syntax);
+        let metas: Vec<VisualMeta> = Vec::new();
+        let mapper = ElementMapper::new("", &syntax, &metas);
         assert_eq!(mapper.unmapped_code, vec![0..10, 15..25]);
     }
 }
