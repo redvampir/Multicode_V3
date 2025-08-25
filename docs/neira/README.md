@@ -82,6 +82,50 @@ GPU необязательна; для обучения и больших мод
 - **CPU**: планировщик, InteractionHub, обработка памяти.
 - **GPU**: обучение, тяжёлые матричные операции.
 
+### Доступ к аппаратным ускорителям
+
+Neira может использовать дополнительные ускорители (GPU, TPU, FPGA) для выполнения ресурсоёмких задач. Общая схема подключения:
+
+1. Узел указывает требуемый тип ускорителя в поле `required_accelerator` метаданных.
+2. `TaskScheduler` распределяет задачи по доступным устройствам, учитывая это поле.
+3. При запуске узел проверяет наличие нужного ускорителя и завершает работу с ошибкой, если устройство недоступно.
+
+Для взаимодействия с различными устройствами применяются специализированные crates:
+
+- [`wgpu`](https://crates.io/crates/wgpu) — универсальный доступ к GPU на разных платформах;
+- [`cuda`](https://crates.io/crates/cuda) — API для NVIDIA GPU;
+- [`opencl`](https://crates.io/crates/opencl3) — интерфейс для OpenCL‑совместимых GPU/FPGA.
+
+Пример узла, который требует GPU и проверяет его наличие:
+
+```rust
+use anyhow::{Result, bail};
+use wgpu::Instance;
+
+enum Accelerator {
+    Gpu,
+    // другие варианты: Tpu, Fpga
+}
+
+struct Node {
+    required_accelerator: Accelerator,
+}
+
+impl Node {
+    fn start(&self) -> Result<()> {
+        match self.required_accelerator {
+            Accelerator::Gpu => {
+                let instance = Instance::default();
+                if instance.enumerate_adapters(wgpu::Backends::all()).next().is_none() {
+                    bail!("GPU accelerator not available");
+                }
+            }
+        }
+        Ok(())
+    }
+}
+```
+
 ## Личность Нейры
 
 Стартовый образ и правила развития описаны в [отдельном документе](personality.md).
