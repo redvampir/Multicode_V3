@@ -1,6 +1,6 @@
 use once_cell::sync::Lazy;
 use regex::Regex;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 use std::ops::Range;
 
 use multicode_core::meta::{self, VisualMeta};
@@ -38,13 +38,17 @@ pub fn changed_meta_ids(old: &str, new: &str) -> Vec<String> {
             new_map.insert(meta.id, json);
         }
     }
-    let mut changed = Vec::new();
-    for id in old_map.keys().chain(new_map.keys()) {
+    let mut ids: HashSet<&String> = HashSet::new();
+    ids.extend(old_map.keys());
+    ids.extend(new_map.keys());
+
+    let mut changed: HashSet<String> = HashSet::new();
+    for id in ids {
         if old_map.get(id) != new_map.get(id) {
-            changed.push(id.clone());
+            changed.insert(id.clone());
         }
     }
-    changed
+    changed.into_iter().collect()
 }
 
 /// Insert a new visual meta comment into `content`.
