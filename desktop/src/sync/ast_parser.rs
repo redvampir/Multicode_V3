@@ -1,6 +1,6 @@
-use std::collections::HashMap;
-use multicode_core::parser::{self, Block, Lang};
 use multicode_core::meta::VisualMeta;
+use multicode_core::parser::{self, Block, Lang};
+use std::collections::HashMap;
 use tree_sitter::Tree;
 
 #[derive(Debug, Clone)]
@@ -84,10 +84,9 @@ mod tests {
         let m = meta("0");
         let code = multicode_core::meta::upsert("fn main() {}", &m);
         let tree = parser.parse(&code, &[m]);
-        assert!(tree
-            .nodes
-            .iter()
-            .any(|n| n.block.visual_id == "0" && n.meta.as_ref().map(|m| m.id.as_str()) == Some("0")));
+        assert!(tree.nodes.iter().any(
+            |n| n.block.visual_id == "0" && n.meta.as_ref().map(|m| m.id.as_str()) == Some("0")
+        ));
     }
 
     #[test]
@@ -111,5 +110,38 @@ mod tests {
             }
         }
         assert!(count > 0);
+    }
+
+    fn assert_tree_has_visual_ids(lang: Lang, code: &str) {
+        let mut parser = ASTParser::new(lang);
+        let tree = parser.parse(code, &[]);
+        assert!(!tree.nodes.is_empty());
+        assert!(tree.nodes.iter().all(|n| !n.block.visual_id.is_empty()));
+    }
+
+    #[test]
+    fn parses_c_code_with_visual_ids() {
+        assert_tree_has_visual_ids(Lang::C, "int main() { return 0; }");
+    }
+
+    #[test]
+    fn parses_cpp_code_with_visual_ids() {
+        assert_tree_has_visual_ids(Lang::Cpp, "int main() { return 0; }");
+    }
+
+    #[test]
+    fn parses_java_code_with_visual_ids() {
+        assert_tree_has_visual_ids(
+            Lang::Java,
+            "class Main { public static void main(String[] args) {} }",
+        );
+    }
+
+    #[test]
+    fn parses_csharp_code_with_visual_ids() {
+        assert_tree_has_visual_ids(
+            Lang::CSharp,
+            "class Program { static void Main(string[] args) { } }",
+        );
     }
 }
