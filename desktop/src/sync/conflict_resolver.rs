@@ -1,7 +1,8 @@
 use multicode_core::meta::{AiNote, VisualMeta};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashSet;
+use indexmap::IndexSet;
+use std::hash::Hash;
 
 /// Type of conflict detected between text and visual representations.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
@@ -97,14 +98,15 @@ impl ConflictResolver {
     }
 }
 
+fn merge_vec<T: Eq + Hash + Clone>(a: &[T], b: &[T]) -> Vec<T> {
+    let mut set: IndexSet<T> = IndexSet::new();
+    set.extend(a.iter().cloned());
+    set.extend(b.iter().cloned());
+    set.into_iter().collect()
+}
+
 fn merge_strings(a: &[String], b: &[String]) -> Vec<String> {
-    let mut set: HashSet<String> = a.iter().cloned().collect();
-    for item in b {
-        set.insert(item.clone());
-    }
-    let mut vec: Vec<String> = set.into_iter().collect();
-    vec.sort();
-    vec
+    merge_vec(a, b)
 }
 
 fn merge_json(a: &Option<Value>, b: &Option<Value>) -> Option<Value> {
@@ -190,10 +192,17 @@ mod tests {
         visual.version = 2;
         visual.tags = vec!["b".into()];
         let (resolved, conflict) = ConflictResolver::default().resolve(&text, &visual);
-        assert!(resolved.tags.contains(&"a".to_string()));
-        assert!(resolved.tags.contains(&"b".to_string()));
+        assert_eq!(resolved.tags, vec!["a".to_string(), "b".to_string()]);
         assert_eq!(conflict.conflict_type, ConflictType::MetaComment);
         assert_eq!(conflict.resolution, ResolutionOption::Merge);
+    }
+
+    #[test]
+    fn merge_strings_preserves_order() {
+        let text = vec!["a".to_string(), "c".to_string()];
+        let visual = vec!["c".to_string(), "b".to_string()];
+        let merged = super::merge_strings(&text, &visual);
+        assert_eq!(merged, vec!["a".to_string(), "c".to_string(), "b".to_string()]);
     }
 
     #[test]

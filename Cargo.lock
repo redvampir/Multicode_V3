@@ -1666,6 +1666,7 @@ dependencies = [
  "criterion",
  "directories",
  "iced",
+ "indexmap 2.10.0",
  "lru",
  "once_cell",
  "pulldown-cmark",
