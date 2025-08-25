@@ -1,0 +1,9 @@
+# package-isolated.manifest
+[runtime]
+isolated = true
+
+[permissions]
+fs = ["read:/data", "write:/tmp"]
+net = ["https://api.example.com"]
+cpu = 0.5
+mem = "128MB"
