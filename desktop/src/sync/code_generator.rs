@@ -238,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn formats_code_with_spaces() {
+    fn formats_code_with_indent_width_one() {
         let code = "line1\nline2";
         let formatted = format_generated_code(code, 2, FormattingStyle::Spaces, 1);
         assert_eq!(formatted, "  line1\n  line2");
@@ -252,9 +252,23 @@ mod tests {
     }
 
     #[test]
+    fn formats_code_with_indent_width_three() {
+        let code = "line1\nline2";
+        let formatted = format_generated_code(code, 2, FormattingStyle::Spaces, 3);
+        assert_eq!(formatted, "      line1\n      line2");
+    }
+
+    #[test]
     fn formats_code_with_indent_width_four() {
         let code = "line1\nline2";
         let formatted = format_generated_code(code, 2, FormattingStyle::Spaces, 4);
         assert_eq!(formatted, "        line1\n        line2");
+    }
+
+    #[test]
+    fn formats_code_with_tabs_ignores_indent_width() {
+        let code = "line1\nline2";
+        let formatted = format_generated_code(code, 2, FormattingStyle::Tabs, 4);
+        assert_eq!(formatted, "\t\tline1\n\t\tline2");
     }
 }
