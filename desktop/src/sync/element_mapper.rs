@@ -5,14 +5,25 @@ use multicode_core::meta::VisualMeta;
 
 use super::SyntaxTree;
 
-/// Maps code positions to visual metadata identifiers and vice versa.
+/// Maps byte ranges in the source code to visual metadata identifiers and
+/// vice versa.
+///
+/// Besides the direct mapping, the mapper also records any inconsistencies
+/// between the parsed syntax tree and the provided metadata. These diagnostics
+/// are exposed through `SyncEngine` and can be used by the UI to highlight
+/// potential problems.
 #[derive(Debug, Default)]
 pub struct ElementMapper {
     id_to_range: HashMap<String, Range<usize>>,
     ranges: Vec<(Range<usize>, String)>, // sorted by `Range::start`
-    /// Metadata entries that couldn't be matched with any AST block.
+    /// Metadata entries that couldn't be matched with any AST block. These
+    /// identifiers exist in the [`VisualMeta`] list but are missing from the
+    /// parsed syntax tree, which usually indicates outdated or incorrect
+    /// metadata in the source code.
     pub orphaned_blocks: Vec<String>,
-    /// Code ranges that have no corresponding metadata.
+    /// Code ranges that have no corresponding metadata. Such regions can be
+    /// highlighted in the editor to show code that lacks a visual
+    /// representation.
     pub unmapped_code: Vec<Range<usize>>,
     /// Pairs of metadata identifiers whose ranges overlap.
     pub overlapping_blocks: Vec<(String, String)>,

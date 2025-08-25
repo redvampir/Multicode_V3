@@ -4,6 +4,13 @@
 //! возвращает обновлённое состояние. Это позволяет поддерживать оба
 //! представления в актуальном виде.
 //!
+//! Помимо обмена данными, движок предоставляет API для сопоставления позиций
+//! в исходном тексте с идентификаторами визуальных блоков. Методы
+//! [`id_at`], [`id_at_position`] и [`range_of`] позволяют находить метаданные по
+//! смещению или координатам и наоборот. Также доступны методы
+//! [`orphaned_blocks`] и [`unmapped_code`], помогающие выявлять расхождения между
+//! кодом и метаданными.
+//!
 //! # Пример использования
 //! ```rust
 //! use desktop::sync::{ResolutionPolicy, SyncEngine, SyncMessage};
@@ -192,27 +199,33 @@ impl SyncEngine {
         &self.last_visual_ids
     }
 
-    /// Returns the metadata identifier associated with a byte offset.
+    /// Returns the metadata identifier associated with a byte offset in the
+    /// current source code. This is useful for mapping a cursor position from
+    /// the text editor to a visual block.
     pub fn id_at(&self, offset: usize) -> Option<&str> {
         self.mapper.id_at(offset)
     }
 
-    /// Returns the metadata identifier at the given `(line, column)` position.
+    /// Returns the metadata identifier at the given `(line, column)` position
+    /// in the source code.
     pub fn id_at_position(&self, line: usize, column: usize) -> Option<&str> {
         self.mapper.id_at_position(&self.state.code, line, column)
     }
 
-    /// Returns the byte range corresponding to the given metadata identifier.
+    /// Returns the byte range corresponding to the given metadata identifier,
+    /// allowing the UI to highlight the code associated with a visual block.
     pub fn range_of(&self, id: &str) -> Option<std::ops::Range<usize>> {
         self.mapper.range_of(id)
     }
 
-    /// Metadata identifiers that don't map to any code block.
+    /// Metadata identifiers that don't map to any code block. These indicate
+    /// metadata present in the file but missing in the parsed syntax tree.
     pub fn orphaned_blocks(&self) -> &[String] {
         &self.mapper.orphaned_blocks
     }
 
-    /// Code ranges that don't have associated metadata.
+    /// Code ranges that don't have associated metadata and therefore lack a
+    /// corresponding visual block.
     pub fn unmapped_code(&self) -> &[std::ops::Range<usize>] {
         &self.mapper.unmapped_code
     }
