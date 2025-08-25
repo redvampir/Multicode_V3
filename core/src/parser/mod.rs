@@ -3,6 +3,23 @@ use std::fmt::{self, Display};
 use std::ops::Range;
 use tree_sitter::{Language, Node, Parser, Tree};
 
+#[macro_export]
+macro_rules! define_lang_parser {
+    ($lang:expr) => {
+        use tree_sitter::{Language, Parser, Tree};
+
+        pub fn language() -> Language {
+            $lang.into()
+        }
+
+        pub fn parse(source: &str, old_tree: Option<&Tree>) -> Option<Tree> {
+            let mut parser = Parser::new();
+            parser.set_language(&language()).ok()?;
+            parser.parse(source, old_tree)
+        }
+    };
+}
+
 pub mod css;
 pub mod go;
 pub mod html;
