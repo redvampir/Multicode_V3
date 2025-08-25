@@ -37,10 +37,50 @@ for node in tree.nodes {
    `SyncEngine` извлекает метаданные и возвращает их вместе с обновлённым кодом.
    Визуальный редактор использует метаданные для обновления схемы.
 
-2. **Изменение блок-схемы**  
-   Визуальный редактор отправляет `SyncMessage::VisualChanged` с обновлёнными метаданными.  
-   `SyncEngine` встраивает метаданные в текст и возвращает новое содержимое.  
+2. **Изменение блок-схемы**
+   Визуальный редактор отправляет `SyncMessage::VisualChanged` с обновлёнными метаданными.
+   `SyncEngine` встраивает метаданные в текст и возвращает новое содержимое.
    Текстовый редактор обновляет текст.
+
+## Разрешение конфликтов
+
+При одновременном редактировании текста и блок-схемы версии `VisualMeta` могут
+расходиться. `ConflictResolver` сравнивает две версии и определяет тип
+конфликта:
+
+- `Structural` — различия в переводах, `extends` или `origin`.
+- `Movement` — изменение координат блока на холсте (`x`, `y`).
+- `MetaComment` — теги, ссылки, якоря, тесты, заметки ИИ или дополнительные
+  поля (`extras`).
+
+Для каждого конфликта выбирается стратегия `ResolutionOption`:
+
+- `Text` — принять текстовое представление.
+- `Visual` — принять визуальную версию.
+- `Merge` — объединить данные (используется, например, для тегов).
+
+Глобальная политика `ResolutionPolicy` (`PreferText` или `PreferVisual`)
+определяет приоритет в случае структурных расхождений.
+
+### Пример: расхождение версий
+
+```rust
+use desktop::sync::{ResolutionPolicy, SyncEngine, SyncMessage};
+use multicode_core::parser::Lang;
+
+let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+let code = r#"// @VISUAL_META {\"id\":\"1\",\"x\":0.0,\"y\":0.0}\nfn main() {}"#;
+let (_code, mut metas) =
+    engine.handle(SyncMessage::TextChanged(code.into(), Lang::Rust)).unwrap();
+
+// визуальный редактор переместил блок и увеличил версию
+let mut meta = metas.pop().unwrap();
+meta.version += 1;
+meta.x = 10.0;
+
+let (_code, _metas) = engine.handle(SyncMessage::VisualChanged(meta)).unwrap();
+// координаты будут взяты из визуального представления
+```
 
 ## Пример
 
