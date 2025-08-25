@@ -8,16 +8,18 @@
 //! ```rust
 //! use desktop::sync::{SyncEngine, SyncMessage};
 //!
-//! let mut engine = SyncEngine::new();
-//! engine.handle(SyncMessage::TextChanged("fn main() {}".into()));
+//! use multicode_core::parser::Lang;
+//!
+//! let mut engine = SyncEngine::new(Lang::Rust);
+//! engine.handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust));
 //! // далее полученные данные могут быть переданы визуальному редактору
 //! ```
 //!
 //! Дополнительные детали описаны в `docs/sync.md`.
 
-use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
-use multicode_core::parser;
 use super::ast_parser::{ASTParser, SyntaxTree};
+use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
+use multicode_core::parser::Lang;
 
 /// Состояние синхронизации между текстовым и визуальным представлениями.
 #[derive(Debug, Clone, Default)]
@@ -33,8 +35,8 @@ pub struct SyncState {
 /// Сообщения для движка синхронизации.
 #[derive(Debug, Clone)]
 pub enum SyncMessage {
-    /// Текст был изменён, необходимо перечитать метаданные.
-    TextChanged(String),
+    /// Текст был изменён, необходимо перечитать метаданные. Принимает язык исходного кода.
+    TextChanged(String, Lang),
     /// Визуальные метаданные были изменены, нужно обновить текст.
     VisualChanged(VisualMeta),
 }
@@ -49,6 +51,7 @@ pub enum SyncMessage {
 pub struct SyncEngine {
     state: SyncState,
     parser: ASTParser,
+    lang: Lang,
     /// Последние обработанные идентификаторы метаданных из текстового редактора.
     last_text_ids: Vec<String>,
     /// Последние обработанные идентификаторы метаданных из визуального редактора.
@@ -57,10 +60,11 @@ pub struct SyncEngine {
 
 impl SyncEngine {
     /// Создаёт новый движок синхронизации.
-    pub fn new() -> Self {
+    pub fn new(lang: Lang) -> Self {
         Self {
             state: SyncState::default(),
-            parser: ASTParser::new(parser::Lang::Rust),
+            parser: ASTParser::new(lang),
+            lang,
             last_text_ids: Vec::new(),
             last_visual_ids: Vec::new(),
         }
@@ -70,7 +74,11 @@ impl SyncEngine {
     /// Возвращает обновлённый текст и список метаданных.
     pub fn handle(&mut self, msg: SyncMessage) -> Option<(String, Vec<VisualMeta>)> {
         match msg {
-            SyncMessage::TextChanged(code) => {
+            SyncMessage::TextChanged(code, lang) => {
+                if self.lang != lang {
+                    self.lang = lang;
+                    self.parser = ASTParser::new(lang);
+                }
                 self.state.metas = meta::read_all(&code);
                 self.state.code = code;
                 self.state.syntax = self.parser.parse(&self.state.code, &self.state.metas);

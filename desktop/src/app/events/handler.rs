@@ -890,10 +890,10 @@ impl MulticodeApp {
                                 meta_ids: changed_ids,
                             });
                         }
-                        if let Some((_, metas)) = self
-                            .sync_engine
-                            .handle(SyncMessage::TextChanged(f.content.clone()))
-                        {
+                        if let Some((_, metas)) = self.sync_engine.handle(SyncMessage::TextChanged(
+                            f.content.clone(),
+                            detect_lang(&f.path).unwrap_or(Lang::Rust),
+                        )) {
                             for block in &mut f.blocks {
                                 if let Some(meta) = metas.iter().find(|m| m.id == block.visual_id) {
                                     block.x = meta.x;

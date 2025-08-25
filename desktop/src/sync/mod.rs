@@ -9,23 +9,24 @@
 //! # Пример
 //! ```rust
 //! use desktop::sync::{SyncEngine, SyncMessage};
+//! use multicode_core::parser::Lang;
 //!
-//! let mut engine = SyncEngine::new();
+//! let mut engine = SyncEngine::new(Lang::Rust);
 //! // текстовый редактор сообщает об изменении
 //! let (_code, _metas) = engine
-//!     .handle(SyncMessage::TextChanged("fn main() {}".into()))
+//!     .handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust))
 //!     .unwrap();
 //! ```
 //!
 //! Более подробное описание потоков данных приведено в `docs/sync.md`.
 
+pub mod ast_parser;
 pub mod change_tracker;
 pub mod engine;
-pub mod ast_parser;
 
+pub use ast_parser::{ASTParser, SyntaxNode, SyntaxTree};
 pub use change_tracker::{ChangeTracker, TextDelta, VisualDelta};
 pub use engine::{SyncEngine, SyncMessage, SyncState};
-pub use ast_parser::{ASTParser, SyntaxTree, SyntaxNode};
 
 #[cfg(test)]
 mod engine_tests;
