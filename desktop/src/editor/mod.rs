@@ -11,3 +11,5 @@ pub use settings::{EditorSettings, EditorTheme, CustomTheme};
 
 #[cfg(test)]
 mod code_editor_tests;
+#[cfg(test)]
+mod meta_integration_tests;
