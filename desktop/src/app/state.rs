@@ -624,6 +624,7 @@ mod tests {
     use crate::app::events::Message;
     use crate::search::hotkeys::KeyCombination;
     use lru::LruCache;
+    use multicode_core::parser::Lang;
     use std::cell::RefCell;
     use std::collections::{HashMap, HashSet, VecDeque};
     use std::num::NonZeroUsize;
@@ -685,7 +686,7 @@ mod tests {
             palette_query: String::new(),
             palette_drag: None,
             change_tracker: ChangeTracker::default(),
-            sync_engine: SyncEngine::new(),
+            sync_engine: SyncEngine::new(Lang::Rust),
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),
             command_trigrams: HashMap::new(),

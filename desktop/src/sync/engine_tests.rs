@@ -1,6 +1,7 @@
 use super::{SyncEngine, SyncMessage};
 use chrono::Utc;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
+use multicode_core::parser::Lang;
 use std::collections::HashMap;
 
 fn make_meta(id: &str, version: u32) -> VisualMeta {
@@ -24,11 +25,11 @@ fn make_meta(id: &str, version: u32) -> VisualMeta {
 
 #[test]
 fn text_changed_returns_metas() {
-    let mut engine = SyncEngine::new();
+    let mut engine = SyncEngine::new(Lang::Rust);
     let meta = make_meta("test", DEFAULT_VERSION);
     let code = meta::upsert("", &meta);
     let (ret_code, metas) = engine
-        .handle(SyncMessage::TextChanged(code.clone()))
+        .handle(SyncMessage::TextChanged(code.clone(), Lang::Rust))
         .unwrap();
     assert_eq!(ret_code, code);
     assert_eq!(metas.len(), 1);
@@ -38,8 +39,8 @@ fn text_changed_returns_metas() {
 
 #[test]
 fn visual_changed_updates_state_code() {
-    let mut engine = SyncEngine::new();
-    let _ = engine.handle(SyncMessage::TextChanged(String::new()));
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let _ = engine.handle(SyncMessage::TextChanged(String::new(), Lang::Rust));
     let meta = make_meta("block", DEFAULT_VERSION);
     let (result, metas) = engine
         .handle(SyncMessage::VisualChanged(meta.clone()))
@@ -55,10 +56,10 @@ fn visual_changed_updates_state_code() {
 
 #[test]
 fn visual_changed_does_not_duplicate_meta() {
-    let mut engine = SyncEngine::new();
+    let mut engine = SyncEngine::new(Lang::Rust);
     let meta = make_meta("block", DEFAULT_VERSION);
     let code = meta::upsert("", &meta);
-    let _ = engine.handle(SyncMessage::TextChanged(code));
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
 
     let updated = make_meta("block", DEFAULT_VERSION + 1);
     let _ = engine.handle(SyncMessage::VisualChanged(updated));
@@ -69,8 +70,8 @@ fn visual_changed_does_not_duplicate_meta() {
 
 #[test]
 fn visual_changed_zeros_version_defaults_to_constant() {
-    let mut engine = SyncEngine::new();
-    let _ = engine.handle(SyncMessage::TextChanged(String::new()));
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let _ = engine.handle(SyncMessage::TextChanged(String::new(), Lang::Rust));
     let meta = make_meta("zero", 0);
     let _ = engine.handle(SyncMessage::VisualChanged(meta));
     assert_eq!(engine.state().metas[0].version, DEFAULT_VERSION);
@@ -82,7 +83,7 @@ fn visual_changed_zeros_version_defaults_to_constant() {
 
 #[test]
 fn process_changes_stores_ids() {
-    let mut engine = SyncEngine::new();
+    let mut engine = SyncEngine::new(Lang::Rust);
     engine.process_changes(vec!["t1".into()], vec!["v1".into(), "v2".into()]);
     assert_eq!(engine.last_text_changes(), &["t1".to_string()]);
     assert_eq!(
@@ -93,7 +94,7 @@ fn process_changes_stores_ids() {
 
 #[test]
 fn text_changed_updates_syntax_tree() {
-    let mut engine = SyncEngine::new();
-    let _ = engine.handle(SyncMessage::TextChanged("fn main() {}".into()));
+    let mut engine = SyncEngine::new(Lang::Rust);
+    let _ = engine.handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust));
     assert!(!engine.state().syntax.nodes.is_empty());
 }
