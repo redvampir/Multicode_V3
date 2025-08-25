@@ -1,9 +1,10 @@
 use std::collections::HashSet;
+use serde::{Deserialize, Serialize};
 
 /// Delta produced by the text editor.
 ///
 /// Contains identifiers of `@VISUAL_META` comments affected by an edit.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TextDelta {
     /// IDs of metadata entries touched by the text change.
     pub meta_ids: Vec<String>,
@@ -13,7 +14,7 @@ pub struct TextDelta {
 ///
 /// Each delta is associated with identifiers of blocks described by
 /// `VisualMeta` records.
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct VisualDelta {
     /// IDs of blocks that were changed in the visual editor.
     pub meta_ids: Vec<String>,
@@ -62,5 +63,31 @@ impl ChangeTracker {
         let mut changes: Vec<_> = self.visual_changes.drain().collect();
         changes.sort();
         changes
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{TextDelta, VisualDelta};
+    use serde_json;
+
+    #[test]
+    fn text_delta_roundtrip() {
+        let delta = TextDelta {
+            meta_ids: vec!["a".to_string(), "b".to_string()],
+        };
+        let json = serde_json::to_string(&delta).unwrap();
+        let deserialized: TextDelta = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.meta_ids, vec!["a", "b"]);
+    }
+
+    #[test]
+    fn visual_delta_roundtrip() {
+        let delta = VisualDelta {
+            meta_ids: vec!["x".to_string()],
+        };
+        let json = serde_json::to_string(&delta).unwrap();
+        let deserialized: VisualDelta = serde_json::from_str(&json).unwrap();
+        assert_eq!(deserialized.meta_ids, vec!["x"]);
     }
 }
