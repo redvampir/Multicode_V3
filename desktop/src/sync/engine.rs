@@ -18,7 +18,7 @@
 //! Дополнительные детали описаны в `docs/sync.md`.
 
 use super::ast_parser::{ASTParser, SyntaxTree};
-use super::conflict_resolver::ConflictResolver;
+use super::conflict_resolver::{ConflictResolver, ConflictType};
 use super::element_mapper::ElementMapper;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
@@ -90,7 +90,20 @@ impl SyncEngine {
                 for mut m in meta::read_all(&code) {
                     if let Some(old) = previous.get(&m.id) {
                         if old.version != m.version {
-                            m = resolver.resolve(&m, old).0;
+                            let (resolved, conflict) = resolver.resolve(&m, old);
+                            match conflict.conflict_type {
+                                ConflictType::Structural => tracing::warn!(
+                                    id = %conflict.id,
+                                    conflict_type = ?conflict.conflict_type,
+                                    "Conflict resolved"
+                                ),
+                                _ => tracing::debug!(
+                                    id = %conflict.id,
+                                    conflict_type = ?conflict.conflict_type,
+                                    "Conflict resolved"
+                                ),
+                            }
+                            m = resolved;
                         }
                     }
                     map.insert(m.id.clone(), m);
@@ -108,7 +121,21 @@ impl SyncEngine {
                 }
                 if let Some(existing) = self.state.metas.get(&meta.id).cloned() {
                     if existing.version != meta.version {
-                        meta = ConflictResolver::default().resolve(&existing, &meta).0;
+                        let (resolved, conflict) =
+                            ConflictResolver::default().resolve(&existing, &meta);
+                        match conflict.conflict_type {
+                            ConflictType::Structural => tracing::warn!(
+                                id = %conflict.id,
+                                conflict_type = ?conflict.conflict_type,
+                                "Conflict resolved"
+                            ),
+                            _ => tracing::debug!(
+                                id = %conflict.id,
+                                conflict_type = ?conflict.conflict_type,
+                                "Conflict resolved"
+                            ),
+                        }
+                        meta = resolved;
                     }
                 }
                 self.state.code = meta::upsert(&self.state.code, &meta);
