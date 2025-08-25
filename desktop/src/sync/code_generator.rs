@@ -249,6 +249,30 @@ mod tests {
     }
 
     #[test]
+    fn generates_ordered_code_from_shuffled_metas() {
+        let lang = Lang::Rust;
+        let mut meta1 = make_meta("1", "alpha", lang);
+        meta1.x = 2.0;
+        meta1.y = 2.0;
+        let mut meta2 = make_meta("2", "beta", lang);
+        meta2.x = 3.0;
+        meta2.y = 1.0;
+        let mut meta3 = make_meta("3", "gamma", lang);
+        meta3.x = 1.0;
+        meta3.y = 1.0;
+
+        // Explicitly shuffle the metas so that they are out of order.
+        let metas = vec![meta2, meta1, meta3];
+        let blocks = vec![dummy_block("1"), dummy_block("2"), dummy_block("3")];
+
+        let gen = CodeGenerator::new(lang, false);
+        let out = gen.generate(&metas, &blocks).unwrap();
+
+        let fragments: Vec<_> = out.lines().filter(|l| !l.is_empty()).collect();
+        assert_eq!(fragments, vec!["gamma", "beta", "alpha"]);
+    }
+
+    #[test]
     fn formats_code_with_indent_width_one() {
         let code = "line1\nline2";
         let formatted = format_generated_code(code, 2, FormattingStyle::Spaces, 1);
