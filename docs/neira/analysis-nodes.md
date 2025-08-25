@@ -83,6 +83,44 @@ struct QualityMetrics {
 `QualityMetrics` и `uncertainty_score` в связанный `MemoryNode`, например через метод
 `push_metrics()`.
 
+### Пример HTTP/JSON/TOML вызова
+
+Запрос к API узлов анализа принимает параметры задачи и возвращает результат с метриками качества.
+
+```http
+POST /analysis HTTP/1.1
+Host: localhost:4000
+Content-Type: application/json
+
+{
+  "id": "example.analysis",
+  "analysis_type": "summary",
+  "input": "Describe project Neira"
+}
+```
+
+Ответ:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": "example.analysis",
+  "output": "Neira — саморазвивающийся модуль...",
+  "quality_metrics": { "credibility": 0.95, "recency_days": 7, "demand": 42 },
+  "status": "active"
+}
+```
+
+Эквивалент в формате TOML:
+
+```toml
+id = "example.analysis"
+analysis_type = "summary"
+input = "Describe project Neira"
+```
+
 Каждый узел должен проверять `cancel_token` перед длительными вычислениями и
 сохранять промежуточное состояние в чекпоинты, чтобы обеспечивать возобновление
 после остановки.

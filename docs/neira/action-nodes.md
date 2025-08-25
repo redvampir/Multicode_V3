@@ -58,6 +58,43 @@
 
 Дополнительные ActionNodes (работа с файлами, внешние API и т.п.) будут добавлены после MVP.
 
+### Пример HTTP/JSON/TOML вызова
+
+Запрос к API узлов действий передаётся в формате JSON.
+
+```http
+POST /action HTTP/1.1
+Host: localhost:4000
+Content-Type: application/json
+
+{
+  "id": "example.chat",
+  "action_type": "chat",
+  "prompt": "Расскажи о проекте Neira"
+}
+```
+
+Ответ:
+
+```http
+HTTP/1.1 200 OK
+Content-Type: application/json
+
+{
+  "id": "example.chat",
+  "status": "ok",
+  "result": "Neira — саморазвивающийся модуль..."
+}
+```
+
+Эквивалентная конфигурация в формате TOML:
+
+```toml
+id = "example.chat"
+action_type = "chat"
+prompt = "Расскажи о проекте Neira"
+```
+
 ### Реализация на правилах (ранние версии)
 
 Для первичных прототипов каждый ActionNode можно реализовать набором простых правил:
