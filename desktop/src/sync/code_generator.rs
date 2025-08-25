@@ -85,11 +85,17 @@ impl CodeGenerator {
 ///
 /// `indent` specifies how many indentation units should be inserted at the
 /// beginning of each non-empty line. The unit itself is defined by
-/// `style` — either spaces or tabs.
-pub fn format_generated_code(code: &str, indent: usize, style: FormattingStyle) -> String {
+/// `style` — either spaces or tabs. When using spaces, `indent_width`
+/// determines how many spaces make up a single unit.
+pub fn format_generated_code(
+    code: &str,
+    indent: usize,
+    style: FormattingStyle,
+    indent_width: usize,
+) -> String {
     let unit = match style {
-        FormattingStyle::Spaces => " ",
-        FormattingStyle::Tabs => "\t",
+        FormattingStyle::Spaces => " ".repeat(indent_width),
+        FormattingStyle::Tabs => "\t".to_string(),
     };
     let prefix = unit.repeat(indent);
     let mut lines: Vec<String> = Vec::new();
@@ -154,8 +160,22 @@ mod tests {
     #[test]
     fn formats_code_with_spaces() {
         let code = "line1\nline2";
-        let formatted = format_generated_code(code, 2, FormattingStyle::Spaces);
+        let formatted = format_generated_code(code, 2, FormattingStyle::Spaces, 1);
         assert_eq!(formatted, "  line1\n  line2");
+    }
+
+    #[test]
+    fn formats_code_with_indent_width_two() {
+        let code = "line1\nline2";
+        let formatted = format_generated_code(code, 2, FormattingStyle::Spaces, 2);
+        assert_eq!(formatted, "    line1\n    line2");
+    }
+
+    #[test]
+    fn formats_code_with_indent_width_four() {
+        let code = "line1\nline2";
+        let formatted = format_generated_code(code, 2, FormattingStyle::Spaces, 4);
+        assert_eq!(formatted, "        line1\n        line2");
     }
 }
 
