@@ -51,7 +51,7 @@ fn visual_changed_updates_state_code() {
     assert_eq!(metas.len(), 1);
     assert_eq!(metas[0].id, "block");
     assert_eq!(engine.state().metas.len(), 1);
-    assert_eq!(engine.state().metas[0].id, "block");
+    assert!(engine.state().metas.get("block").is_some());
 }
 
 #[test]
@@ -65,7 +65,15 @@ fn visual_changed_does_not_duplicate_meta() {
     let _ = engine.handle(SyncMessage::VisualChanged(updated));
 
     assert_eq!(engine.state().metas.len(), 1);
-    assert_eq!(engine.state().metas[0].version, DEFAULT_VERSION + 1);
+    assert_eq!(
+        engine
+            .state()
+            .metas
+            .get("block")
+            .unwrap()
+            .version,
+        DEFAULT_VERSION + 1
+    );
 }
 
 #[test]
@@ -74,7 +82,15 @@ fn visual_changed_zeros_version_defaults_to_constant() {
     let _ = engine.handle(SyncMessage::TextChanged(String::new(), Lang::Rust));
     let meta = make_meta("zero", 0);
     let _ = engine.handle(SyncMessage::VisualChanged(meta));
-    assert_eq!(engine.state().metas[0].version, DEFAULT_VERSION);
+    assert_eq!(
+        engine
+            .state()
+            .metas
+            .get("zero")
+            .unwrap()
+            .version,
+        DEFAULT_VERSION
+    );
     assert!(engine
         .state()
         .code
