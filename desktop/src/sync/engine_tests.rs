@@ -117,6 +117,32 @@ fn element_mapper_maps_ids_and_ranges() {
 }
 
 #[test]
+fn id_and_range_handle_multiple_blocks() {
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+    let code = "fn a() {}\nfn b() {}\n";
+    let _ = engine.handle(SyncMessage::TextChanged(code.into(), Lang::Rust));
+    let ids: Vec<String> = engine
+        .state()
+        .syntax
+        .nodes
+        .iter()
+        .filter(|n| n.block.kind == "Function/Define")
+        .take(2)
+        .map(|n| n.block.visual_id.clone())
+        .collect();
+    let mut code_with_metas = code.to_string();
+    for id in &ids {
+        code_with_metas = meta::upsert(&code_with_metas, &make_meta(id, DEFAULT_VERSION));
+    }
+    let _ = engine.handle(SyncMessage::TextChanged(code_with_metas, Lang::Rust));
+    for id in ids {
+        let range = engine.range_of(&id).expect("range");
+        assert_eq!(engine.id_at(range.start), Some(id.as_str()));
+        assert_eq!(engine.id_at(range.end.saturating_sub(1)), Some(id.as_str()));
+    }
+}
+
+#[test]
 fn id_at_position_finds_id_by_coordinates() {
     let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let meta = make_meta("0", DEFAULT_VERSION);
