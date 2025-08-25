@@ -112,7 +112,7 @@ impl SyncEngine {
                 self.state.code = code;
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
-                self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax);
+                self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, &metas_vec);
                 Some((self.state.code.clone(), metas_vec))
             }
             SyncMessage::VisualChanged(mut meta) => {
@@ -142,7 +142,7 @@ impl SyncEngine {
                 self.state.metas.insert(meta.id.clone(), meta.clone());
                 let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
                 self.state.syntax = self.parser.parse(&self.state.code, &metas_vec);
-                self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax);
+                self.mapper = ElementMapper::new(&self.state.code, &self.state.syntax, &metas_vec);
                 Some((self.state.code.clone(), metas_vec))
             }
         }
