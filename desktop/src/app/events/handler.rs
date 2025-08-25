@@ -1003,6 +1003,22 @@ impl MulticodeApp {
             Message::FileSaved(Ok(())) => {
                 self.log
                     .push(LogEntry::new(LogMessage::FileSaved, vec![], Utc::now()));
+                // Считываем накопленные изменения и передаём их движку синхронизации
+                // только после успешного сохранения файла.
+                let text_ids = self.change_tracker.take_text_changes();
+                let visual_ids = self.change_tracker.take_visual_changes();
+                if !text_ids.is_empty() || !visual_ids.is_empty() {
+                    self.sync_engine
+                        .process_changes(text_ids.clone(), visual_ids.clone());
+                    self.log.push(LogEntry::new(
+                        LogMessage::Raw,
+                        vec![format!(
+                            "synced meta changes: text={:?}, visual={:?}",
+                            text_ids, visual_ids
+                        )],
+                        Utc::now(),
+                    ));
+                }
                 self.set_dirty(false);
                 Command::none()
             }

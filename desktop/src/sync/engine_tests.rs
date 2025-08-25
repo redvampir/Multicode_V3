@@ -79,3 +79,14 @@ fn visual_changed_zeros_version_defaults_to_constant() {
         .code
         .contains(&format!("\"version\":{}", DEFAULT_VERSION)));
 }
+
+#[test]
+fn process_changes_stores_ids() {
+    let mut engine = SyncEngine::new();
+    engine.process_changes(vec!["t1".into()], vec!["v1".into(), "v2".into()]);
+    assert_eq!(engine.last_text_changes(), &["t1".to_string()]);
+    assert_eq!(
+        engine.last_visual_changes(),
+        &["v1".to_string(), "v2".to_string()]
+    );
+}
