@@ -44,6 +44,10 @@ pub enum SyncMessage {
 #[derive(Debug, Default)]
 pub struct SyncEngine {
     state: SyncState,
+    /// Последние обработанные идентификаторы метаданных из текстового редактора.
+    last_text_ids: Vec<String>,
+    /// Последние обработанные идентификаторы метаданных из визуального редактора.
+    last_visual_ids: Vec<String>,
 }
 
 impl SyncEngine {
@@ -79,5 +83,24 @@ impl SyncEngine {
     /// Возвращает текущее состояние синхронизации.
     pub fn state(&self) -> &SyncState {
         &self.state
+    }
+
+    /// Принимает идентификаторы метаданных, изменения которых необходимо
+    /// синхронизировать. В текущей реализации идентификаторы лишь сохраняются
+    /// во внутреннем состоянии, что позволяет тестам проверять факт передачи
+    /// данных.
+    pub fn process_changes(&mut self, text_ids: Vec<String>, visual_ids: Vec<String>) {
+        self.last_text_ids = text_ids;
+        self.last_visual_ids = visual_ids;
+    }
+
+    /// Возвращает последние обработанные идентификаторы из текстового редактора.
+    pub fn last_text_changes(&self) -> &[String] {
+        &self.last_text_ids
+    }
+
+    /// Возвращает последние обработанные идентификаторы из визуального редактора.
+    pub fn last_visual_changes(&self) -> &[String] {
+        &self.last_visual_ids
     }
 }
