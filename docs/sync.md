@@ -60,6 +60,34 @@ for node in tree.nodes {
 использоваться для диагностики несоответствий между текстом и визуальным
 представлением.
 
+### Диагностика несоответствий
+
+```rust
+use desktop::sync::{ResolutionPolicy, SyncEngine, SyncMessage};
+use multicode_core::parser::Lang;
+
+let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+let code = "// @VISUAL_META {\"id\":\"a\"}\nfn main() {}\n".to_string();
+let (_code, _metas, diag) = engine
+    .handle(SyncMessage::TextChanged(code.clone(), Lang::Rust))
+    .unwrap();
+
+// подсветить участки текста без метаданных
+for range in &diag.unmapped_code {
+    text_editor.highlight(range.start..range.end);
+    // println!("unmapped: {}", &code[range.clone()]);
+}
+
+// отметить блоки, существующие в визуальном представлении, но отсутствующие в коде
+for id in &diag.orphaned_blocks {
+    canvas.mark_orphaned(id);
+}
+```
+
+Диапазоны `unmapped_code` и список `orphaned_blocks` можно получить и напрямую
+через методы [`unmapped_code`](../desktop/src/sync/engine.rs#L258) и
+[`orphaned_blocks`](../desktop/src/sync/engine.rs#L252) структуры `SyncEngine`.
+
 ## Разрешение конфликтов
 
 При одновременном редактировании текста и блок-схемы версии `VisualMeta` могут
