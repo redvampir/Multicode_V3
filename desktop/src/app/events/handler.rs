@@ -86,7 +86,7 @@ impl MulticodeApp {
                                     self.sync_engine.handle(SyncMessage::VisualChanged(meta))
                                 {
                                     if let Some(tab) = self.tabs.get_mut(i) {
-                                        tab.content = code;
+                                        tab.content = code.to_string();
                                         tab.editor = Content::with_text(&tab.content);
                                     }
                                 }
@@ -109,7 +109,7 @@ impl MulticodeApp {
                                     self.sync_engine.handle(SyncMessage::VisualChanged(meta))
                                 {
                                     if let Some(tab) = self.tabs.get_mut(i) {
-                                        tab.content = code;
+                                        tab.content = code.to_string();
                                         tab.editor = Content::with_text(&tab.content);
                                     }
                                 }
@@ -169,12 +169,15 @@ impl MulticodeApp {
                 Command::none()
             }
             Message::Sync(msg) => {
-                if let Some((code, metas, _)) = self.sync_engine.handle(msg) {
+                let handled = self.sync_engine.handle(msg);
+                if let Some((code, metas, _)) = handled {
+                    let code_owned = code.to_string();
+                    let metas_owned: Vec<_> = metas.to_vec();
                     if let Some(tab) = self.current_file_mut() {
-                        tab.content = code;
+                        tab.content = code_owned;
                         tab.editor = Content::with_text(&tab.content);
                         for block in &mut tab.blocks {
-                            if let Some(meta) = metas.iter().find(|m| m.id == block.visual_id) {
+                            if let Some(meta) = metas_owned.iter().find(|m| m.id == block.visual_id) {
                                 block.x = meta.x;
                                 block.y = meta.y;
                                 block.tags = meta.tags.clone();
@@ -182,7 +185,7 @@ impl MulticodeApp {
                                 block.translations = meta.translations.clone();
                             }
                         }
-                        tab.meta = metas.first().cloned();
+                        tab.meta = metas_owned.first().cloned();
                     }
                 }
                 Command::none()

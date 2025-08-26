@@ -116,13 +116,13 @@ use multicode_core::parser::Lang;
 
 let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
 let code = r#"// @VISUAL_META {\"id\":\"1\",\"x\":0.0,\"y\":0.0}\nfn main() {}"#;
-let (_code, mut metas, _diag) =
+let (_code, metas, _diag) =
     engine
         .handle(SyncMessage::TextChanged(code.into(), Lang::Rust))
         .unwrap();
 
 // визуальный редактор переместил блок и увеличил версию
-let mut meta = metas.pop().unwrap();
+let mut meta = metas[0].clone();
 meta.version += 1;
 meta.x = 10.0;
 

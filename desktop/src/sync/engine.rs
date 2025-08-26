@@ -79,6 +79,8 @@ pub struct SyncEngine {
     policy: ResolutionPolicy,
     /// Последние полученные диагностические данные.
     last_diagnostics: SyncDiagnostics,
+    /// Последний возвращённый список метаданных.
+    last_metas: Vec<VisualMeta>,
 }
 
 impl SyncEngine {
@@ -93,6 +95,7 @@ impl SyncEngine {
             mapper: ElementMapper::default(),
             policy,
             last_diagnostics: SyncDiagnostics::default(),
+            last_metas: Vec::new(),
         }
     }
 
@@ -101,7 +104,7 @@ impl SyncEngine {
     pub fn handle(
         &mut self,
         msg: SyncMessage,
-    ) -> Option<(String, Vec<VisualMeta>, SyncDiagnostics)> {
+    ) -> Option<(&str, &[VisualMeta], &SyncDiagnostics)> {
         match msg {
             SyncMessage::TextChanged(code, lang) => {
                 if self.lang != lang {
@@ -134,10 +137,12 @@ impl SyncEngine {
                 }
                 self.state.metas = map;
                 self.state.code = code;
-                let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
-                let diagnostics = self.update_syntax_and_mapper(&metas_vec);
-                self.last_diagnostics = diagnostics.clone();
-                Some((self.state.code.clone(), metas_vec, diagnostics))
+                self.last_metas = self.state.metas.values().cloned().collect();
+                let metas = std::mem::take(&mut self.last_metas);
+                let diagnostics = self.update_syntax_and_mapper(&metas);
+                self.last_diagnostics = diagnostics;
+                self.last_metas = metas;
+                Some((&self.state.code, &self.last_metas, &self.last_diagnostics))
             }
             SyncMessage::VisualChanged(mut meta) => {
                 if meta.version == 0 {
@@ -163,11 +168,13 @@ impl SyncEngine {
                     }
                 }
                 self.state.code = meta::upsert(&self.state.code, &meta);
-                self.state.metas.insert(meta.id.clone(), meta.clone());
-                let metas_vec: Vec<_> = self.state.metas.values().cloned().collect();
-                let diagnostics = self.update_syntax_and_mapper(&metas_vec);
-                self.last_diagnostics = diagnostics.clone();
-                Some((self.state.code.clone(), metas_vec, diagnostics))
+                self.state.metas.insert(meta.id.clone(), meta);
+                self.last_metas = self.state.metas.values().cloned().collect();
+                let metas = std::mem::take(&mut self.last_metas);
+                let diagnostics = self.update_syntax_and_mapper(&metas);
+                self.last_diagnostics = diagnostics;
+                self.last_metas = metas;
+                Some((&self.state.code, &self.last_metas, &self.last_diagnostics))
             }
         }
     }
