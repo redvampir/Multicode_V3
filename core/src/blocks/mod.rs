@@ -73,8 +73,10 @@ pub fn upsert_meta(
         Some(l) => l,
         None => {
             tracing::error!("неподдерживаемый язык: {}", lang);
-            let updated =
-                metas.clone().into_iter().fold(cleaned.clone(), |acc, m| upsert(&acc, &m));
+            let updated = metas
+                .clone()
+                .into_iter()
+                .fold(cleaned.clone(), |acc, m| upsert(&acc, &m, false));
             let mut result = HashMap::new();
             if let Some(id) = files.first() {
                 result.insert(id.clone(), updated);
@@ -83,7 +85,9 @@ pub fn upsert_meta(
                 if let Ok(src) = fs::read_to_string(fid) {
                     let metas = read_all(&src);
                     let cleaned = remove_all(&src);
-                    let updated = metas.into_iter().fold(cleaned, |acc, m| upsert(&acc, &m));
+                    let updated = metas
+                        .into_iter()
+                        .fold(cleaned, |acc, m| upsert(&acc, &m, false));
                     result.insert(fid.clone(), updated);
                 }
             }
@@ -95,7 +99,7 @@ pub fn upsert_meta(
     let current = metas
         .clone()
         .into_iter()
-        .fold(regenerated, |acc, m| upsert(&acc, &m));
+        .fold(regenerated, |acc, m| upsert(&acc, &m, false));
 
     let mut result = HashMap::new();
     if let Some(id) = files.first() {
@@ -107,7 +111,7 @@ pub fn upsert_meta(
             let metas = read_all(&src);
             let cleaned = remove_all(&src);
             let regen = regenerate_code(&cleaned, lang, &metas).unwrap_or(cleaned);
-            let updated = metas.into_iter().fold(regen, |acc, m| upsert(&acc, &m));
+            let updated = metas.into_iter().fold(regen, |acc, m| upsert(&acc, &m, false));
             result.insert(fid.clone(), updated);
         }
     }

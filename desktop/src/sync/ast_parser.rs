@@ -82,7 +82,7 @@ mod tests {
     fn parser_links_nodes_with_meta() {
         let mut parser = ASTParser::new(Lang::Rust);
         let m = meta("0");
-        let code = multicode_core::meta::upsert("fn main() {}", &m);
+        let code = multicode_core::meta::upsert("fn main() {}", &m, false);
         let tree = parser.parse(&code, &[m]);
         assert!(tree.nodes.iter().any(
             |n| n.block.visual_id == "0" && n.meta.as_ref().map(|m| m.id.as_str()) == Some("0")

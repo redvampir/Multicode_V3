@@ -28,7 +28,7 @@ fn make_meta(id: &str, version: u32) -> VisualMeta {
 fn text_changed_returns_metas() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let meta = make_meta("test", DEFAULT_VERSION);
-    let code = meta::upsert("", &meta);
+    let code = meta::upsert("", &meta, false);
     let (ret_code, metas, _diag) = engine
         .handle(SyncMessage::TextChanged(code.clone(), Lang::Rust))
         .unwrap();
@@ -42,7 +42,7 @@ fn text_changed_returns_metas() {
 fn handle_returns_references_without_cloning() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let meta = make_meta("r", DEFAULT_VERSION);
-    let code = meta::upsert("", &meta);
+    let code = meta::upsert("", &meta, false);
     let (ret_code, metas, _diag) = engine
         .handle(SyncMessage::TextChanged(code, Lang::Rust))
         .unwrap();
@@ -81,7 +81,7 @@ fn visual_changed_updates_state_code() {
 fn visual_changed_does_not_duplicate_meta() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let meta = make_meta("block", DEFAULT_VERSION);
-    let code = meta::upsert("", &meta);
+    let code = meta::upsert("", &meta, false);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
 
     let updated = make_meta("block", DEFAULT_VERSION + 1);
@@ -132,7 +132,7 @@ fn text_changed_updates_syntax_tree() {
 fn element_mapper_maps_ids_and_ranges() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let meta = make_meta("0", DEFAULT_VERSION);
-    let code = meta::upsert("fn main() {}", &meta);
+    let code = meta::upsert("fn main() {}", &meta, false);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
     let range = engine.range_of("0").expect("range");
     assert_eq!(engine.id_at(range.start), Some("0"));
@@ -154,7 +154,8 @@ fn id_and_range_handle_multiple_blocks() {
         .collect();
     let mut code_with_metas = code.to_string();
     for id in &ids {
-        code_with_metas = meta::upsert(&code_with_metas, &make_meta(id, DEFAULT_VERSION));
+        code_with_metas =
+            meta::upsert(&code_with_metas, &make_meta(id, DEFAULT_VERSION), false);
     }
     let _ = engine.handle(SyncMessage::TextChanged(code_with_metas, Lang::Rust));
     for id in ids {
@@ -168,7 +169,7 @@ fn id_and_range_handle_multiple_blocks() {
 fn id_at_position_finds_id_by_coordinates() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let meta = make_meta("0", DEFAULT_VERSION);
-    let code = meta::upsert("fn main() {}\n", &meta);
+    let code = meta::upsert("fn main() {}\n", &meta, false);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
     assert_eq!(engine.id_at_position(0, 0), Some("0"));
     assert_eq!(engine.id_at_position(10, 0), None);
@@ -180,7 +181,7 @@ fn conflict_resolver_applies_strategies() {
     let mut base = make_meta("c", DEFAULT_VERSION);
     base.translations
         .insert("rust".into(), "fn main() {}".into());
-    let code = meta::upsert("", &base);
+    let code = meta::upsert("", &base, false);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
 
     let mut visual = base.clone();
@@ -205,7 +206,7 @@ fn apply_resolution_overrides_policy_choice() {
         },
     );
     let base = make_meta("c", DEFAULT_VERSION);
-    let code = meta::upsert("fn main() {}", &base);
+    let code = meta::upsert("fn main() {}", &base, false);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
 
     let mut visual = base.clone();
@@ -216,7 +217,7 @@ fn apply_resolution_overrides_policy_choice() {
     let mut text = base.clone();
     text.version += 2;
     text.x = 20.0;
-    let code = meta::upsert("fn main() {}", &text);
+    let code = meta::upsert("fn main() {}", &text, false);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
     assert_eq!(engine.state().metas.get("c").unwrap().x, 10.0);
     assert_eq!(engine.last_conflicts().len(), 1);
@@ -237,8 +238,8 @@ fn text_changed_identifies_orphaned_blocks() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let mapped = make_meta("0", DEFAULT_VERSION);
     let orphan = make_meta("orphan", DEFAULT_VERSION);
-    let code = meta::upsert("fn main() {}", &mapped);
-    let code = meta::upsert(&code, &orphan);
+    let code = meta::upsert("fn main() {}", &mapped, false);
+    let code = meta::upsert(&code, &orphan, false);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
     assert_eq!(
         engine.last_diagnostics().orphaned_blocks,
@@ -250,7 +251,7 @@ fn text_changed_identifies_orphaned_blocks() {
 fn text_changed_reports_unmapped_code() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let root = make_meta("0", DEFAULT_VERSION);
-    let code = meta::upsert("fn a() {}\nfn b() {}", &root);
+    let code = meta::upsert("fn a() {}\nfn b() {}", &root, false);
     let _ = engine.handle(SyncMessage::TextChanged(code.clone(), Lang::Rust));
     let offset = code.find("fn b()").expect("offset of second function");
     assert!(engine
@@ -275,7 +276,8 @@ fn unmapped_code_has_exact_second_function_range() {
     let second = fns.next().expect("second function");
     let first_id = first.block.visual_id.clone();
     let second_id = second.block.visual_id.clone();
-    let code_with_meta = meta::upsert(code, &make_meta(&first_id, DEFAULT_VERSION));
+    let code_with_meta =
+        meta::upsert(code, &make_meta(&first_id, DEFAULT_VERSION), false);
     let _ = engine.handle(SyncMessage::TextChanged(code_with_meta, Lang::Rust));
     let second_range = engine
         .state()
@@ -296,10 +298,45 @@ fn logs_warnings_for_mapping_issues() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let mapped = make_meta("0", DEFAULT_VERSION);
     let orphan = make_meta("orphan", DEFAULT_VERSION);
-    let code = meta::upsert("fn a() {}\nfn b() {}", &mapped);
-    let code = meta::upsert(&code, &orphan);
+    let code = meta::upsert("fn a() {}\nfn b() {}", &mapped, false);
+    let code = meta::upsert(&code, &orphan, false);
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
     assert!(logs_contain("Orphaned metadata blocks"));
     assert!(logs_contain("orphan"));
     assert!(logs_contain("Unmapped code ranges"));
+}
+
+#[test]
+fn visual_changed_respects_formatting_setting() {
+    let base = make_meta("fmt", DEFAULT_VERSION);
+    let json = serde_json::to_string(&base).unwrap();
+    let code = format!("    <!-- @VISUAL_META {json} -->\nfn main() {{}}\n");
+
+    // Formatting not preserved
+    let mut engine = SyncEngine::new(
+        Lang::Rust,
+        SyncSettings {
+            preserve_meta_formatting: false,
+            ..SyncSettings::default()
+        },
+    );
+    let _ = engine.handle(SyncMessage::TextChanged(code.clone(), Lang::Rust));
+    let mut updated = base.clone();
+    updated.x = 42.0;
+    let _ = engine.handle(SyncMessage::VisualChanged(updated));
+    assert!(engine.state().code.starts_with("<!-- @VISUAL_META"));
+
+    // Formatting preserved
+    let mut engine = SyncEngine::new(
+        Lang::Rust,
+        SyncSettings {
+            preserve_meta_formatting: true,
+            ..SyncSettings::default()
+        },
+    );
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    let mut updated = base.clone();
+    updated.x = 24.0;
+    let _ = engine.handle(SyncMessage::VisualChanged(updated));
+    assert!(engine.state().code.starts_with("    <!-- @VISUAL_META"));
 }

@@ -181,7 +181,8 @@ impl SyncEngine {
                         meta = resolved;
                     }
                 }
-                self.state.code = meta::upsert(&self.state.code, &meta);
+                self.state.code =
+                    meta::upsert(&self.state.code, &meta, self.preserve_meta_formatting);
                 self.state.metas.insert(meta.id.clone(), meta);
                 self.last_metas = self.state.metas.values().cloned().collect();
                 let metas = std::mem::take(&mut self.last_metas);
@@ -317,7 +318,8 @@ impl SyncEngine {
         };
 
         self.state.metas.insert(id.to_string(), resolved.clone());
-        self.state.code = meta::upsert(&self.state.code, &resolved);
+        self.state.code =
+            meta::upsert(&self.state.code, &resolved, self.preserve_meta_formatting);
 
         self.last_metas = self.state.metas.values().cloned().collect();
         let metas = std::mem::take(&mut self.last_metas);

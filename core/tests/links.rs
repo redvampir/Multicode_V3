@@ -32,7 +32,7 @@ fn upsert_preserves_links() {
         extras: None,
         updated_at: Utc::now(),
     };
-    let updated = upsert("fn main() {}", &meta);
+    let updated = upsert("fn main() {}", &meta, false);
     assert!(updated.contains("\"links\":[\"l\"]"));
     let metas = read_all(&updated);
     assert_eq!(metas[0].links, vec!["l"]);

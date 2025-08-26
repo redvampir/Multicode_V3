@@ -29,7 +29,7 @@ fn upsert_preserves_tags() {
         extras: None,
         updated_at: Utc::now(),
     };
-    let updated = upsert("fn main() {}", &meta);
+    let updated = upsert("fn main() {}", &meta, false);
     assert!(updated.contains("\"tags\":[\"t\"]"));
     let metas = read_all(&updated);
     assert_eq!(metas[0].tags, vec!["t"]);
