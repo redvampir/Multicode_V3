@@ -1,8 +1,7 @@
 use super::{SyncEngine, SyncMessage};
 use std::sync::{
-    atomic::{AtomicBool, Ordering},
     mpsc::{self, Receiver, SyncSender},
-    Arc,
+    Arc, Condvar, Mutex,
 };
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
@@ -25,7 +24,7 @@ pub const DEFAULT_CHANNEL_CAPACITY: usize = 32;
 pub struct AsyncManager {
     tx: Option<SyncSender<SyncMessage>>,
     handle: Option<JoinHandle<()>>,
-    paused: Arc<AtomicBool>,
+    paused: Arc<(Mutex<bool>, Condvar)>,
 }
 
 impl AsyncManager {
@@ -35,7 +34,7 @@ impl AsyncManager {
     /// [`DEFAULT_CHANNEL_CAPACITY`] for a typical channel size.
     pub fn new(engine: SyncEngine, batch_delay: Duration, capacity: usize) -> Self {
         let (tx, rx) = mpsc::sync_channel(capacity);
-        let paused = Arc::new(AtomicBool::new(false));
+        let paused = Arc::new((Mutex::new(false), Condvar::new()));
         let worker_paused = paused.clone();
         let handle = thread::spawn(move || run_worker(engine, rx, worker_paused, batch_delay));
         Self {
@@ -56,32 +55,46 @@ impl AsyncManager {
 
     /// Pauses processing of incoming messages.
     pub fn pause(&self) {
-        self.paused.store(true, Ordering::SeqCst);
+        let (lock, cvar) = &*self.paused;
+        let mut paused = lock.lock().unwrap();
+        *paused = true;
+        cvar.notify_all();
     }
 
     /// Resumes processing of incoming messages.
     pub fn resume(&self) {
-        self.paused.store(false, Ordering::SeqCst);
+        let (lock, cvar) = &*self.paused;
+        let mut paused = lock.lock().unwrap();
+        *paused = false;
+        cvar.notify_all();
     }
 }
 
 fn run_worker(
     mut engine: SyncEngine,
     rx: Receiver<SyncMessage>,
-    paused: Arc<AtomicBool>,
+    paused: Arc<(Mutex<bool>, Condvar)>,
     batch_delay: Duration,
 ) {
     while let Ok(first) = rx.recv() {
-        if paused.load(Ordering::SeqCst) {
-            continue;
+        {
+            let (lock, cvar) = &*paused;
+            let mut paused_guard = lock.lock().unwrap();
+            while *paused_guard {
+                paused_guard = cvar.wait(paused_guard).unwrap();
+            }
         }
         let mut batch = vec![first];
         loop {
             match rx.recv_timeout(batch_delay) {
                 Ok(msg) => {
-                    if paused.load(Ordering::SeqCst) {
-                        batch.clear();
-                        break;
+                    {
+                        let (lock, cvar) = &*paused;
+                        let mut paused_guard = lock.lock().unwrap();
+                        while *paused_guard {
+                            batch.clear();
+                            paused_guard = cvar.wait(paused_guard).unwrap();
+                        }
                     }
                     batch.push(msg);
                 }
@@ -89,8 +102,12 @@ fn run_worker(
                 Err(mpsc::RecvTimeoutError::Disconnected) => return,
             }
         }
-        if paused.load(Ordering::SeqCst) {
-            continue;
+        {
+            let (lock, cvar) = &*paused;
+            let mut paused_guard = lock.lock().unwrap();
+            while *paused_guard {
+                paused_guard = cvar.wait(paused_guard).unwrap();
+            }
         }
         for msg in batch {
             let _ = engine.handle(msg);
