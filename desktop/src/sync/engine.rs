@@ -35,7 +35,7 @@ use super::{
 };
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
-use std::collections::HashMap;
+use std::collections::{HashMap, HashSet};
 
 /// Состояние синхронизации между текстовым и визуальным представлениями.
 #[derive(Debug, Clone, Default)]
@@ -140,11 +140,11 @@ impl SyncEngine {
                 self.last_metas = metas;
                 return Some((&self.state.code, &self.last_metas, &self.last_diagnostics));
             }
-            let previous = std::mem::take(&mut self.state.metas);
+            let mut metas = std::mem::take(&mut self.state.metas);
             let resolver = ConflictResolver::default();
-                let mut map = HashMap::new();
+                let mut ids = HashSet::new();
                 for mut m in meta::read_all(&code) {
-                    if let Some(old) = previous.get(&m.id) {
+                    if let Some(old) = metas.get(&m.id) {
                         if old.version != m.version {
                             if let Some(resolved) = resolve_with_extensions(old, &m) {
                                 m = resolved;
@@ -156,21 +156,23 @@ impl SyncEngine {
                                     ConflictType::Structural => tracing::warn!(
                                         id = %conflict.id,
                                         conflict_type = ?conflict.conflict_type,
-                                        "Conflict resolved"
+                                        "Conflict resolved",
                                     ),
                                     _ => tracing::debug!(
                                         id = %conflict.id,
                                         conflict_type = ?conflict.conflict_type,
-                                        "Conflict resolved"
+                                        "Conflict resolved",
                                     ),
                                 }
                                 m = resolved;
                             }
                         }
                     }
-                    map.insert(m.id.clone(), m);
+                    ids.insert(m.id.clone());
+                    metas.insert(m.id.clone(), m);
                 }
-                self.state.metas = map;
+                metas.retain(|id, _| ids.contains(id));
+                self.state.metas = metas;
                 self.state.code = code;
                 self.last_metas = self.state.metas.values().cloned().collect();
                 let metas = std::mem::take(&mut self.last_metas);
