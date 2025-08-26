@@ -40,3 +40,5 @@ pub use engine::{SyncDiagnostics, SyncEngine, SyncMessage, SyncState};
 
 #[cfg(test)]
 mod engine_tests;
+#[cfg(test)]
+mod async_manager_tests;
