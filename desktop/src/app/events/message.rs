@@ -7,6 +7,7 @@ use crate::editor::EditorTheme;
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::palette::PaletteMessage;
 use crate::sync::SyncMessage;
+use crate::sync::ConflictResolutionMode;
 use multicode_core::BlockInfo;
 
 #[derive(Debug, Clone)]
@@ -109,6 +110,8 @@ pub enum Message {
     ToggleStatusBar(bool),
     ToggleToolbar(bool),
     ToggleMarkdownPreview(bool),
+    ConflictResolutionModeSelected(ConflictResolutionMode),
+    TogglePreserveMetaFormatting(bool),
     ToggleMetaPanel,
     ShowMetaDialog,
     CloseMetaDialog,

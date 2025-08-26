@@ -13,11 +13,11 @@
 //!
 //! # Пример использования
 //! ```rust
-//! use desktop::sync::{ResolutionPolicy, SyncEngine, SyncMessage};
+//! use desktop::sync::{SyncSettings, SyncEngine, SyncMessage};
 //!
 //! use multicode_core::parser::Lang;
 //!
-//! let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+//! let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
 //! let _ = engine.handle(SyncMessage::TextChanged("fn main() {}".into(), Lang::Rust));
 //! // далее полученные данные могут быть переданы визуальному редактору
 //! ```
@@ -29,6 +29,7 @@ use super::conflict_resolver::{
     ConflictResolver, ConflictType, ResolutionOption, ResolutionPolicy, SyncConflict,
 };
 use super::element_mapper::ElementMapper;
+use super::settings::SyncSettings;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
 use std::collections::HashMap;
@@ -79,6 +80,7 @@ pub struct SyncEngine {
     last_visual_ids: Vec<String>,
     mapper: ElementMapper,
     policy: ResolutionPolicy,
+    preserve_meta_formatting: bool,
     /// Последние полученные диагностические данные.
     last_diagnostics: SyncDiagnostics,
     /// Последний возвращённый список метаданных.
@@ -89,7 +91,7 @@ pub struct SyncEngine {
 
 impl SyncEngine {
     /// Создаёт новый движок синхронизации.
-    pub fn new(lang: Lang, policy: ResolutionPolicy) -> Self {
+    pub fn new(lang: Lang, settings: SyncSettings) -> Self {
         Self {
             state: SyncState::default(),
             parser: ASTParser::new(lang),
@@ -97,11 +99,18 @@ impl SyncEngine {
             last_text_ids: Vec::new(),
             last_visual_ids: Vec::new(),
             mapper: ElementMapper::default(),
-            policy,
+            policy: settings.conflict_resolution.into(),
+            preserve_meta_formatting: settings.preserve_meta_formatting,
             last_diagnostics: SyncDiagnostics::default(),
             last_metas: Vec::new(),
             last_conflicts: Vec::new(),
         }
+    }
+
+    /// Update synchronization behaviour based on new settings.
+    pub fn update_settings(&mut self, settings: SyncSettings) {
+        self.policy = settings.conflict_resolution.into();
+        self.preserve_meta_formatting = settings.preserve_meta_formatting;
     }
 
     /// Обрабатывает входящее сообщение синхронизации.

@@ -494,7 +494,7 @@ mod tests {
     use super::super::{CreateTarget, LogLevel, MulticodeApp, Screen, UserSettings, ViewMode};
     use crate::app::command_palette::COMMANDS;
     use crate::components::file_manager::ContextMenu;
-    use crate::sync::{ChangeTracker, ResolutionPolicy, SyncEngine};
+    use crate::sync::{ChangeTracker, SyncEngine, SyncSettings};
     use lru::LruCache;
     use multicode_core::parser::Lang;
     use std::cell::RefCell;
@@ -571,7 +571,7 @@ mod tests {
             palette_query: String::new(),
             palette_drag: None,
             change_tracker: ChangeTracker::default(),
-            sync_engine: SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText),
+            sync_engine: SyncEngine::new(Lang::Rust, SyncSettings::default()),
             recent_commands: VecDeque::new(),
             command_counts: HashMap::new(),
             command_trigrams: HashMap::new(),

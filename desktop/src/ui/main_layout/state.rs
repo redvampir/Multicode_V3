@@ -1,7 +1,7 @@
 use super::view::{self, ModeView};
 use super::update::MainMessage;
 use crate::app::ViewMode;
-use crate::sync::{ResolutionPolicy, SyncConflict, SyncEngine};
+use crate::sync::{SyncConflict, SyncEngine, SyncSettings};
 use crate::visual::connections::Connection;
 use crate::visual::translations::Language;
 use iced::widget::text_editor;
@@ -54,7 +54,7 @@ impl Default for MainUI {
             language: Language::default(),
             show_palette: true,
             view_modes: view::default_modes(),
-            sync_engine: SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText),
+            sync_engine: SyncEngine::new(Lang::Rust, SyncSettings::default()),
             conflicts: Vec::new(),
             active_conflict: None,
         }

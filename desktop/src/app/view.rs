@@ -10,6 +10,7 @@ use iced::{alignment, theme, Element, Length};
 
 use super::events::Message;
 use super::{AppTheme, CreateTarget, Language, MulticodeApp, Screen, ViewMode};
+use crate::sync::ConflictResolutionMode;
 use crate::search::hotkeys::HotkeyContext;
 use crate::editor::{CodeEditor, EditorTheme, THEME_SET};
 use crate::components::file_manager;
@@ -479,6 +480,21 @@ impl MulticodeApp {
                             Some(self.settings.language),
                             Message::LanguageSelected
                         )
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Решение конфликтов"),
+                        pick_list(
+                            &ConflictResolutionMode::ALL[..],
+                            Some(self.settings.sync.conflict_resolution),
+                            Message::ConflictResolutionModeSelected
+                        )
+                    ]
+                    .spacing(10),
+                    row![
+                        text("Сохранять формат мета-комментариев"),
+                        checkbox("", self.settings.sync.preserve_meta_formatting)
+                            .on_toggle(Message::TogglePreserveMetaFormatting)
                     ]
                     .spacing(10),
                     row![

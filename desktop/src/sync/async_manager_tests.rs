@@ -1,11 +1,11 @@
-use super::{AsyncManager, ResolutionPolicy, SyncEngine, SyncMessage, DEFAULT_BATCH_DELAY, DEFAULT_CHANNEL_CAPACITY};
+use super::{AsyncManager, SyncEngine, SyncMessage, SyncSettings, DEFAULT_BATCH_DELAY, DEFAULT_CHANNEL_CAPACITY};
 use multicode_core::parser::Lang;
 use std::sync::{Arc, Mutex};
 
 #[test]
 fn messages_within_delay_processed_in_one_batch() {
     let log = Arc::new(Mutex::new(Vec::new()));
-    let engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+    let engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let manager = AsyncManager::new_with_logger(
         engine,
         DEFAULT_BATCH_DELAY,
@@ -31,7 +31,7 @@ fn messages_within_delay_processed_in_one_batch() {
 #[test]
 fn pause_stops_processing_and_resume_restarts() {
     let log = Arc::new(Mutex::new(Vec::new()));
-    let engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+    let engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let manager = AsyncManager::new_with_logger(
         engine,
         DEFAULT_BATCH_DELAY,
