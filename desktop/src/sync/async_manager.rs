@@ -7,8 +7,8 @@ use std::sync::{
 use std::thread::{self, JoinHandle};
 use std::time::Duration;
 
-/// Interval to wait for additional messages before processing a batch.
-const BATCH_DELAY_MS: u64 = 50;
+/// Default interval to wait for additional messages before processing a batch.
+pub const DEFAULT_BATCH_DELAY: Duration = Duration::from_millis(50);
 
 /// Manages asynchronous processing of [`SyncMessage`]s.
 ///
@@ -27,11 +27,13 @@ pub struct AsyncManager {
 
 impl AsyncManager {
     /// Spawns a new background worker wrapping the provided [`SyncEngine`].
-    pub fn new(engine: SyncEngine) -> Self {
+    ///
+    /// Use [`DEFAULT_BATCH_DELAY`] for a reasonable default value.
+    pub fn new(engine: SyncEngine, batch_delay: Duration) -> Self {
         let (tx, rx) = mpsc::channel();
         let paused = Arc::new(AtomicBool::new(false));
         let worker_paused = paused.clone();
-        let handle = thread::spawn(move || run_worker(engine, rx, worker_paused));
+        let handle = thread::spawn(move || run_worker(engine, rx, worker_paused, batch_delay));
         Self {
             tx: Some(tx),
             handle: Some(handle),
@@ -57,15 +59,19 @@ impl AsyncManager {
     }
 }
 
-fn run_worker(mut engine: SyncEngine, rx: Receiver<SyncMessage>, paused: Arc<AtomicBool>) {
-    let delay = Duration::from_millis(BATCH_DELAY_MS);
+fn run_worker(
+    mut engine: SyncEngine,
+    rx: Receiver<SyncMessage>,
+    paused: Arc<AtomicBool>,
+    batch_delay: Duration,
+) {
     while let Ok(first) = rx.recv() {
         if paused.load(Ordering::SeqCst) {
             continue;
         }
         let mut batch = vec![first];
         loop {
-            match rx.recv_timeout(delay) {
+            match rx.recv_timeout(batch_delay) {
                 Ok(msg) => {
                     if paused.load(Ordering::SeqCst) {
                         batch.clear();
