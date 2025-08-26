@@ -1,4 +1,4 @@
-use super::{ResolutionPolicy, SyncEngine, SyncMessage};
+use super::{ResolutionOption, ResolutionPolicy, SyncEngine, SyncMessage};
 use chrono::Utc;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
@@ -43,14 +43,17 @@ fn handle_returns_references_without_cloning() {
     let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let meta = make_meta("r", DEFAULT_VERSION);
     let code = meta::upsert("", &meta);
-    let (ret_code, metas, _diag) =
-        engine.handle(SyncMessage::TextChanged(code, Lang::Rust)).unwrap();
+    let (ret_code, metas, _diag) = engine
+        .handle(SyncMessage::TextChanged(code, Lang::Rust))
+        .unwrap();
     let code_ptr = ret_code.as_ptr();
     let ids: Vec<String> = metas.iter().map(|m| m.id.clone()).collect();
     let _ = metas;
     let _ = ret_code;
     assert!(std::ptr::eq(code_ptr, engine.state().code.as_ptr()));
-    assert!(ids.into_iter().all(|id| engine.state().metas.contains_key(&id)));
+    assert!(ids
+        .into_iter()
+        .all(|id| engine.state().metas.contains_key(&id)));
 }
 
 #[test]
@@ -190,6 +193,37 @@ fn conflict_resolver_applies_strategies() {
     assert_eq!(resolved.x, 10.0); // movement prefers visual
     assert!(resolved.tags.contains(&"v".to_string())); // meta merge
     assert_eq!(resolved.translations.get("rust").unwrap(), "fn main() {}");
+}
+
+#[test]
+fn apply_resolution_overrides_policy_choice() {
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferVisual);
+    let base = make_meta("c", DEFAULT_VERSION);
+    let code = meta::upsert("fn main() {}", &base);
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+
+    let mut visual = base.clone();
+    visual.version += 1;
+    visual.x = 10.0;
+    let _ = engine.handle(SyncMessage::VisualChanged(visual));
+
+    let mut text = base.clone();
+    text.version += 2;
+    text.x = 20.0;
+    let code = meta::upsert("fn main() {}", &text);
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    assert_eq!(engine.state().metas.get("c").unwrap().x, 10.0);
+    assert_eq!(engine.last_conflicts().len(), 1);
+
+    engine.apply_resolution("c", ResolutionOption::Text);
+
+    assert_eq!(engine.state().metas.get("c").unwrap().x, 20.0);
+    assert!(engine.last_conflicts().is_empty());
+    let updated = meta::read_all(&engine.state().code)
+        .into_iter()
+        .find(|m| m.id == "c")
+        .unwrap();
+    assert_eq!(updated.x, 20.0);
 }
 
 #[test]
