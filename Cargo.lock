@@ -1667,6 +1667,7 @@ dependencies = [
  "directories",
  "iced",
  "indexmap 2.10.0",
+ "libloading 0.8.8",
  "lru",
  "once_cell",
  "pulldown-cmark",

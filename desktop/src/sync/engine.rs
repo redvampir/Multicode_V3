@@ -30,6 +30,9 @@ use super::conflict_resolver::{
 };
 use super::element_mapper::ElementMapper;
 use super::settings::SyncSettings;
+use super::{
+    generate_with_extensions, init_extensions, parse_with_extensions, resolve_with_extensions,
+};
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
 use std::collections::HashMap;
@@ -92,6 +95,7 @@ pub struct SyncEngine {
 impl SyncEngine {
     /// Создаёт новый движок синхронизации.
     pub fn new(lang: Lang, settings: SyncSettings) -> Self {
+        init_extensions();
         Self {
             state: SyncState::default(),
             parser: ASTParser::new(lang),
@@ -119,31 +123,49 @@ impl SyncEngine {
         self.last_conflicts.clear();
         match msg {
             SyncMessage::TextChanged(code, lang) => {
-                if self.lang != lang {
-                    self.lang = lang;
-                    self.parser = ASTParser::new(lang);
-                }
-                let previous = std::mem::take(&mut self.state.metas);
-                let resolver = ConflictResolver::default();
+            if self.lang != lang {
+                self.lang = lang;
+                self.parser = ASTParser::new(lang);
+            }
+            if let Some(ext_metas) = parse_with_extensions(&code, lang) {
+                self.state.metas = ext_metas
+                    .into_iter()
+                    .map(|m| (m.id.clone(), m))
+                    .collect();
+                self.state.code = code;
+                self.last_metas = self.state.metas.values().cloned().collect();
+                let metas = std::mem::take(&mut self.last_metas);
+                let diagnostics = self.update_syntax_and_mapper(&metas);
+                self.last_diagnostics = diagnostics;
+                self.last_metas = metas;
+                return Some((&self.state.code, &self.last_metas, &self.last_diagnostics));
+            }
+            let previous = std::mem::take(&mut self.state.metas);
+            let resolver = ConflictResolver::default();
                 let mut map = HashMap::new();
                 for mut m in meta::read_all(&code) {
                     if let Some(old) = previous.get(&m.id) {
                         if old.version != m.version {
-                            let (resolved, conflict) = resolver.resolve(&m, old, self.policy);
-                            self.last_conflicts.push(conflict.clone());
-                            match conflict.conflict_type {
-                                ConflictType::Structural => tracing::warn!(
-                                    id = %conflict.id,
-                                    conflict_type = ?conflict.conflict_type,
-                                    "Conflict resolved"
-                                ),
-                                _ => tracing::debug!(
-                                    id = %conflict.id,
-                                    conflict_type = ?conflict.conflict_type,
-                                    "Conflict resolved"
-                                ),
+                            if let Some(resolved) = resolve_with_extensions(old, &m) {
+                                m = resolved;
+                            } else {
+                                let (resolved, conflict) =
+                                    resolver.resolve(&m, old, self.policy);
+                                self.last_conflicts.push(conflict.clone());
+                                match conflict.conflict_type {
+                                    ConflictType::Structural => tracing::warn!(
+                                        id = %conflict.id,
+                                        conflict_type = ?conflict.conflict_type,
+                                        "Conflict resolved"
+                                    ),
+                                    _ => tracing::debug!(
+                                        id = %conflict.id,
+                                        conflict_type = ?conflict.conflict_type,
+                                        "Conflict resolved"
+                                    ),
+                                }
+                                m = resolved;
                             }
-                            m = resolved;
                         }
                     }
                     map.insert(m.id.clone(), m);
@@ -158,27 +180,41 @@ impl SyncEngine {
                 Some((&self.state.code, &self.last_metas, &self.last_diagnostics))
             }
             SyncMessage::VisualChanged(mut meta) => {
+                if let Some(code) = generate_with_extensions(&self.state.code, &meta, self.lang) {
+                    self.state.code = code;
+                    self.state.metas.insert(meta.id.clone(), meta);
+                    self.last_metas = self.state.metas.values().cloned().collect();
+                    let metas = std::mem::take(&mut self.last_metas);
+                    let diagnostics = self.update_syntax_and_mapper(&metas);
+                    self.last_diagnostics = diagnostics;
+                    self.last_metas = metas;
+                    return Some((&self.state.code, &self.last_metas, &self.last_diagnostics));
+                }
                 if meta.version == 0 {
                     meta.version = DEFAULT_VERSION;
                 }
                 if let Some(existing) = self.state.metas.get(&meta.id).cloned() {
                     if existing.version != meta.version {
-                        let (resolved, conflict) =
-                            ConflictResolver::default().resolve(&existing, &meta, self.policy);
-                        self.last_conflicts.push(conflict.clone());
-                        match conflict.conflict_type {
-                            ConflictType::Structural => tracing::warn!(
-                                id = %conflict.id,
-                                conflict_type = ?conflict.conflict_type,
-                                "Conflict resolved"
-                            ),
-                            _ => tracing::debug!(
-                                id = %conflict.id,
-                                conflict_type = ?conflict.conflict_type,
-                                "Conflict resolved"
-                            ),
+                        if let Some(resolved) = resolve_with_extensions(&existing, &meta) {
+                            meta = resolved;
+                        } else {
+                            let (resolved, conflict) = ConflictResolver::default()
+                                .resolve(&existing, &meta, self.policy);
+                            self.last_conflicts.push(conflict.clone());
+                            match conflict.conflict_type {
+                                ConflictType::Structural => tracing::warn!(
+                                    id = %conflict.id,
+                                    conflict_type = ?conflict.conflict_type,
+                                    "Conflict resolved",
+                                ),
+                                _ => tracing::debug!(
+                                    id = %conflict.id,
+                                    conflict_type = ?conflict.conflict_type,
+                                    "Conflict resolved",
+                                ),
+                            }
+                            meta = resolved;
                         }
-                        meta = resolved;
                     }
                 }
                 self.state.code =
