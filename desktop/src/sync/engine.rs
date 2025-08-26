@@ -123,7 +123,7 @@ impl SyncEngine {
                     self.lang = lang;
                     self.parser = ASTParser::new(lang);
                 }
-                let previous = self.state.metas.clone();
+                let previous = std::mem::take(&mut self.state.metas);
                 let resolver = ConflictResolver::default();
                 let mut map = HashMap::new();
                 for mut m in meta::read_all(&code) {
