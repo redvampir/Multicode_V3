@@ -65,10 +65,14 @@ impl AsyncManager {
     pub fn send(&self, msg: SyncMessage) -> Result<(), mpsc::SendError<SyncMessage>> {
         if let Some(tx) = &self.tx {
             tx.send(Some(msg)).map_err(|e| match e.0 {
-                Some(m) => mpsc::SendError(m),
+                Some(m) => {
+                    tracing::error!(?m, "failed to send SyncMessage");
+                    mpsc::SendError(m)
+                }
                 None => unreachable!("sender returned shutdown marker"),
             })
         } else {
+            tracing::error!(?msg, "attempted to send message after shutdown");
             Err(mpsc::SendError(msg))
         }
     }
@@ -79,6 +83,7 @@ impl AsyncManager {
         let mut paused = lock.lock().unwrap();
         *paused = true;
         cvar.notify_all();
+        tracing::debug!("AsyncManager paused");
     }
 
     /// Resumes processing of incoming messages.
@@ -87,6 +92,7 @@ impl AsyncManager {
         let mut paused = lock.lock().unwrap();
         *paused = false;
         cvar.notify_all();
+        tracing::debug!("AsyncManager resumed");
     }
 
     /// Gracefully stops the background worker and waits for it to finish.
@@ -119,9 +125,8 @@ impl AsyncManager {
         let (tx, rx) = mpsc::sync_channel(capacity);
         let paused = Arc::new((Mutex::new(false), Condvar::new()));
         let worker_paused = paused.clone();
-        let handle = thread::spawn(move || {
-            run_worker_logged(engine, rx, worker_paused, batch_delay, log)
-        });
+        let handle =
+            thread::spawn(move || run_worker_logged(engine, rx, worker_paused, batch_delay, log));
         Self {
             tx: Some(tx),
             handle: Some(handle),
@@ -174,9 +179,14 @@ fn run_worker(
                 paused_guard = cvar.wait(paused_guard).unwrap();
             }
         }
+        let batch_len = batch.len();
+        tracing::debug!(size = batch_len, "starting batch processing");
         for msg in batch {
-            let _ = engine.handle(msg);
+            if engine.handle(msg).is_none() {
+                tracing::error!("engine.handle returned no result");
+            }
         }
+        tracing::debug!(size = batch_len, "finished batch processing");
     }
 }
 
@@ -226,10 +236,15 @@ fn run_worker_logged(
                 paused_guard = cvar.wait(paused_guard).unwrap();
             }
         }
+        let batch_len = batch.len();
+        tracing::debug!(size = batch_len, "starting batch processing");
         log.lock().unwrap().push(batch.clone());
         for msg in batch {
-            let _ = engine.handle(msg);
+            if engine.handle(msg).is_none() {
+                tracing::error!("engine.handle returned no result");
+            }
         }
+        tracing::debug!(size = batch_len, "finished batch processing");
     }
 }
 
