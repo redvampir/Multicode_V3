@@ -108,6 +108,32 @@ for id in &diag.orphaned_blocks {
 Глобальная политика `ResolutionPolicy` (`PreferText` или `PreferVisual`)
 определяет приоритет в случае структурных расхождений.
 
+### Настройки синхронизации
+
+Поведение `SyncEngine` настраивается через структуру `SyncSettings`.
+В ней доступны следующие параметры:
+
+- `conflict_resolution: ConflictResolutionMode` — задаёт глобальную
+  стратегию `ResolutionPolicy`. Режим `PreferText` сохраняет данные из
+  исходного текста, а `PreferVisual` — из визуального представления.
+- `preserve_meta_formatting: bool` — при обновлении кода сохраняет
+  текущий вид комментариев `@VISUAL_META` вместо полного
+  переформатирования.
+
+В десктопном приложении их можно изменить через **Settings** → **Sync**:
+выберите режим разрешения конфликтов в выпадающем списке и переключите
+флажок «Сохранять формат мета‑комментариев».
+Файл `settings.json` будет содержать соответствующие поля:
+
+```json
+{
+  "sync": {
+    "conflict_resolution": "PreferVisual",
+    "preserve_meta_formatting": false
+  }
+}
+```
+
 ### Пример: расхождение версий
 
 ```rust
