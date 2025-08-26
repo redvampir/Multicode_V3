@@ -1,4 +1,4 @@
-# Multicode
+# Multicode V3
 
 Перед началом работы обязательно ознакомьтесь с [RULES.md](RULES.md).
 
