@@ -25,7 +25,9 @@
 //! Дополнительные детали описаны в `docs/sync.md`.
 
 use super::ast_parser::{ASTParser, SyntaxTree};
-use super::conflict_resolver::{ConflictResolver, ConflictType, ResolutionPolicy, SyncConflict};
+use super::conflict_resolver::{
+    ConflictResolver, ConflictType, ResolutionOption, ResolutionPolicy, SyncConflict,
+};
 use super::element_mapper::ElementMapper;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
@@ -104,10 +106,7 @@ impl SyncEngine {
 
     /// Обрабатывает входящее сообщение синхронизации.
     /// Возвращает обновлённый текст, список метаданных и диагностические данные.
-    pub fn handle(
-        &mut self,
-        msg: SyncMessage,
-    ) -> Option<(&str, &[VisualMeta], &SyncDiagnostics)> {
+    pub fn handle(&mut self, msg: SyncMessage) -> Option<(&str, &[VisualMeta], &SyncDiagnostics)> {
         self.last_conflicts.clear();
         match msg {
             SyncMessage::TextChanged(code, lang) => {
@@ -270,6 +269,54 @@ impl SyncEngine {
     /// corresponding visual block.
     pub fn unmapped_code(&self) -> &[std::ops::Range<usize>] {
         &self.mapper.unmapped_code
+    }
+
+    /// Applies a user-selected resolution strategy to a conflict with the given `id`.
+    pub fn apply_resolution(&mut self, id: &str, option: ResolutionOption) {
+        let text_meta = match meta::read_all(&self.state.code)
+            .into_iter()
+            .find(|m| m.id == id)
+        {
+            Some(m) => m,
+            None => {
+                self.last_conflicts.retain(|c| c.id != id);
+                return;
+            }
+        };
+        let visual_meta = match self.state.metas.get(id).cloned() {
+            Some(m) => m,
+            None => {
+                self.last_conflicts.retain(|c| c.id != id);
+                return;
+            }
+        };
+
+        let policy = match option {
+            ResolutionOption::Text => ResolutionPolicy::PreferText,
+            ResolutionOption::Visual => ResolutionPolicy::PreferVisual,
+            ResolutionOption::Merge => self.policy,
+        };
+
+        let resolved = match option {
+            ResolutionOption::Text => text_meta.clone(),
+            ResolutionOption::Visual => visual_meta.clone(),
+            ResolutionOption::Merge => {
+                let (resolved, _) =
+                    ConflictResolver::default().resolve(&text_meta, &visual_meta, policy);
+                resolved
+            }
+        };
+
+        self.state.metas.insert(id.to_string(), resolved.clone());
+        self.state.code = meta::upsert(&self.state.code, &resolved);
+
+        self.last_metas = self.state.metas.values().cloned().collect();
+        let metas = std::mem::take(&mut self.last_metas);
+        let diagnostics = self.update_syntax_and_mapper(&metas);
+        self.last_diagnostics = diagnostics;
+        self.last_metas = metas;
+
+        self.last_conflicts.retain(|c| c.id != id);
     }
 
     /// Conflicts detected during the last synchronization.

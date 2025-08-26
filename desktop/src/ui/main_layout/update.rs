@@ -62,13 +62,9 @@ impl MessageHandler for DefaultHandler {
             }
             MainMessage::CodeEditorMsg(action) => {
                 state.code_editor.perform(action);
-                if let Some((_code, _metas, _diag)) = state
-                    .sync_engine
-                    .handle(SyncMessage::TextChanged(
-                        state.code_editor.text().to_string(),
-                        Lang::Rust,
-                    ))
-                {
+                if let Some((_code, _metas, _diag)) = state.sync_engine.handle(
+                    SyncMessage::TextChanged(state.code_editor.text().to_string(), Lang::Rust),
+                ) {
                     state.conflicts = state.sync_engine.last_conflicts().to_vec();
                 }
             }
@@ -104,10 +100,9 @@ impl MessageHandler for DefaultHandler {
             MainMessage::ShowConflict => {
                 state.active_conflict = state.conflicts.first().cloned();
             }
-            MainMessage::ResolveConflict(id, _option) => {
-                if let Some(pos) = state.conflicts.iter().position(|c| c.id == id) {
-                    state.conflicts.remove(pos);
-                }
+            MainMessage::ResolveConflict(id, option) => {
+                state.sync_engine.apply_resolution(&id, option);
+                state.conflicts = state.sync_engine.last_conflicts().to_vec();
                 state.active_conflict = state.conflicts.first().cloned();
             }
         }
