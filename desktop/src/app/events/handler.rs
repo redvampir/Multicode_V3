@@ -493,6 +493,7 @@ impl MulticodeApp {
                 let tags_str = self.meta_tags.clone();
                 let links_str = self.meta_links.clone();
                 let comment_str = self.meta_comment.clone();
+                let preserve_formatting = self.settings.sync.preserve_meta_formatting;
                 if let Some(f) = self.current_file_mut() {
                     let mut meta = f.meta.clone().unwrap_or(VisualMeta {
                         version: DEFAULT_VERSION,
@@ -542,7 +543,7 @@ impl MulticodeApp {
                         meta.extras = Some(extras);
                     }
                     meta.updated_at = Utc::now();
-                    f.content = meta::upsert(&f.content, &meta);
+                    f.content = meta::upsert(&f.content, &meta, preserve_formatting);
                     f.editor = Content::with_text(&f.content);
                     f.meta = Some(meta);
                     f.dirty = true;
@@ -981,6 +982,7 @@ impl MulticodeApp {
             }
             Message::NewFile => Command::none(),
             Message::SaveFile => {
+                let preserve_formatting = self.settings.sync.preserve_meta_formatting;
                 if let Some(f) = self.current_file_mut() {
                     let path = f.path.clone();
                     let mut meta = f.meta.clone().unwrap_or(VisualMeta {
@@ -1000,7 +1002,7 @@ impl MulticodeApp {
                         updated_at: Utc::now(),
                     });
                     meta.updated_at = Utc::now();
-                    let content = meta::upsert(&f.content, &meta);
+                    let content = meta::upsert(&f.content, &meta, preserve_formatting);
                     f.content = content.clone();
                     f.editor = Content::with_text(&f.content);
                     f.undo_stack.clear();

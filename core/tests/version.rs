@@ -36,7 +36,7 @@ fn upsert_preserves_version() {
         extras: None,
         updated_at: Utc::now(),
     };
-    let updated = upsert("fn main() {}", &meta);
+    let updated = upsert("fn main() {}", &meta, false);
     assert!(updated.contains("\"version\":3"));
     let metas = read_all(&updated);
     assert_eq!(metas[0].version, 3);

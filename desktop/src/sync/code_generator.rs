@@ -93,7 +93,7 @@ impl CodeGenerator {
                 .cloned()
                 .unwrap_or_default();
             let snippet = if self.insert_meta {
-                meta::upsert(&snippet, &meta)
+                meta::upsert(&snippet, &meta, false)
             } else {
                 snippet
             };

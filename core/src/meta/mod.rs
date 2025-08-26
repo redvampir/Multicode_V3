@@ -115,7 +115,9 @@ pub fn validate(meta: &VisualMeta) -> Result<(), Vec<ValidationError>> {
 /// Вставляет или обновляет комментарий с визуальными метаданными в `content`.
 ///
 /// Если комментария ещё нет, он будет помещён в начало документа.
-pub fn upsert(content: &str, meta: &VisualMeta) -> String {
+/// `preserve_formatting` сохраняет исходные отступы и суффикс строки
+/// существующего комментария.
+pub fn upsert(content: &str, meta: &VisualMeta, preserve_formatting: bool) -> String {
     let marker = format!("<!-- {} ", MARKER);
     let mut meta = meta.clone();
     meta.updated_at = Utc::now();
@@ -134,12 +136,28 @@ pub fn upsert(content: &str, meta: &VisualMeta) -> String {
     let mut out = String::new();
     let mut found = false;
     for line in content.lines() {
-        if line.trim_start().starts_with(&marker) {
-            if let Some(end_idx) = line.find("-->") {
-                let json_part = &line[marker.len()..end_idx].trim();
+        let trimmed = line.trim_start();
+        if trimmed.starts_with(&marker) {
+            if let Some(end_idx) = trimmed.find("-->") {
+                let json_part = &trimmed[marker.len()..end_idx].trim();
                 if let Ok(existing) = serde_json::from_str::<VisualMeta>(json_part) {
                     if existing.id == meta.id {
-                        out.push_str(&format!("{}{} -->\n", marker, serialized));
+                        let prefix = if preserve_formatting {
+                            &line[..line.len() - trimmed.len()]
+                        } else {
+                            ""
+                        };
+                        let suffix = if preserve_formatting {
+                            &trimmed[end_idx + 3..]
+                        } else {
+                            ""
+                        };
+                        out.push_str(prefix);
+                        out.push_str(&format!("{}{} -->", marker, serialized));
+                        if preserve_formatting {
+                            out.push_str(suffix);
+                        }
+                        out.push('\n');
                         found = true;
                         continue;
                     }
@@ -306,7 +324,7 @@ pub fn fix_all(content: &str) -> String {
 
     let mut out = remove_all(content);
     for meta in &metas {
-        out = upsert(&out, meta);
+        out = upsert(&out, meta, false);
     }
     out
 }
@@ -353,7 +371,7 @@ fn unique_id() -> String {
             updated_at: Utc::now(),
         };
         let content = "fn main() {}";
-        let updated = upsert(content, &meta);
+        let updated = upsert(content, &meta, false);
         assert!(updated.contains(MARKER));
         let metas = read_all(&updated);
         assert_eq!(metas.len(), 1);
@@ -515,7 +533,7 @@ fn unique_id() -> String {
               updated_at: Utc::now(),
           };
           let content = "test";
-          let out = upsert(content, &meta);
+          let out = upsert(content, &meta, false);
           assert_eq!(out, content);
           assert!(logs_contain("невалидный VisualMeta"));
       }

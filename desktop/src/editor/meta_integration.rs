@@ -59,12 +59,12 @@ pub fn changed_meta_ids(old: &str, new: &str) -> Vec<String> {
 
 /// Insert a new visual meta comment into `content`.
 pub fn insert_meta_comment(content: &str, meta: &VisualMeta) -> String {
-    meta::upsert(content, meta)
+    meta::upsert(content, meta, false)
 }
 
 /// Update existing `@VISUAL_META` comment or insert if missing.
 pub fn update_meta_comment(content: &str, meta: &VisualMeta) -> String {
-    meta::upsert(content, meta)
+    meta::upsert(content, meta, false)
 }
 
 /// Validate JSON inside `@VISUAL_META` comments and produce diagnostics.
