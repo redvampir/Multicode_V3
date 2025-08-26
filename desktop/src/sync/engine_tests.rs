@@ -39,6 +39,21 @@ fn text_changed_returns_metas() {
 }
 
 #[test]
+fn handle_returns_references_without_cloning() {
+    let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+    let meta = make_meta("r", DEFAULT_VERSION);
+    let code = meta::upsert("", &meta);
+    let (ret_code, metas, _diag) =
+        engine.handle(SyncMessage::TextChanged(code, Lang::Rust)).unwrap();
+    let code_ptr = ret_code.as_ptr();
+    let ids: Vec<String> = metas.iter().map(|m| m.id.clone()).collect();
+    let _ = metas;
+    let _ = ret_code;
+    assert!(std::ptr::eq(code_ptr, engine.state().code.as_ptr()));
+    assert!(ids.into_iter().all(|id| engine.state().metas.contains_key(&id)));
+}
+
+#[test]
 fn visual_changed_updates_state_code() {
     let mut engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
     let _ = engine.handle(SyncMessage::TextChanged(String::new(), Lang::Rust));
@@ -46,11 +61,15 @@ fn visual_changed_updates_state_code() {
     let (result, metas, _diag) = engine
         .handle(SyncMessage::VisualChanged(meta.clone()))
         .unwrap();
-    assert!(result.contains("@VISUAL_META"));
-    assert!(result.contains("\"id\":\"block\""));
-    assert_eq!(result, engine.state().code);
-    assert_eq!(metas.len(), 1);
-    assert_eq!(metas[0].id, "block");
+    let result_ptr = result.as_ptr();
+    let metas_owned: Vec<_> = metas.to_vec();
+    let _ = metas;
+    let _ = result;
+    assert!(engine.state().code.contains("@VISUAL_META"));
+    assert!(engine.state().code.contains("\"id\":\"block\""));
+    assert!(std::ptr::eq(result_ptr, engine.state().code.as_ptr()));
+    assert_eq!(metas_owned.len(), 1);
+    assert_eq!(metas_owned[0].id, "block");
     assert_eq!(engine.state().metas.len(), 1);
     assert!(engine.state().metas.get("block").is_some());
 }
