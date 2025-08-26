@@ -164,7 +164,7 @@ pub fn view<'a>(state: &'a MainUI) -> Element<'a, MainMessage> {
     let mut layout = column![menu, status_row, content];
     if let Some(conflict) = &state.active_conflict {
         let dialog = conflict_dialog::view(conflict)
-            .map(|opt| MainMessage::ResolveConflict(conflict.id.clone(), opt));
+            .map(|choice| MainMessage::ResolveConflict(conflict.id.clone(), choice));
         layout = layout.push(dialog);
     }
     layout.into()

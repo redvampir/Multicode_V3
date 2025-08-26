@@ -28,8 +28,8 @@ pub enum MainMessage {
     CanvasEvent(CanvasMessage),
     /// Show conflict resolution dialog for current conflicts.
     ShowConflict,
-    /// Resolve conflict with selected option.
-    ResolveConflict(String, ResolutionOption),
+    /// Resolve conflict with selected option. `None` closes the dialog.
+    ResolveConflict(String, Option<ResolutionOption>),
 }
 
 /// Trait allowing custom message handlers to extend behaviour.
@@ -100,10 +100,13 @@ impl MessageHandler for DefaultHandler {
             MainMessage::ShowConflict => {
                 state.active_conflict = state.conflicts.first().cloned();
             }
-            MainMessage::ResolveConflict(id, option) => {
+            MainMessage::ResolveConflict(id, Some(option)) => {
                 state.sync_engine.apply_resolution(&id, option);
                 state.conflicts = state.sync_engine.last_conflicts().to_vec();
                 state.active_conflict = state.conflicts.first().cloned();
+            }
+            MainMessage::ResolveConflict(_, None) => {
+                state.active_conflict = None;
             }
         }
     }
