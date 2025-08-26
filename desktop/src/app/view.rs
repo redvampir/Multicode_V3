@@ -485,21 +485,29 @@ impl MulticodeApp {
                     {
                         let lang = self.settings.language;
                         let label = settings_text(SettingsText::ConflictResolutionLabel, lang);
-                        let prefer_text = ConflictResolutionMode::PreferText.label(lang);
-                        let prefer_visual = ConflictResolutionMode::PreferVisual.label(lang);
-                        let selected = self.settings.sync.conflict_resolution.label(lang);
+                        let options = ConflictResolutionMode::ALL
+                            .map(|mode| (mode, mode.label(lang)));
+                        let selected_label =
+                            self.settings.sync.conflict_resolution.label(lang);
+                        let labels = options
+                            .iter()
+                            .map(|(_, label)| *label)
+                            .collect::<Vec<_>>();
                         row![
                             text(label),
                             pick_list(
-                                vec![prefer_text, prefer_visual],
-                                Some(selected),
-                                move |choice| {
-                                    let mode = if choice == prefer_text {
-                                        ConflictResolutionMode::PreferText
-                                    } else {
-                                        ConflictResolutionMode::PreferVisual
-                                    };
-                                    Message::ConflictResolutionModeSelected(mode)
+                                labels,
+                                Some(selected_label),
+                                {
+                                    let options = options;
+                                    move |choice| {
+                                        let mode = options
+                                            .iter()
+                                            .find(|(_, label)| *label == choice)
+                                            .map(|(mode, _)| *mode)
+                                            .unwrap_or(ConflictResolutionMode::PreferText);
+                                        Message::ConflictResolutionModeSelected(mode)
+                                    }
                                 }
                             )
                         ]

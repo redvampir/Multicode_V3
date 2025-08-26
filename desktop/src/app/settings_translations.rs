@@ -1,3 +1,5 @@
+//! Translations used in settings-related UI text.
+
 use super::Language;
 
 #[derive(Debug, Clone, Copy)]
