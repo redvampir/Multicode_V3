@@ -747,9 +747,23 @@ mod tests {
         settings.sync.conflict_resolution = ConflictResolutionMode::PreferVisual;
         settings.sync.preserve_meta_formatting = false;
 
-        let json = serde_json::to_string(&settings).unwrap();
-        let deserialized: UserSettings = serde_json::from_str(&json).unwrap();
+        // Serialize and ensure the sync section is present with the provided values.
+        let json = serde_json::to_value(&settings).unwrap();
+        assert_eq!(
+            json.get("sync")
+                .and_then(|v| v.get("conflict_resolution"))
+                .and_then(|v| v.as_str()),
+            Some("PreferVisual")
+        );
+        assert_eq!(
+            json.get("sync")
+                .and_then(|v| v.get("preserve_meta_formatting"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
 
+        // Round-trip to verify the values survive deserialization.
+        let deserialized: UserSettings = serde_json::from_value(json).unwrap();
         assert_eq!(
             deserialized.sync.conflict_resolution,
             ConflictResolutionMode::PreferVisual
@@ -763,6 +777,14 @@ mod tests {
 
         // Entire sync field absent uses defaults.
         let settings: UserSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(
+            settings.sync.conflict_resolution,
+            ConflictResolutionMode::PreferText
+        );
+        assert!(settings.sync.preserve_meta_formatting);
+
+        // Empty sync object also uses defaults.
+        let settings: UserSettings = serde_json::from_str("{\"sync\":{}}" ).unwrap();
         assert_eq!(
             settings.sync.conflict_resolution,
             ConflictResolutionMode::PreferText
