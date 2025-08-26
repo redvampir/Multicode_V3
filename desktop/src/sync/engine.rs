@@ -95,7 +95,7 @@ pub struct SyncEngine {
 impl SyncEngine {
     /// Создаёт новый движок синхронизации.
     pub fn new(lang: Lang, settings: SyncSettings) -> Self {
-        init_extensions();
+        init_extensions(None);
         Self {
             state: SyncState::default(),
             parser: ASTParser::new(lang),

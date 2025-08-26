@@ -89,13 +89,24 @@ fn register_boxed_extension(ext: Box<dyn SyncExtension>) {
     }
 }
 
-/// Инициализировать расширения, загружая их из каталога `plugins/`.
-pub fn init_extensions() {
-    INIT.call_once(load_extensions);
+/// Initialize synchronization extensions, optionally loading them from a custom
+/// directory.
+///
+/// If `path` is [`None`], the `SYNC_EXTENSIONS_DIR` environment variable will be
+/// checked. If it is not set, the default `plugins/` directory is used.
+pub fn init_extensions(path: Option<&Path>) {
+    INIT.call_once(|| load_extensions(path));
 }
 
-fn load_extensions() {
-    match std::fs::read_dir("plugins") {
+fn load_extensions(path: Option<&Path>) {
+    use std::path::PathBuf;
+
+    let dir: PathBuf = path
+        .map(|p| p.to_path_buf())
+        .or_else(|| std::env::var("SYNC_EXTENSIONS_DIR").ok().map(PathBuf::from))
+        .unwrap_or_else(|| PathBuf::from("plugins"));
+
+    match std::fs::read_dir(&dir) {
         Ok(entries) => {
             for entry in entries {
                 match entry {
@@ -117,7 +128,10 @@ fn load_extensions() {
                 }
             }
         }
-        Err(e) => warn!("Failed to read plugins directory: {e}")
+        Err(e) => warn!(
+            "Failed to read plugins directory {}: {e}",
+            dir.display()
+        )
     }
 }
 
