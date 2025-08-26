@@ -21,6 +21,7 @@
 //! Более подробное описание потоков данных приведено в `docs/sync.md`.
 
 pub mod ast_parser;
+pub mod async_manager;
 pub mod change_tracker;
 pub mod code_generator;
 pub mod conflict_resolver;
@@ -28,6 +29,7 @@ pub mod element_mapper;
 pub mod engine;
 
 pub use ast_parser::{ASTParser, SyntaxNode, SyntaxTree};
+pub use async_manager::AsyncManager;
 pub use change_tracker::{ChangeTracker, TextDelta, VisualDelta};
 pub use code_generator::{format_generated_code, CodeGenerator, FormattingStyle};
 pub use conflict_resolver::{
