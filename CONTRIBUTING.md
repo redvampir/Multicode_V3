@@ -7,7 +7,7 @@
 ## 🛠 Начало работы
 
 ```bash
-git clone https://github.com/redvampir/Multicode_V3.git
+git clone https://github.com/<user>/Multicode_V3.git
 cd Multicode_V3
 
 # Установка зависимостей frontend
