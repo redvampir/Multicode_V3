@@ -33,6 +33,8 @@ use once_cell::sync::Lazy;
 use std::path::Path;
 use std::sync::{Mutex, Once};
 
+use libloading::Library;
+
 use multicode_core::meta::VisualMeta;
 use multicode_core::parser::Lang;
 
@@ -70,6 +72,7 @@ pub trait SyncExtension: Send + Sync {
 
 static SYNC_EXTENSIONS: Lazy<Mutex<Vec<Box<dyn SyncExtension>>>> =
     Lazy::new(|| Mutex::new(Vec::new()));
+static LOADED_LIBS: Lazy<Mutex<Vec<Library>>> = Lazy::new(|| Mutex::new(Vec::new()));
 static INIT: Once = Once::new();
 
 /// Зарегистрировать расширение синхронизации.
@@ -96,8 +99,11 @@ fn load_extensions() {
             let path = entry.path();
             match path.extension().and_then(|e| e.to_str()) {
                 Some("dll") | Some("so") | Some("dylib") => unsafe {
-                    if let Some(ext) = load_dll(&path) {
+                    if let Some((ext, lib)) = load_dll(&path) {
                         register_boxed_extension(ext);
+                        if let Ok(mut libs) = LOADED_LIBS.lock() {
+                            libs.push(lib);
+                        }
                     }
                 },
                 _ => {}
@@ -106,16 +112,14 @@ fn load_extensions() {
     }
 }
 
-unsafe fn load_dll(path: &Path) -> Option<Box<dyn SyncExtension>> {
-    use libloading::{Library, Symbol};
+unsafe fn load_dll(path: &Path) -> Option<(Box<dyn SyncExtension>, Library)> {
+    use libloading::Symbol;
     type Constructor = unsafe fn() -> Box<dyn SyncExtension>;
 
     let lib = Library::new(path).ok()?;
     let constructor: Symbol<Constructor> = lib.get(b"create_extension").ok()?;
     let ext = constructor();
-    // удерживаем библиотеку в памяти
-    std::mem::forget(lib);
-    Some(ext)
+    Some((ext, lib))
 }
 
 /// Использовать зарегистрированные расширения для парсинга кода.
@@ -162,6 +166,6 @@ pub(crate) fn resolve_with_extensions(
 }
 
 #[cfg(test)]
-mod engine_tests;
-#[cfg(test)]
 mod async_manager_tests;
+#[cfg(test)]
+mod engine_tests;
