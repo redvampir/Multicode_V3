@@ -2230,3 +2230,26 @@ fn detect_lang(path: &Path) -> Option<Lang> {
         _ => None,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::sync::ConflictResolutionMode;
+    use iced::Application;
+
+    #[test]
+    fn updates_sync_engine_settings() {
+        let (mut app, _) = <MulticodeApp as Application>::new(None);
+
+        let _ = app.handle_message(Message::ConflictResolutionModeSelected(
+            ConflictResolutionMode::PreferVisual,
+        ));
+        let engine_state = format!("{:?}", app.sync_engine);
+        assert!(engine_state.contains("policy: PreferVisual"));
+
+        let _ =
+            app.handle_message(Message::TogglePreserveMetaFormatting(false));
+        let engine_state = format!("{:?}", app.sync_engine);
+        assert!(engine_state.contains("preserve_meta_formatting: false"));
+    }
+}
