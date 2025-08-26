@@ -14,7 +14,7 @@ use super::{
     AppTheme, CreateTarget, EditorMode, Language, LogLevel, MulticodeApp, Screen, UserSettings,
 };
 use crate::search::{fuzzy, index::SearchIndex};
-use crate::sync::{ChangeTracker, ResolutionPolicy, SyncEngine};
+use crate::sync::{ChangeTracker, SyncEngine};
 use crate::visual::palette::{PaletteBlock, DEFAULT_CATEGORY};
 use crate::visual::translations::block_synonyms;
 use lru::LruCache;
@@ -77,6 +77,7 @@ impl Application for MulticodeApp {
         }
         let use_index = settings.search.use_index;
         let cache_size = settings.search.cache_size;
+        let sync_settings = settings.sync.clone();
         let (sender, _) = broadcast::channel(100);
         let fav_files = settings.favorites.clone();
         let (palette, palette_categories) = load_palette();
@@ -169,7 +170,7 @@ impl Application for MulticodeApp {
             palette_query: String::new(),
             palette_drag: None,
             change_tracker: ChangeTracker::default(),
-            sync_engine: SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText),
+            sync_engine: SyncEngine::new(Lang::Rust, sync_settings),
             recent_commands,
             command_counts,
             command_trigrams,

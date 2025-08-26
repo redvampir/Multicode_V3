@@ -370,6 +370,18 @@ impl MulticodeApp {
                 self.rebuild_search_indices();
                 Command::none()
             }
+            Message::ConflictResolutionModeSelected(mode) => {
+                self.settings.sync.conflict_resolution = mode;
+                self.sync_engine
+                    .update_settings(self.settings.sync.clone());
+                Command::none()
+            }
+            Message::TogglePreserveMetaFormatting(val) => {
+                self.settings.sync.preserve_meta_formatting = val;
+                self.sync_engine
+                    .update_settings(self.settings.sync.clone());
+                Command::none()
+            }
             Message::ToggleSearchIndex(val) => {
                 self.settings.search.use_index = val;
                 self.rebuild_search_indices();

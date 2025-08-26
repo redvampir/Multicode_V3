@@ -26,12 +26,12 @@ pub const DEFAULT_CHANNEL_CAPACITY: usize = 32;
 /// # Example
 /// ```ignore
 /// use desktop::sync::{
-///     AsyncManager, ResolutionPolicy, SyncEngine, SyncMessage, DEFAULT_BATCH_DELAY,
+///     AsyncManager, SyncEngine, SyncMessage, SyncSettings, DEFAULT_BATCH_DELAY,
 ///     DEFAULT_CHANNEL_CAPACITY,
 /// };
 /// use multicode_core::parser::Lang;
 ///
-/// let engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+/// let engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
 /// let manager = AsyncManager::new(engine, DEFAULT_BATCH_DELAY, DEFAULT_CHANNEL_CAPACITY);
 /// manager
 ///     .send(SyncMessage::TextChanged(String::new(), Lang::Rust))
