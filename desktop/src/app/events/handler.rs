@@ -2238,17 +2238,23 @@ mod tests {
     use iced::Application;
 
     #[test]
-    fn updates_sync_engine_settings() {
+    fn updates_sync_engine_after_messages() {
         let (mut app, _) = <MulticodeApp as Application>::new(None);
 
+        // verify defaults
+        let engine_state = format!("{:?}", app.sync_engine);
+        assert!(engine_state.contains("policy: PreferText"));
+        assert!(engine_state.contains("preserve_meta_formatting: true"));
+
+        // update conflict resolution mode
         let _ = app.handle_message(Message::ConflictResolutionModeSelected(
             ConflictResolutionMode::PreferVisual,
         ));
         let engine_state = format!("{:?}", app.sync_engine);
         assert!(engine_state.contains("policy: PreferVisual"));
 
-        let _ =
-            app.handle_message(Message::TogglePreserveMetaFormatting(false));
+        // toggle meta formatting preservation
+        let _ = app.handle_message(Message::TogglePreserveMetaFormatting(false));
         let engine_state = format!("{:?}", app.sync_engine);
         assert!(engine_state.contains("preserve_meta_formatting: false"));
     }
