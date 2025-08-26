@@ -107,6 +107,29 @@ impl AsyncManager {
     }
 }
 
+#[cfg(test)]
+impl AsyncManager {
+    /// Creates a new manager with an additional logger for processed batches.
+    pub(crate) fn new_with_logger(
+        engine: SyncEngine,
+        batch_delay: Duration,
+        capacity: usize,
+        log: Arc<Mutex<Vec<Vec<SyncMessage>>>>,
+    ) -> Self {
+        let (tx, rx) = mpsc::sync_channel(capacity);
+        let paused = Arc::new((Mutex::new(false), Condvar::new()));
+        let worker_paused = paused.clone();
+        let handle = thread::spawn(move || {
+            run_worker_logged(engine, rx, worker_paused, batch_delay, log)
+        });
+        Self {
+            tx: Some(tx),
+            handle: Some(handle),
+            paused,
+        }
+    }
+}
+
 fn run_worker(
     mut engine: SyncEngine,
     rx: Receiver<Option<SyncMessage>>,
@@ -151,6 +174,59 @@ fn run_worker(
                 paused_guard = cvar.wait(paused_guard).unwrap();
             }
         }
+        for msg in batch {
+            let _ = engine.handle(msg);
+        }
+    }
+}
+
+#[cfg(test)]
+fn run_worker_logged(
+    mut engine: SyncEngine,
+    rx: Receiver<Option<SyncMessage>>,
+    paused: Arc<(Mutex<bool>, Condvar)>,
+    batch_delay: Duration,
+    log: Arc<Mutex<Vec<Vec<SyncMessage>>>>,
+) {
+    while let Ok(first) = rx.recv() {
+        let first = match first {
+            Some(msg) => msg,
+            None => break,
+        };
+        {
+            let (lock, cvar) = &*paused;
+            let mut paused_guard = lock.lock().unwrap();
+            while *paused_guard {
+                paused_guard = cvar.wait(paused_guard).unwrap();
+            }
+        }
+        let mut batch = vec![first];
+        loop {
+            match rx.recv_timeout(batch_delay) {
+                Ok(Some(msg)) => {
+                    {
+                        let (lock, cvar) = &*paused;
+                        let mut paused_guard = lock.lock().unwrap();
+                        while *paused_guard {
+                            batch.clear();
+                            paused_guard = cvar.wait(paused_guard).unwrap();
+                        }
+                    }
+                    batch.push(msg);
+                }
+                Ok(None) => return,
+                Err(mpsc::RecvTimeoutError::Timeout) => break,
+                Err(mpsc::RecvTimeoutError::Disconnected) => return,
+            }
+        }
+        {
+            let (lock, cvar) = &*paused;
+            let mut paused_guard = lock.lock().unwrap();
+            while *paused_guard {
+                paused_guard = cvar.wait(paused_guard).unwrap();
+            }
+        }
+        log.lock().unwrap().push(batch.clone());
         for msg in batch {
             let _ = engine.handle(msg);
         }
