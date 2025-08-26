@@ -20,9 +20,26 @@ pub const DEFAULT_CHANNEL_CAPACITY: usize = 32;
 /// [`meta::upsert`](multicode_core::meta::upsert) are executed off the main
 /// thread and at a controlled rate.
 ///
-/// The manager also supports pausing and resuming of message processing.
+/// The manager also supports pausing and resuming of message processing and can
+/// be shut down explicitly via [`shutdown`](AsyncManager::shutdown).
+///
+/// # Example
+/// ```ignore
+/// use desktop::sync::{
+///     AsyncManager, ResolutionPolicy, SyncEngine, SyncMessage, DEFAULT_BATCH_DELAY,
+///     DEFAULT_CHANNEL_CAPACITY,
+/// };
+/// use multicode_core::parser::Lang;
+///
+/// let engine = SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText);
+/// let manager = AsyncManager::new(engine, DEFAULT_BATCH_DELAY, DEFAULT_CHANNEL_CAPACITY);
+/// manager
+///     .send(SyncMessage::TextChanged(String::new(), Lang::Rust))
+///     .unwrap();
+/// manager.shutdown();
+/// ```
 pub struct AsyncManager {
-    tx: Option<SyncSender<SyncMessage>>,
+    tx: Option<SyncSender<Option<SyncMessage>>>,
     handle: Option<JoinHandle<()>>,
     paused: Arc<(Mutex<bool>, Condvar)>,
 }
@@ -47,7 +64,10 @@ impl AsyncManager {
     /// Enqueues a [`SyncMessage`] for asynchronous processing.
     pub fn send(&self, msg: SyncMessage) -> Result<(), mpsc::SendError<SyncMessage>> {
         if let Some(tx) = &self.tx {
-            tx.send(msg)
+            tx.send(Some(msg)).map_err(|e| match e.0 {
+                Some(m) => mpsc::SendError(m),
+                None => unreachable!("sender returned shutdown marker"),
+            })
         } else {
             Err(mpsc::SendError(msg))
         }
@@ -68,15 +88,36 @@ impl AsyncManager {
         *paused = false;
         cvar.notify_all();
     }
+
+    /// Gracefully stops the background worker and waits for it to finish.
+    ///
+    /// This method is idempotent; dropping [`AsyncManager`] will also attempt to
+    /// shut down the worker if it hasn't been called explicitly.
+    pub fn shutdown(mut self) {
+        self.shutdown_inner();
+    }
+
+    fn shutdown_inner(&mut self) {
+        if let Some(tx) = self.tx.take() {
+            let _ = tx.send(None);
+        }
+        if let Some(handle) = self.handle.take() {
+            let _ = handle.join();
+        }
+    }
 }
 
 fn run_worker(
     mut engine: SyncEngine,
-    rx: Receiver<SyncMessage>,
+    rx: Receiver<Option<SyncMessage>>,
     paused: Arc<(Mutex<bool>, Condvar)>,
     batch_delay: Duration,
 ) {
     while let Ok(first) = rx.recv() {
+        let first = match first {
+            Some(msg) => msg,
+            None => break,
+        };
         {
             let (lock, cvar) = &*paused;
             let mut paused_guard = lock.lock().unwrap();
@@ -87,7 +128,7 @@ fn run_worker(
         let mut batch = vec![first];
         loop {
             match rx.recv_timeout(batch_delay) {
-                Ok(msg) => {
+                Ok(Some(msg)) => {
                     {
                         let (lock, cvar) = &*paused;
                         let mut paused_guard = lock.lock().unwrap();
@@ -98,6 +139,7 @@ fn run_worker(
                     }
                     batch.push(msg);
                 }
+                Ok(None) => return,
                 Err(mpsc::RecvTimeoutError::Timeout) => break,
                 Err(mpsc::RecvTimeoutError::Disconnected) => return,
             }
@@ -117,10 +159,7 @@ fn run_worker(
 
 impl Drop for AsyncManager {
     fn drop(&mut self) {
-        // Dropping the sender will make the worker exit; join to clean up.
-        self.tx.take();
-        if let Some(handle) = self.handle.take() {
-            let _ = handle.join();
-        }
+        // Ensure the worker thread terminates even if `shutdown` wasn't called.
+        self.shutdown_inner();
     }
 }
