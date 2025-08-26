@@ -740,6 +740,55 @@ mod tests {
     }
 
     #[test]
+    fn user_settings_serialization_roundtrip_preserves_sync_settings() {
+        use crate::sync::settings::ConflictResolutionMode;
+
+        let mut settings = UserSettings::default();
+        settings.sync.conflict_resolution = ConflictResolutionMode::PreferVisual;
+        settings.sync.preserve_meta_formatting = false;
+
+        let json = serde_json::to_string(&settings).unwrap();
+        let deserialized: UserSettings = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(
+            deserialized.sync.conflict_resolution,
+            ConflictResolutionMode::PreferVisual
+        );
+        assert!(!deserialized.sync.preserve_meta_formatting);
+    }
+
+    #[test]
+    fn user_settings_deserialization_defaults_sync_settings() {
+        use crate::sync::settings::ConflictResolutionMode;
+
+        // Entire sync field absent uses defaults.
+        let settings: UserSettings = serde_json::from_str("{}").unwrap();
+        assert_eq!(
+            settings.sync.conflict_resolution,
+            ConflictResolutionMode::PreferText
+        );
+        assert!(settings.sync.preserve_meta_formatting);
+
+        // Missing conflict_resolution uses default.
+        let json = r#"{"sync":{"preserve_meta_formatting":false}}"#;
+        let settings: UserSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            settings.sync.conflict_resolution,
+            ConflictResolutionMode::PreferText
+        );
+        assert!(!settings.sync.preserve_meta_formatting);
+
+        // Missing preserve_meta_formatting uses default.
+        let json = r#"{"sync":{"conflict_resolution":"PreferVisual"}}"#;
+        let settings: UserSettings = serde_json::from_str(json).unwrap();
+        assert_eq!(
+            settings.sync.conflict_resolution,
+            ConflictResolutionMode::PreferVisual
+        );
+        assert!(settings.sync.preserve_meta_formatting);
+    }
+
+    #[test]
     fn user_settings_serialization_preserves_custom_hotkeys() {
         let mut hotkeys = HotkeyManager::default();
 
