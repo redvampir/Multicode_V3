@@ -9,7 +9,7 @@ use iced::widget::{
 use iced::{alignment, theme, Element, Length};
 
 use super::events::Message;
-use super::{AppTheme, CreateTarget, Language, MulticodeApp, Screen, ViewMode};
+use super::{settings_translations::{settings_text, SettingsText}, AppTheme, CreateTarget, Language, MulticodeApp, Screen, ViewMode};
 use crate::sync::ConflictResolutionMode;
 use crate::search::hotkeys::HotkeyContext;
 use crate::editor::{CodeEditor, EditorTheme, THEME_SET};
@@ -482,15 +482,29 @@ impl MulticodeApp {
                         )
                     ]
                     .spacing(10),
-                    row![
-                        text("Решение конфликтов"),
-                        pick_list(
-                            &ConflictResolutionMode::ALL[..],
-                            Some(self.settings.sync.conflict_resolution),
-                            Message::ConflictResolutionModeSelected
-                        )
-                    ]
-                    .spacing(10),
+                    {
+                        let lang = self.settings.language;
+                        let label = settings_text(SettingsText::ConflictResolutionLabel, lang);
+                        let prefer_text = ConflictResolutionMode::PreferText.label(lang);
+                        let prefer_visual = ConflictResolutionMode::PreferVisual.label(lang);
+                        let selected = self.settings.sync.conflict_resolution.label(lang);
+                        row![
+                            text(label),
+                            pick_list(
+                                vec![prefer_text, prefer_visual],
+                                Some(selected),
+                                move |choice| {
+                                    let mode = if choice == prefer_text {
+                                        ConflictResolutionMode::PreferText
+                                    } else {
+                                        ConflictResolutionMode::PreferVisual
+                                    };
+                                    Message::ConflictResolutionModeSelected(mode)
+                                }
+                            )
+                        ]
+                        .spacing(10)
+                    },
                     row![
                         text("Сохранять формат мета-комментариев"),
                         checkbox("", self.settings.sync.preserve_meta_formatting)

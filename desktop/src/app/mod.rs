@@ -5,6 +5,7 @@ pub mod events;
 pub mod io;
 pub mod log_translations;
 pub mod search_translations;
+pub mod settings_translations;
 pub mod ui;
 
 mod actions;
