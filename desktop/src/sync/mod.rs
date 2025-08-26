@@ -29,7 +29,7 @@ pub mod element_mapper;
 pub mod engine;
 
 pub use ast_parser::{ASTParser, SyntaxNode, SyntaxTree};
-pub use async_manager::{AsyncManager, DEFAULT_BATCH_DELAY};
+pub use async_manager::{AsyncManager, DEFAULT_BATCH_DELAY, DEFAULT_CHANNEL_CAPACITY};
 pub use change_tracker::{ChangeTracker, TextDelta, VisualDelta};
 pub use code_generator::{format_generated_code, CodeGenerator, FormattingStyle};
 pub use conflict_resolver::{
