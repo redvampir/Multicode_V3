@@ -340,3 +340,34 @@ fn visual_changed_respects_formatting_setting() {
     let _ = engine.handle(SyncMessage::VisualChanged(updated));
     assert!(engine.state().code.starts_with("    <!-- @VISUAL_META"));
 }
+
+#[test]
+fn apply_resolution_respects_formatting_setting() {
+    let base = make_meta("fmt", DEFAULT_VERSION);
+    let json = serde_json::to_string(&base).unwrap();
+    let code = format!("    <!-- @VISUAL_META {json} -->\nfn main() {{}}\n");
+
+    // Formatting not preserved
+    let mut engine = SyncEngine::new(
+        Lang::Rust,
+        SyncSettings {
+            preserve_meta_formatting: false,
+            ..SyncSettings::default()
+        },
+    );
+    let _ = engine.handle(SyncMessage::TextChanged(code.clone(), Lang::Rust));
+    engine.apply_resolution("fmt", ResolutionOption::Visual);
+    assert!(engine.state().code.starts_with("<!-- @VISUAL_META"));
+
+    // Formatting preserved
+    let mut engine = SyncEngine::new(
+        Lang::Rust,
+        SyncSettings {
+            preserve_meta_formatting: true,
+            ..SyncSettings::default()
+        },
+    );
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    engine.apply_resolution("fmt", ResolutionOption::Visual);
+    assert!(engine.state().code.starts_with("    <!-- @VISUAL_META"));
+}
