@@ -25,7 +25,7 @@
 //! Дополнительные детали описаны в `docs/sync.md`.
 
 use super::ast_parser::{ASTParser, SyntaxTree};
-use super::conflict_resolver::{ConflictResolver, ConflictType, ResolutionPolicy};
+use super::conflict_resolver::{ConflictResolver, ConflictType, ResolutionPolicy, SyncConflict};
 use super::element_mapper::ElementMapper;
 use multicode_core::meta::{self, VisualMeta, DEFAULT_VERSION};
 use multicode_core::parser::Lang;
@@ -81,6 +81,8 @@ pub struct SyncEngine {
     last_diagnostics: SyncDiagnostics,
     /// Последний возвращённый список метаданных.
     last_metas: Vec<VisualMeta>,
+    /// Conflicts detected during the last synchronization cycle.
+    last_conflicts: Vec<SyncConflict>,
 }
 
 impl SyncEngine {
@@ -96,6 +98,7 @@ impl SyncEngine {
             policy,
             last_diagnostics: SyncDiagnostics::default(),
             last_metas: Vec::new(),
+            last_conflicts: Vec::new(),
         }
     }
 
@@ -105,6 +108,7 @@ impl SyncEngine {
         &mut self,
         msg: SyncMessage,
     ) -> Option<(&str, &[VisualMeta], &SyncDiagnostics)> {
+        self.last_conflicts.clear();
         match msg {
             SyncMessage::TextChanged(code, lang) => {
                 if self.lang != lang {
@@ -118,6 +122,7 @@ impl SyncEngine {
                     if let Some(old) = previous.get(&m.id) {
                         if old.version != m.version {
                             let (resolved, conflict) = resolver.resolve(&m, old, self.policy);
+                            self.last_conflicts.push(conflict.clone());
                             match conflict.conflict_type {
                                 ConflictType::Structural => tracing::warn!(
                                     id = %conflict.id,
@@ -152,6 +157,7 @@ impl SyncEngine {
                     if existing.version != meta.version {
                         let (resolved, conflict) =
                             ConflictResolver::default().resolve(&existing, &meta, self.policy);
+                        self.last_conflicts.push(conflict.clone());
                         match conflict.conflict_type {
                             ConflictType::Structural => tracing::warn!(
                                 id = %conflict.id,
@@ -264,5 +270,10 @@ impl SyncEngine {
     /// corresponding visual block.
     pub fn unmapped_code(&self) -> &[std::ops::Range<usize>] {
         &self.mapper.unmapped_code
+    }
+
+    /// Conflicts detected during the last synchronization.
+    pub fn last_conflicts(&self) -> &[SyncConflict] {
+        &self.last_conflicts
     }
 }

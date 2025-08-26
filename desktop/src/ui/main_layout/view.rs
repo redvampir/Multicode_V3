@@ -1,10 +1,12 @@
 use super::state::MainUI;
 use super::update::MainMessage;
 use crate::app::ViewMode;
+use crate::ui::{conflict_dialog, sync_indicators};
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
+use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::canvas::Canvas;
 use iced::widget::{button, column, row, scrollable, text, text_editor};
-use iced::{Element, Length};
+use iced::{Color, Element, Length, Theme};
 
 /// Trait describing a visual mode renderer.
 pub trait ModeView {
@@ -22,9 +24,55 @@ impl ModeView for CodeView {
     }
 
     fn view<'a>(&self, state: &'a MainUI) -> Element<'a, MainMessage> {
-        text_editor(&state.code_editor)
+        let lines = sync_indicators::conflict_lines(&state.sync_engine);
+        text_editor::<MainMessage, Theme, _>(&state.code_editor)
+            .highlight::<ConflictHighlighter>(lines, |_, _| highlighter::Format {
+                color: Some(Color::from_rgb(1.0, 0.0, 0.0)),
+                font: None,
+            })
             .on_action(MainMessage::CodeEditorMsg)
             .into()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct ConflictHighlighter {
+    lines: Vec<usize>,
+    current: usize,
+}
+
+impl Highlighter for ConflictHighlighter {
+    type Settings = Vec<usize>;
+    type Highlight = ();
+    type Iterator<'a> = std::vec::IntoIter<(std::ops::Range<usize>, ())>;
+
+    fn new(settings: &Self::Settings) -> Self {
+        Self {
+            lines: settings.clone(),
+            current: 0,
+        }
+    }
+
+    fn update(&mut self, settings: &Self::Settings) {
+        self.lines = settings.clone();
+        self.current = 0;
+    }
+
+    fn change_line(&mut self, line: usize) {
+        self.current = line;
+    }
+
+    fn highlight_line(&mut self, line: &str) -> Self::Iterator<'_> {
+        let mut res = Vec::new();
+        if self.lines.contains(&self.current) {
+            res.push((0..line.len(), ()));
+        }
+        self.current += 1;
+        res.into_iter()
+    }
+
+    fn current_line(&self) -> usize {
+        self.current
     }
 }
 
@@ -102,7 +150,24 @@ pub fn view<'a>(state: &'a MainUI) -> Element<'a, MainMessage> {
     ]
     .spacing(10);
 
-    column![menu, content].into()
+    let status = sync_indicators::status_text(&state.sync_engine);
+    let status_row = if state.conflicts.is_empty() {
+        row![text(status)].spacing(10)
+    } else {
+        row![
+            text(status),
+            button("Resolve").on_press(MainMessage::ShowConflict)
+        ]
+        .spacing(10)
+    };
+
+    let mut layout = column![menu, status_row, content];
+    if let Some(conflict) = &state.active_conflict {
+        let dialog = conflict_dialog::view(conflict)
+            .map(|opt| MainMessage::ResolveConflict(conflict.id.clone(), opt));
+        layout = layout.push(dialog);
+    }
+    layout.into()
 }
 
 #[cfg(test)]
