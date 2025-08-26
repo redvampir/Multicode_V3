@@ -1,8 +1,7 @@
-use std::fmt;
-
 use serde::{Deserialize, Serialize};
 
 use super::conflict_resolver::ResolutionPolicy;
+use crate::app::{settings_translations::{settings_text, SettingsText}, Language};
 
 fn default_conflict_mode() -> ConflictResolutionMode {
     ConflictResolutionMode::PreferText
@@ -27,20 +26,20 @@ impl ConflictResolutionMode {
         ConflictResolutionMode::PreferText,
         ConflictResolutionMode::PreferVisual,
     ];
+
+    pub fn label(self, lang: Language) -> &'static str {
+        match self {
+            ConflictResolutionMode::PreferText =>
+                settings_text(SettingsText::ConflictModePreferText, lang),
+            ConflictResolutionMode::PreferVisual =>
+                settings_text(SettingsText::ConflictModePreferVisual, lang),
+        }
+    }
 }
 
 impl Default for ConflictResolutionMode {
     fn default() -> Self {
         default_conflict_mode()
-    }
-}
-
-impl fmt::Display for ConflictResolutionMode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self {
-            ConflictResolutionMode::PreferText => write!(f, "Текст"),
-            ConflictResolutionMode::PreferVisual => write!(f, "Визуально"),
-        }
     }
 }
 
