@@ -124,36 +124,33 @@ pub fn load_plugins() -> Vec<Box<dyn Plugin>> {
     if let Ok(entries) = std::fs::read_dir("plugins") {
         for entry in entries.flatten() {
             let path = entry.path();
-            match path.extension().and_then(|e| e.to_str()) {
-                Some("dll") | Some("so") | Some("dylib") => {
-                    if let Some(p) = unsafe { load_dll(&path) } {
-                        if p.version() == expected {
-                            loaded.push(p);
-                        } else {
-                            eprintln!(
-                                "Skipping plugin {} due to version mismatch: {} != {}",
-                                p.name(),
-                                p.version(),
-                                expected
-                            );
-                        }
+            let ext = path.extension().and_then(|e| e.to_str());
+            if ext == Some(std::env::consts::DLL_EXTENSION) {
+                if let Some(p) = unsafe { load_dll(&path) } {
+                    if p.version() == expected {
+                        loaded.push(p);
+                    } else {
+                        eprintln!(
+                            "Skipping plugin {} due to version mismatch: {} != {}",
+                            p.name(),
+                            p.version(),
+                            expected
+                        );
                     }
                 }
-                Some("wasm") => {
-                    if let Some(p) = load_wasm(&path) {
-                        if p.version() == expected {
-                            loaded.push(p);
-                        } else {
-                            eprintln!(
-                                "Skipping plugin {} due to version mismatch: {} != {}",
-                                p.name(),
-                                p.version(),
-                                expected
-                            );
-                        }
+            } else if ext == Some("wasm") {
+                if let Some(p) = load_wasm(&path) {
+                    if p.version() == expected {
+                        loaded.push(p);
+                    } else {
+                        eprintln!(
+                            "Skipping plugin {} due to version mismatch: {} != {}",
+                            p.name(),
+                            p.version(),
+                            expected
+                        );
                     }
                 }
-                _ => {}
             }
         }
     }

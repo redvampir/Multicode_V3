@@ -112,16 +112,19 @@ fn load_extensions(path: Option<&Path>) {
                 match entry {
                     Ok(entry) => {
                         let path = entry.path();
-                        match path.extension().and_then(|e| e.to_str()) {
-                            Some("dll") | Some("so") | Some("dylib") => unsafe {
+                        if path
+                            .extension()
+                            .and_then(|e| e.to_str())
+                            == Some(std::env::consts::DLL_EXTENSION)
+                        {
+                            unsafe {
                                 if let Some((ext, lib)) = load_dll(&path) {
                                     register_boxed_extension(ext);
                                     if let Ok(mut libs) = LOADED_LIBS.lock() {
                                         libs.push(lib);
                                     }
                                 }
-                            },
-                            _ => {}
+                            }
                         }
                     }
                     Err(e) => warn!("Failed to read entry in plugins directory: {e}")
