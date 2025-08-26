@@ -37,6 +37,7 @@ use libloading::Library;
 
 use multicode_core::meta::VisualMeta;
 use multicode_core::parser::Lang;
+use tracing::{error, warn};
 
 pub use ast_parser::{ASTParser, SyntaxNode, SyntaxTree};
 pub use async_manager::{AsyncManager, DEFAULT_BATCH_DELAY, DEFAULT_CHANNEL_CAPACITY};
@@ -94,21 +95,29 @@ pub fn init_extensions() {
 }
 
 fn load_extensions() {
-    if let Ok(entries) = std::fs::read_dir("plugins") {
-        for entry in entries.flatten() {
-            let path = entry.path();
-            match path.extension().and_then(|e| e.to_str()) {
-                Some("dll") | Some("so") | Some("dylib") => unsafe {
-                    if let Some((ext, lib)) = load_dll(&path) {
-                        register_boxed_extension(ext);
-                        if let Ok(mut libs) = LOADED_LIBS.lock() {
-                            libs.push(lib);
+    match std::fs::read_dir("plugins") {
+        Ok(entries) => {
+            for entry in entries {
+                match entry {
+                    Ok(entry) => {
+                        let path = entry.path();
+                        match path.extension().and_then(|e| e.to_str()) {
+                            Some("dll") | Some("so") | Some("dylib") => unsafe {
+                                if let Some((ext, lib)) = load_dll(&path) {
+                                    register_boxed_extension(ext);
+                                    if let Ok(mut libs) = LOADED_LIBS.lock() {
+                                        libs.push(lib);
+                                    }
+                                }
+                            },
+                            _ => {}
                         }
                     }
-                },
-                _ => {}
+                    Err(e) => warn!("Failed to read entry in plugins directory: {e}")
+                }
             }
         }
+        Err(e) => warn!("Failed to read plugins directory: {e}")
     }
 }
 
@@ -116,8 +125,22 @@ unsafe fn load_dll(path: &Path) -> Option<(Box<dyn SyncExtension>, Library)> {
     use libloading::Symbol;
     type Constructor = unsafe fn() -> Box<dyn SyncExtension>;
 
-    let lib = Library::new(path).ok()?;
-    let constructor: Symbol<Constructor> = lib.get(b"create_extension").ok()?;
+    let lib = match Library::new(path) {
+        Ok(lib) => lib,
+        Err(e) => {
+            error!("Failed to load library {}: {e}", path.display());
+            return None;
+        }
+    };
+
+    let constructor: Symbol<Constructor> = match lib.get(b"create_extension") {
+        Ok(symbol) => symbol,
+        Err(e) => {
+            warn!("Symbol 'create_extension' not found in {}: {e}", path.display());
+            return None;
+        }
+    };
+
     let ext = constructor();
     Some((ext, lib))
 }
