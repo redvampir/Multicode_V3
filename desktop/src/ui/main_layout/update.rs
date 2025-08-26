@@ -1,7 +1,8 @@
 use super::state::{Dragging, MainUI};
 use crate::app::ViewMode;
+use crate::sync::{ResolutionOption, SyncMessage};
 use crate::visual::canvas::CanvasMessage;
-use multicode_core::{export, search};
+use multicode_core::{export, parser::Lang, search};
 use std::{path::Path, process::Command};
 
 /// Messages emitted by [`MainUI`] components.
@@ -25,6 +26,10 @@ pub enum MainMessage {
     StartPaletteDrag(usize),
     /// Message originating from the visual editor canvas.
     CanvasEvent(CanvasMessage),
+    /// Show conflict resolution dialog for current conflicts.
+    ShowConflict,
+    /// Resolve conflict with selected option.
+    ResolveConflict(String, ResolutionOption),
 }
 
 /// Trait allowing custom message handlers to extend behaviour.
@@ -57,6 +62,15 @@ impl MessageHandler for DefaultHandler {
             }
             MainMessage::CodeEditorMsg(action) => {
                 state.code_editor.perform(action);
+                if let Some((_code, _metas, _diag)) = state
+                    .sync_engine
+                    .handle(SyncMessage::TextChanged(
+                        state.code_editor.text().to_string(),
+                        Lang::Rust,
+                    ))
+                {
+                    state.conflicts = state.sync_engine.last_conflicts().to_vec();
+                }
             }
             MainMessage::StartPaletteDrag(i) => {
                 if let Some(info) = state.palette.get(i).cloned() {
@@ -87,6 +101,15 @@ impl MessageHandler for DefaultHandler {
                 }
                 _ => {}
             },
+            MainMessage::ShowConflict => {
+                state.active_conflict = state.conflicts.first().cloned();
+            }
+            MainMessage::ResolveConflict(id, _option) => {
+                if let Some(pos) = state.conflicts.iter().position(|c| c.id == id) {
+                    state.conflicts.remove(pos);
+                }
+                state.active_conflict = state.conflicts.first().cloned();
+            }
         }
     }
 }

@@ -1,10 +1,12 @@
 use super::view::{self, ModeView};
 use super::update::MainMessage;
 use crate::app::ViewMode;
+use crate::sync::{ResolutionPolicy, SyncConflict, SyncEngine};
 use crate::visual::connections::Connection;
 use crate::visual::translations::Language;
 use iced::widget::text_editor;
 use iced::Element;
+use multicode_core::parser::Lang;
 use multicode_core::BlockInfo;
 
 /// Main user interface state containing current view mode and editor states.
@@ -26,7 +28,13 @@ pub struct MainUI {
     /// Whether the block palette is visible.
     pub show_palette: bool,
     /// Registered view mode renderers allowing easy extension.
-    pub view_modes: Vec<Box<dyn ModeView>>, 
+    pub view_modes: Vec<Box<dyn ModeView>>,
+    /// Engine keeping text and visual representations in sync.
+    pub sync_engine: SyncEngine,
+    /// Conflicts detected during synchronization.
+    pub conflicts: Vec<SyncConflict>,
+    /// Currently visible conflict dialog.
+    pub active_conflict: Option<SyncConflict>,
 }
 
 #[derive(Clone)]
@@ -46,6 +54,9 @@ impl Default for MainUI {
             language: Language::default(),
             show_palette: true,
             view_modes: view::default_modes(),
+            sync_engine: SyncEngine::new(Lang::Rust, ResolutionPolicy::PreferText),
+            conflicts: Vec::new(),
+            active_conflict: None,
         }
     }
 }
