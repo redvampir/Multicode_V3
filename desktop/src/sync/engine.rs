@@ -64,6 +64,8 @@ pub enum SyncMessage {
     TextChanged(String, Lang),
     /// Визуальные метаданные были изменены, нужно обновить текст.
     VisualChanged(VisualMeta),
+    /// Добавлена новая связь между блоками.
+    ConnectionAdded(String, String),
 }
 
 /// Движок, обрабатывающий [`SyncMessage`] и поддерживающий синхронизацию между
@@ -228,6 +230,15 @@ impl SyncEngine {
                 self.last_diagnostics = diagnostics;
                 self.last_metas = metas;
                 Some((&self.state.code, &self.last_metas, &self.last_diagnostics))
+            }
+            SyncMessage::ConnectionAdded(from, to) => {
+                if let Some(mut meta) = self.state.metas.get(&from).cloned() {
+                    if !meta.links.contains(&to) {
+                        meta.links.push(to);
+                        return self.handle(SyncMessage::VisualChanged(meta));
+                    }
+                }
+                None
             }
         }
     }
