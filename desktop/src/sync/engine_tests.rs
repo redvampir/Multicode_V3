@@ -154,8 +154,7 @@ fn id_and_range_handle_multiple_blocks() {
         .collect();
     let mut code_with_metas = code.to_string();
     for id in &ids {
-        code_with_metas =
-            meta::upsert(&code_with_metas, &make_meta(id, DEFAULT_VERSION), false);
+        code_with_metas = meta::upsert(&code_with_metas, &make_meta(id, DEFAULT_VERSION), false);
     }
     let _ = engine.handle(SyncMessage::TextChanged(code_with_metas, Lang::Rust));
     for id in ids {
@@ -276,8 +275,7 @@ fn unmapped_code_has_exact_second_function_range() {
     let second = fns.next().expect("second function");
     let first_id = first.block.visual_id.clone();
     let second_id = second.block.visual_id.clone();
-    let code_with_meta =
-        meta::upsert(code, &make_meta(&first_id, DEFAULT_VERSION), false);
+    let code_with_meta = meta::upsert(code, &make_meta(&first_id, DEFAULT_VERSION), false);
     let _ = engine.handle(SyncMessage::TextChanged(code_with_meta, Lang::Rust));
     let second_range = engine
         .state()
@@ -370,4 +368,18 @@ fn apply_resolution_respects_formatting_setting() {
     let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
     engine.apply_resolution("fmt", ResolutionOption::Visual);
     assert!(engine.state().code.starts_with("    <!-- @VISUAL_META"));
+}
+
+mod engine {
+    use super::*;
+
+    #[test]
+    fn malformed_meta() {
+        let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
+        let code = "// @VISUAL_META {\"id\":\"oops\",}\nfn main() {}\n";
+        let (_code, _metas, diag) = engine
+            .handle(SyncMessage::TextChanged(code.into(), Lang::Rust))
+            .unwrap();
+        assert!(!diag.unmapped_code.is_empty());
+    }
 }
