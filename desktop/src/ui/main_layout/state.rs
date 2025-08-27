@@ -1,7 +1,7 @@
 use super::view::{self, ModeView};
 use super::update::{start_sync_engine, MainMessage};
 use crate::app::ViewMode;
-use crate::sync::{SyncConflict, SyncEngine, SyncSettings};
+use crate::sync::{SyncConflict, SyncDiagnostics, SyncEngine, SyncSettings};
 use crate::visual::connections::Connection;
 use crate::visual::translations::Language;
 use iced::widget::text_editor;
@@ -37,6 +37,8 @@ pub struct MainUI {
     pub conflicts: Vec<SyncConflict>,
     /// Currently visible conflict dialog.
     pub active_conflict: Option<SyncConflict>,
+    /// Diagnostics reported by the synchronization engine.
+    pub diagnostics: SyncDiagnostics,
 }
 
 #[derive(Clone)]
@@ -61,6 +63,7 @@ impl Default for MainUI {
             sync_engine: SyncEngine::new(code_lang, SyncSettings::default()),
             conflicts: Vec::new(),
             active_conflict: None,
+            diagnostics: SyncDiagnostics::default(),
         };
         start_sync_engine(&mut ui);
         ui
