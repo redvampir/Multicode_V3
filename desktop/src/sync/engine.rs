@@ -125,34 +125,42 @@ impl SyncEngine {
         self.last_conflicts.clear();
         match msg {
             SyncMessage::TextChanged(code, lang) => {
-            if self.lang != lang {
-                self.lang = lang;
-                self.parser = ASTParser::new(lang);
-            }
-            if let Some(ext_metas) = parse_with_extensions(&code, lang) {
-                self.state.metas = ext_metas
-                    .into_iter()
-                    .map(|m| (m.id.clone(), m))
-                    .collect();
-                self.state.code = code;
-                self.last_metas = self.state.metas.values().cloned().collect();
-                let metas = std::mem::take(&mut self.last_metas);
-                let diagnostics = self.update_syntax_and_mapper(&metas);
-                self.last_diagnostics = diagnostics;
-                self.last_metas = metas;
-                return Some((&self.state.code, &self.last_metas, &self.last_diagnostics));
-            }
-            let mut metas = std::mem::take(&mut self.state.metas);
-            let resolver = ConflictResolver::default();
+                if self.lang != lang {
+                    self.lang = lang;
+                    self.parser = ASTParser::new(lang);
+                }
+                if let Some(ext_metas) = parse_with_extensions(&code, lang) {
+                    self.state.metas = ext_metas.into_iter().map(|m| (m.id.clone(), m)).collect();
+                    self.state.code = code;
+                    self.last_metas = self.state.metas.values().cloned().collect();
+                    let metas = std::mem::take(&mut self.last_metas);
+                    let diagnostics = self.update_syntax_and_mapper(&metas);
+                    self.last_diagnostics = diagnostics;
+                    self.last_metas = metas;
+                    return Some((&self.state.code, &self.last_metas, &self.last_diagnostics));
+                }
+                let mut metas = std::mem::take(&mut self.state.metas);
+                let resolver = ConflictResolver::default();
                 let mut ids = HashSet::new();
-                for mut m in meta::read_all(&code) {
+                let metas_from_code = match std::panic::catch_unwind(|| meta::read_all(&code)) {
+                    Ok(metas) => metas,
+                    Err(_) => {
+                        self.state.metas.clear();
+                        self.state.code = code;
+                        self.last_metas.clear();
+                        let mut diagnostics = self.update_syntax_and_mapper(&[]);
+                        diagnostics.orphaned_blocks.push("malformed meta".into());
+                        self.last_diagnostics = diagnostics;
+                        return Some((&self.state.code, &self.last_metas, &self.last_diagnostics));
+                    }
+                };
+                for mut m in metas_from_code {
                     if let Some(old) = metas.get(&m.id) {
                         if old.version != m.version {
                             if let Some(resolved) = resolve_with_extensions(old, &m) {
                                 m = resolved;
                             } else {
-                                let (resolved, conflict) =
-                                    resolver.resolve(&m, old, self.policy);
+                                let (resolved, conflict) = resolver.resolve(&m, old, self.policy);
                                 self.last_conflicts.push(conflict.clone());
                                 match conflict.conflict_type {
                                     ConflictType::Structural => tracing::warn!(
@@ -202,8 +210,8 @@ impl SyncEngine {
                         if let Some(resolved) = resolve_with_extensions(&existing, &meta) {
                             meta = resolved;
                         } else {
-                            let (resolved, conflict) = ConflictResolver::default()
-                                .resolve(&existing, &meta, self.policy);
+                            let (resolved, conflict) =
+                                ConflictResolver::default().resolve(&existing, &meta, self.policy);
                             self.last_conflicts.push(conflict.clone());
                             match conflict.conflict_type {
                                 ConflictType::Structural => tracing::warn!(
@@ -367,8 +375,7 @@ impl SyncEngine {
         };
 
         self.state.metas.insert(id.to_string(), resolved.clone());
-        self.state.code =
-            meta::upsert(&self.state.code, &resolved, self.preserve_meta_formatting);
+        self.state.code = meta::upsert(&self.state.code, &resolved, self.preserve_meta_formatting);
 
         self.last_metas = self.state.metas.values().cloned().collect();
         let metas = std::mem::take(&mut self.last_metas);
