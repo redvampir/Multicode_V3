@@ -3,6 +3,7 @@
 Десктопная версия Multicode работает полностью автономно и не требует запуска web‑сервера на `localhost`.
 
 Основные термины описаны в [docs/glossary.md](docs/glossary.md).
+JSON-схема мета-комментария `@VISUAL_META` описана в [docs/sync.md](docs/sync.md#json-schema-visual_meta).
 
 ## Обновления
 
