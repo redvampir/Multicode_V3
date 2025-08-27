@@ -1,4 +1,5 @@
-use super::{SyncEngine, SyncMessage};
+use super::{file_watcher::FileWatcher, SyncEngine, SyncMessage};
+use crate::components::register_plugin;
 use std::sync::{
     mpsc::{self, Receiver, SyncSender},
     Arc, Condvar, Mutex,
@@ -51,6 +52,7 @@ impl AsyncManager {
     /// [`DEFAULT_CHANNEL_CAPACITY`] for a typical channel size.
     pub fn new(engine: SyncEngine, batch_delay: Duration, capacity: usize) -> Self {
         let (tx, rx) = mpsc::sync_channel(capacity);
+        register_plugin(FileWatcher::new(tx.clone()));
         let paused = Arc::new((Mutex::new(false), Condvar::new()));
         let worker_paused = paused.clone();
         let handle = thread::spawn(move || run_worker(engine, rx, worker_paused, batch_delay));
@@ -123,6 +125,7 @@ impl AsyncManager {
         log: Arc<Mutex<Vec<Vec<SyncMessage>>>>,
     ) -> Self {
         let (tx, rx) = mpsc::sync_channel(capacity);
+        register_plugin(FileWatcher::new(tx.clone()));
         let paused = Arc::new((Mutex::new(false), Condvar::new()));
         let worker_paused = paused.clone();
         let handle =
