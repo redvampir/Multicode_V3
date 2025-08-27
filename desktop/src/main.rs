@@ -1,5 +1,5 @@
 use desktop::ui::MainUI;
-use iced::{Sandbox, Settings};
+use iced::{Application, Settings};
 use tracing_subscriber::EnvFilter;
 
 pub fn main() -> iced::Result {
