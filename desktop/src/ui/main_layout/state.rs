@@ -1,5 +1,5 @@
-use super::view::{self, ModeView};
 use super::update::{start_sync_engine, MainMessage};
+use super::view::{self, ModeView};
 use crate::app::ViewMode;
 use crate::sync::{SyncConflict, SyncDiagnostics, SyncEngine, SyncSettings};
 use crate::visual::connections::Connection;
@@ -37,6 +37,8 @@ pub struct MainUI {
     pub conflicts: Vec<SyncConflict>,
     /// Currently visible conflict dialog.
     pub active_conflict: Option<SyncConflict>,
+    /// Index of the currently displayed conflict.
+    pub conflict_index: usize,
     /// Diagnostics reported by the synchronization engine.
     pub diagnostics: SyncDiagnostics,
 }
@@ -63,6 +65,7 @@ impl Default for MainUI {
             sync_engine: SyncEngine::new(code_lang, SyncSettings::default()),
             conflicts: Vec::new(),
             active_conflict: None,
+            conflict_index: 0,
             diagnostics: SyncDiagnostics::default(),
         };
         start_sync_engine(&mut ui);

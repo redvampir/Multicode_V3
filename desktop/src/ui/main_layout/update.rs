@@ -34,6 +34,10 @@ pub enum MainMessage {
     Sync(SyncMessage),
     /// Show conflict resolution dialog for current conflicts.
     ShowConflict,
+    /// Show next conflict in the list.
+    NextConflict,
+    /// Show previous conflict in the list.
+    PrevConflict,
     /// Resolve conflict with selected option. `None` closes the dialog.
     ResolveConflict(String, Option<ResolutionOption>),
 }
@@ -110,6 +114,18 @@ impl MessageHandler for DefaultHandler {
             MainMessage::ShowConflict => {
                 show_conflict_dialog(state);
             }
+            MainMessage::NextConflict => {
+                if state.conflict_index + 1 < state.conflicts.len() {
+                    state.conflict_index += 1;
+                }
+                show_conflict_dialog(state);
+            }
+            MainMessage::PrevConflict => {
+                if state.conflict_index > 0 {
+                    state.conflict_index -= 1;
+                }
+                show_conflict_dialog(state);
+            }
             MainMessage::ResolveConflict(id, Some(option)) => {
                 state.sync_engine.apply_resolution(&id, option);
                 update_sync_indicators(state);
@@ -183,12 +199,15 @@ fn update_sync_indicators(state: &mut MainUI) {
     state.conflicts = state.sync_engine.last_conflicts().to_vec();
     if state.conflicts.is_empty() {
         state.active_conflict = None;
+        state.conflict_index = 0;
+    } else if state.conflict_index >= state.conflicts.len() {
+        state.conflict_index = 0;
     }
 }
 
 /// Display the next conflict in a dialog if any.
 fn show_conflict_dialog(state: &mut MainUI) {
-    state.active_conflict = state.conflicts.first().cloned();
+    state.active_conflict = state.conflicts.get(state.conflict_index).cloned();
 }
 
 fn block_to_meta(block: &BlockInfo) -> VisualMeta {

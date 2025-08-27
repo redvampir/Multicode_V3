@@ -1,7 +1,10 @@
 use super::state::MainUI;
 use super::update::MainMessage;
 use crate::app::ViewMode;
-use crate::ui::{conflict_dialog, sync_indicators};
+use crate::ui::{
+    conflict_dialog::{self, ConflictDialogMessage},
+    sync_indicators,
+};
 use crate::visual::canvas::{CanvasMessage, VisualCanvas};
 use iced::advanced::text::highlighter::{self, Highlighter};
 use iced::widget::canvas::Canvas;
@@ -94,13 +97,14 @@ impl ModeView for VisualView {
         let canvas: Element<CanvasMessage> = canvas_widget.into();
         let canvas = canvas.map(MainMessage::CanvasEvent);
         if state.show_palette {
-            let palette_column = state
-                .palette
-                .iter()
-                .enumerate()
-                .fold(column!().spacing(5), |col, (i, b)| {
-                    col.push(button(text(&b.kind)).on_press(MainMessage::StartPaletteDrag(i)))
-                });
+            let palette_column =
+                state
+                    .palette
+                    .iter()
+                    .enumerate()
+                    .fold(column!().spacing(5), |col, (i, b)| {
+                        col.push(button(text(&b.kind)).on_press(MainMessage::StartPaletteDrag(i)))
+                    });
             let palette = scrollable(palette_column)
                 .width(Length::Fixed(150.0))
                 .height(Length::Fill);
@@ -125,7 +129,11 @@ impl ModeView for SplitView {
 
 /// Default set of view mode renderers bundled with the application.
 pub fn default_modes() -> Vec<Box<dyn ModeView>> {
-    vec![Box::new(CodeView), Box::new(VisualView), Box::new(SplitView)]
+    vec![
+        Box::new(CodeView),
+        Box::new(VisualView),
+        Box::new(SplitView),
+    ]
 }
 
 /// Render the current view based on the active [`ViewMode`].
@@ -163,7 +171,8 @@ pub fn view<'a>(state: &'a MainUI) -> Element<'a, MainMessage> {
 
     let mut layout = column![menu, status_row];
 
-    if !state.diagnostics.orphaned_blocks.is_empty() || !state.diagnostics.unmapped_code.is_empty() {
+    if !state.diagnostics.orphaned_blocks.is_empty() || !state.diagnostics.unmapped_code.is_empty()
+    {
         let orphaned = if state.diagnostics.orphaned_blocks.is_empty() {
             "none".to_string()
         } else {
@@ -186,8 +195,13 @@ pub fn view<'a>(state: &'a MainUI) -> Element<'a, MainMessage> {
 
     layout = layout.push(content);
     if let Some(conflict) = &state.active_conflict {
-        let dialog = conflict_dialog::view(conflict)
-            .map(|choice| MainMessage::ResolveConflict(conflict.id.clone(), choice));
+        let dialog = conflict_dialog::view(conflict).map(|msg| match msg {
+            ConflictDialogMessage::Resolve(choice) => {
+                MainMessage::ResolveConflict(conflict.id.clone(), choice)
+            }
+            ConflictDialogMessage::Next => MainMessage::NextConflict,
+            ConflictDialogMessage::Prev => MainMessage::PrevConflict,
+        });
         layout = layout.push(dialog);
     }
     layout.into()
