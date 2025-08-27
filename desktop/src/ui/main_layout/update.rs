@@ -3,10 +3,10 @@ use crate::app::ViewMode;
 use crate::sync::{ResolutionOption, SyncMessage};
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::connections::{Connection, DataType};
-use multicode_core::{export, search, BlockInfo};
-use multicode_core::meta::{VisualMeta, DEFAULT_VERSION};
-use iced::widget::text_editor;
 use chrono::Utc;
+use iced::widget::text_editor;
+use multicode_core::meta::{VisualMeta, DEFAULT_VERSION};
+use multicode_core::{export, search, BlockInfo};
 use std::{path::Path, process::Command};
 
 /// Messages emitted by [`MainUI`] components.
@@ -181,6 +181,9 @@ fn handle_sync_message(state: &mut MainUI, msg: SyncMessage) {
 /// Update stored conflicts after synchronization.
 fn update_sync_indicators(state: &mut MainUI) {
     state.conflicts = state.sync_engine.last_conflicts().to_vec();
+    if state.conflicts.is_empty() {
+        state.active_conflict = None;
+    }
 }
 
 /// Display the next conflict in a dialog if any.
@@ -210,6 +213,7 @@ fn block_to_meta(block: &BlockInfo) -> VisualMeta {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::sync::{ConflictType, ResolutionOption, SyncConflict};
 
     #[test]
     fn update_switches_mode() {
@@ -263,5 +267,19 @@ mod tests {
             .connections
             .iter()
             .any(|c| c.from.0 == idx_a && c.to.0 == idx_b));
+    }
+
+    #[test]
+    fn update_sync_indicators_clears_active_conflict() {
+        let mut ui = MainUI::default();
+        ui.active_conflict = Some(SyncConflict {
+            id: "test".into(),
+            conflict_type: ConflictType::Movement,
+            resolution: ResolutionOption::Merge,
+        });
+
+        update_sync_indicators(&mut ui);
+
+        assert!(ui.active_conflict.is_none());
     }
 }
