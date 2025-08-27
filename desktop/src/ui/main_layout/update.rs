@@ -2,7 +2,10 @@ use super::state::{Dragging, MainUI};
 use crate::app::ViewMode;
 use crate::sync::{ResolutionOption, SyncMessage};
 use crate::visual::canvas::CanvasMessage;
-use multicode_core::{export, parser::Lang, search};
+use multicode_core::{export, parser::Lang, search, BlockInfo};
+use multicode_core::meta::{VisualMeta, DEFAULT_VERSION};
+use iced::widget::text_editor;
+use chrono::Utc;
 use std::{path::Path, process::Command};
 
 /// Messages emitted by [`MainUI`] components.
@@ -26,6 +29,8 @@ pub enum MainMessage {
     StartPaletteDrag(usize),
     /// Message originating from the visual editor canvas.
     CanvasEvent(CanvasMessage),
+    /// Synchronization message processed by [`SyncEngine`].
+    Sync(SyncMessage),
     /// Show conflict resolution dialog for current conflicts.
     ShowConflict,
     /// Resolve conflict with selected option. `None` closes the dialog.
@@ -62,11 +67,8 @@ impl MessageHandler for DefaultHandler {
             }
             MainMessage::CodeEditorMsg(action) => {
                 state.code_editor.perform(action);
-                if let Some((_code, _metas, _diag)) = state.sync_engine.handle(
-                    SyncMessage::TextChanged(state.code_editor.text().to_string(), Lang::Rust),
-                ) {
-                    state.conflicts = state.sync_engine.last_conflicts().to_vec();
-                }
+                let content = state.code_editor.text().to_string();
+                handle_sync_message(state, SyncMessage::TextChanged(content, Lang::Rust));
             }
             MainMessage::StartPaletteDrag(i) => {
                 if let Some(info) = state.palette.get(i).cloned() {
@@ -78,13 +80,17 @@ impl MessageHandler for DefaultHandler {
                     if let Some(block) = state.blocks.get_mut(index) {
                         block.x = position.x as f64;
                         block.y = position.y as f64;
+                        let meta = block_to_meta(block);
+                        handle_sync_message(state, SyncMessage::VisualChanged(meta));
                     }
                 }
                 CanvasMessage::Dropped { position } => {
                     if let Some(Dragging::Palette(mut info)) = state.dragging.take() {
                         info.x = position.x as f64;
                         info.y = position.y as f64;
+                        let meta = block_to_meta(&info);
                         state.blocks.push(info);
+                        handle_sync_message(state, SyncMessage::VisualChanged(meta));
                     }
                 }
                 CanvasMessage::ConnectionCreated(conn) => {
@@ -97,13 +103,16 @@ impl MessageHandler for DefaultHandler {
                 }
                 _ => {}
             },
+            MainMessage::Sync(msg) => {
+                handle_sync_message(state, msg);
+            }
             MainMessage::ShowConflict => {
-                state.active_conflict = state.conflicts.first().cloned();
+                show_conflict_dialog(state);
             }
             MainMessage::ResolveConflict(id, Some(option)) => {
                 state.sync_engine.apply_resolution(&id, option);
-                state.conflicts = state.sync_engine.last_conflicts().to_vec();
-                state.active_conflict = state.conflicts.first().cloned();
+                update_sync_indicators(state);
+                show_conflict_dialog(state);
             }
             MainMessage::ResolveConflict(_, None) => {
                 state.active_conflict = None;
@@ -115,6 +124,51 @@ impl MessageHandler for DefaultHandler {
 /// Update the [`MainUI`] using the default handler.
 pub fn update(state: &mut MainUI, msg: MainMessage) {
     DefaultHandler::handle(state, msg);
+}
+
+/// Initialize synchronization engine with current editor state.
+pub fn start_sync_engine(state: &mut MainUI) {
+    let content = state.code_editor.text().to_string();
+    handle_sync_message(state, SyncMessage::TextChanged(content, Lang::Rust));
+}
+
+/// Process a [`SyncMessage`] through the engine and refresh indicators.
+fn handle_sync_message(state: &mut MainUI, msg: SyncMessage) {
+    if let Some((code, _metas, _diag)) = state.sync_engine.handle(msg) {
+        // Update text editor with potentially modified code
+        let content = code.to_string();
+        state.code_editor = text_editor::Content::with_text(&content);
+    }
+    update_sync_indicators(state);
+}
+
+/// Update stored conflicts after synchronization.
+fn update_sync_indicators(state: &mut MainUI) {
+    state.conflicts = state.sync_engine.last_conflicts().to_vec();
+}
+
+/// Display the next conflict in a dialog if any.
+fn show_conflict_dialog(state: &mut MainUI) {
+    state.active_conflict = state.conflicts.first().cloned();
+}
+
+fn block_to_meta(block: &BlockInfo) -> VisualMeta {
+    VisualMeta {
+        version: DEFAULT_VERSION,
+        id: block.visual_id.clone(),
+        x: block.x,
+        y: block.y,
+        tags: block.tags.clone(),
+        links: block.links.clone(),
+        anchors: Vec::new(),
+        tests: Vec::new(),
+        extends: None,
+        origin: None,
+        translations: block.translations.clone(),
+        ai: None,
+        extras: None,
+        updated_at: Utc::now(),
+    }
 }
 
 #[cfg(test)]

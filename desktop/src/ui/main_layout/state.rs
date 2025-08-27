@@ -1,5 +1,5 @@
 use super::view::{self, ModeView};
-use super::update::MainMessage;
+use super::update::{start_sync_engine, MainMessage};
 use crate::app::ViewMode;
 use crate::sync::{SyncConflict, SyncEngine, SyncSettings};
 use crate::visual::connections::Connection;
@@ -44,7 +44,7 @@ pub enum Dragging {
 
 impl Default for MainUI {
     fn default() -> Self {
-        Self {
+        let mut ui = Self {
             view_mode: ViewMode::Code,
             code_editor: text_editor::Content::new(),
             palette: load_palette(),
@@ -57,7 +57,9 @@ impl Default for MainUI {
             sync_engine: SyncEngine::new(Lang::Rust, SyncSettings::default()),
             conflicts: Vec::new(),
             active_conflict: None,
-        }
+        };
+        start_sync_engine(&mut ui);
+        ui
     }
 }
 
