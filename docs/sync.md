@@ -30,6 +30,52 @@ for node in tree.nodes {
 }
 ```
 
+## JSON schema `@VISUAL_META`
+
+`@VISUAL_META` — комментарий, содержащий описание блока в формате JSON.
+Структура соответствует типу [`VisualMeta`](../core/src/meta/types.rs).
+Чтобы извлечь все метаданные из текста, используйте
+[`meta::read_all`](../core/src/meta/mod.rs); для добавления или обновления
+записи служит [`meta::upsert`](../core/src/meta/mod.rs).
+
+| Поле | Тип | Назначение |
+| ---- | --- | ---------- |
+| `version` | `u32` | версия схемы |
+| `id` | `string` | идентификатор блока |
+| `x`, `y` | `f64` | координаты на холсте |
+| `tags` | `string[]` | теги |
+| `links` | `string[]` | идентификаторы связанных блоков |
+| `anchors` | `string[]` | локальные якоря |
+| `tests` | `string[]` | команды тестов |
+| `extends` | `string` | базовая мета-запись |
+| `origin` | `string` | путь к исходному файлу |
+| `translations` | `object` | локализованные подписи |
+| `ai` | `object` | заметки ИИ (`description`, `hints`) |
+| `extras` | `object` | данные плагинов |
+| `updated_at` | `string` | время последнего обновления (UTC) |
+
+Пример полного комментария:
+
+```rust
+// @VISUAL_META {
+//   "version": 1,
+//   "id": "a",
+//   "x": 0.0,
+//   "y": 0.0,
+//   "tags": ["demo"],
+//   "links": ["b"],
+//   "anchors": ["start"],
+//   "tests": ["cargo test"],
+//   "extends": null,
+//   "origin": null,
+//   "translations": { "rust": "fn main() {}" },
+//   "ai": { "description": "example", "hints": ["note"] },
+//   "extras": { "plugin": { "foo": 42 } },
+//   "updated_at": "2024-01-01T00:00:00Z"
+// }
+fn main() {}
+```
+
 ## Потоки данных
 
 1. **Изменение текста**
