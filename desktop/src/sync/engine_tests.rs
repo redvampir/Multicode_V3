@@ -196,6 +196,18 @@ fn conflict_resolver_applies_strategies() {
 }
 
 #[test]
+fn reset_sync_clears_state() {
+    let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
+    let meta = make_meta("x", DEFAULT_VERSION);
+    let code = meta::upsert("", &meta, false);
+    let _ = engine.handle(SyncMessage::TextChanged(code, Lang::Rust));
+    assert!(!engine.state().metas.is_empty());
+    let _ = engine.handle(SyncMessage::ResetSync);
+    assert!(engine.state().metas.is_empty());
+    assert!(engine.state().code.is_empty());
+}
+
+#[test]
 fn apply_resolution_overrides_policy_choice() {
     let mut engine = SyncEngine::new(
         Lang::Rust,

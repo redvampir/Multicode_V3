@@ -66,6 +66,8 @@ pub enum SyncMessage {
     VisualChanged(VisualMeta),
     /// Добавлена новая связь между блоками.
     ConnectionAdded(String, String),
+    /// Сбросить состояние синхронизации.
+    ResetSync,
 }
 
 /// Движок, обрабатывающий [`SyncMessage`] и поддерживающий синхронизацию между
@@ -247,6 +249,16 @@ impl SyncEngine {
                     }
                 }
                 None
+            }
+            SyncMessage::ResetSync => {
+                self.state = SyncState::default();
+                self.last_text_ids.clear();
+                self.last_visual_ids.clear();
+                self.mapper = ElementMapper::default();
+                self.last_diagnostics = SyncDiagnostics::default();
+                self.last_metas.clear();
+                self.last_conflicts.clear();
+                Some((&self.state.code, &self.last_metas, &self.last_diagnostics))
             }
         }
     }

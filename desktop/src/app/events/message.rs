@@ -4,10 +4,10 @@ use std::path::PathBuf;
 use crate::app::diff::DiffView;
 use crate::app::{AppTheme, CreateTarget, Diagnostic, FileEntry, Language, LogLevel, ViewMode};
 use crate::editor::EditorTheme;
+use crate::sync::ConflictResolutionMode;
+use crate::sync::SyncMessage;
 use crate::visual::canvas::CanvasMessage;
 use crate::visual::palette::PaletteMessage;
-use crate::sync::SyncMessage;
-use crate::sync::ConflictResolutionMode;
 use multicode_core::BlockInfo;
 
 #[derive(Debug, Clone)]
@@ -61,7 +61,10 @@ pub enum Message {
     StartTabDrag(usize),
     UpdateTabDrag(f32),
     EndTabDrag,
-    ReorderTab { from: usize, to: usize },
+    ReorderTab {
+        from: usize,
+        to: usize,
+    },
     RunSearch,
     SearchFinished(Result<Vec<String>, String>),
     ProjectSearch(String),
@@ -112,6 +115,7 @@ pub enum Message {
     ToggleMarkdownPreview(bool),
     ConflictResolutionModeSelected(ConflictResolutionMode),
     TogglePreserveMetaFormatting(bool),
+    ToggleWatchFiles(bool),
     ToggleMetaPanel,
     ShowMetaDialog,
     CloseMetaDialog,

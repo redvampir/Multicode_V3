@@ -9,11 +9,14 @@ use iced::widget::{
 use iced::{alignment, theme, Element, Length};
 
 use super::events::Message;
-use super::{settings_translations::{settings_text, SettingsText}, AppTheme, CreateTarget, Language, MulticodeApp, Screen, ViewMode};
-use crate::sync::ConflictResolutionMode;
-use crate::search::hotkeys::HotkeyContext;
-use crate::editor::{CodeEditor, EditorTheme, THEME_SET};
+use super::{
+    settings_translations::{settings_text, SettingsText},
+    AppTheme, CreateTarget, Language, MulticodeApp, Screen, ViewMode,
+};
 use crate::components::file_manager;
+use crate::editor::{CodeEditor, EditorTheme, THEME_SET};
+use crate::search::hotkeys::HotkeyContext;
+use crate::sync::ConflictResolutionMode;
 
 const TERMINAL_HELP: &str = include_str!("../../assets/terminal-help.md");
 const CREATE_ICON: &[u8] = include_bytes!("../../assets/create.svg");
@@ -485,31 +488,23 @@ impl MulticodeApp {
                     {
                         let lang = self.settings.language;
                         let label = settings_text(SettingsText::ConflictResolutionLabel, lang);
-                        let options = ConflictResolutionMode::ALL
-                            .map(|mode| (mode, mode.label(lang)));
-                        let selected_label =
-                            self.settings.sync.conflict_resolution.label(lang);
-                        let labels = options
-                            .iter()
-                            .map(|(_, label)| *label)
-                            .collect::<Vec<_>>();
+                        let options =
+                            ConflictResolutionMode::ALL.map(|mode| (mode, mode.label(lang)));
+                        let selected_label = self.settings.sync.conflict_resolution.label(lang);
+                        let labels = options.iter().map(|(_, label)| *label).collect::<Vec<_>>();
                         row![
                             text(label),
-                            pick_list(
-                                labels,
-                                Some(selected_label),
-                                {
-                                    let options = options;
-                                    move |choice| {
-                                        let mode = options
-                                            .iter()
-                                            .find(|(_, label)| *label == choice)
-                                            .map(|(mode, _)| *mode)
-                                            .unwrap_or(ConflictResolutionMode::PreferText);
-                                        Message::ConflictResolutionModeSelected(mode)
-                                    }
+                            pick_list(labels, Some(selected_label), {
+                                let options = options;
+                                move |choice| {
+                                    let mode = options
+                                        .iter()
+                                        .find(|(_, label)| *label == choice)
+                                        .map(|(mode, _)| *mode)
+                                        .unwrap_or(ConflictResolutionMode::PreferText);
+                                    Message::ConflictResolutionModeSelected(mode)
                                 }
-                            )
+                            })
                         ]
                         .spacing(10)
                     },
@@ -520,6 +515,12 @@ impl MulticodeApp {
                     ]
                     .spacing(10),
                     row![
+                        text("Автоматически отслеживать файлы"),
+                        checkbox("", self.settings.sync.watch_files)
+                            .on_toggle(Message::ToggleWatchFiles)
+                    ]
+                    .spacing(10),
+                    row![
                         text("Индекс поиска"),
                         checkbox("", self.settings.search.use_index)
                             .on_toggle(Message::ToggleSearchIndex)
@@ -527,12 +528,9 @@ impl MulticodeApp {
                     .spacing(10),
                     row![
                         text("Размер кэша поиска"),
-                        text_input(
-                            "",
-                            &self.settings.search.cache_size.to_string()
-                        )
-                        .on_input(Message::CacheSizeChanged)
-                        .width(Length::Fixed(50.0)),
+                        text_input("", &self.settings.search.cache_size.to_string())
+                            .on_input(Message::CacheSizeChanged)
+                            .width(Length::Fixed(50.0)),
                     ]
                     .spacing(10),
                     row![
@@ -560,22 +558,16 @@ impl MulticodeApp {
                     .spacing(10),
                     row![
                         text("Размер шрифта"),
-                        text_input(
-                            "",
-                            &self.settings.editor.font_size.to_string()
-                        )
-                        .on_input(Message::FontSizeChanged)
-                        .width(Length::Fixed(50.0)),
+                        text_input("", &self.settings.editor.font_size.to_string())
+                            .on_input(Message::FontSizeChanged)
+                            .width(Length::Fixed(50.0)),
                     ]
                     .spacing(10),
                     row![
                         text("Ширина табуляции"),
-                        text_input(
-                            "",
-                            &self.settings.editor.tab_width.to_string()
-                        )
-                        .on_input(Message::TabWidthChanged)
-                        .width(Length::Fixed(50.0)),
+                        text_input("", &self.settings.editor.tab_width.to_string())
+                            .on_input(Message::TabWidthChanged)
+                            .width(Length::Fixed(50.0)),
                     ]
                     .spacing(10),
                     row![
@@ -760,7 +752,10 @@ impl MulticodeApp {
             button(save_label).into()
         };
 
-        if matches!(&self.screen, Screen::TextEditor { .. } | Screen::Split { .. }) {
+        if matches!(
+            &self.screen,
+            Screen::TextEditor { .. } | Screen::Split { .. }
+        ) {
             let autocomplete_btn: Element<_> = if self.active_tab.is_some() {
                 button("Автодополнить")
                     .on_press(Message::AutoComplete)

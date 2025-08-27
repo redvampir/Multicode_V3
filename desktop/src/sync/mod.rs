@@ -27,6 +27,7 @@ pub mod code_generator;
 pub mod conflict_resolver;
 pub mod element_mapper;
 pub mod engine;
+pub mod file_watcher;
 pub mod settings;
 
 use once_cell::sync::Lazy;
@@ -48,6 +49,7 @@ pub use conflict_resolver::{
 };
 pub use element_mapper::ElementMapper;
 pub use engine::{SyncDiagnostics, SyncEngine, SyncMessage, SyncState};
+pub use file_watcher::FileWatcher;
 pub use settings::{ConflictResolutionMode, SyncSettings};
 
 /// Расширение механизма синхронизации.

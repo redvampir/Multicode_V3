@@ -1,13 +1,20 @@
 use serde::{Deserialize, Serialize};
 
 use super::conflict_resolver::ResolutionPolicy;
-use crate::app::{settings_translations::{settings_text, SettingsText}, Language};
+use crate::app::{
+    settings_translations::{settings_text, SettingsText},
+    Language,
+};
 
 fn default_conflict_mode() -> ConflictResolutionMode {
     ConflictResolutionMode::PreferText
 }
 
 fn default_true() -> bool {
+    true
+}
+
+fn default_watch() -> bool {
     true
 }
 
@@ -29,10 +36,12 @@ impl ConflictResolutionMode {
 
     pub fn label(self, lang: Language) -> &'static str {
         match self {
-            ConflictResolutionMode::PreferText =>
-                settings_text(SettingsText::ConflictModePreferText, lang),
-            ConflictResolutionMode::PreferVisual =>
-                settings_text(SettingsText::ConflictModePreferVisual, lang),
+            ConflictResolutionMode::PreferText => {
+                settings_text(SettingsText::ConflictModePreferText, lang)
+            }
+            ConflictResolutionMode::PreferVisual => {
+                settings_text(SettingsText::ConflictModePreferVisual, lang)
+            }
         }
     }
 }
@@ -61,6 +70,9 @@ pub struct SyncSettings {
     /// Preserve formatting of existing meta comments when updating code.
     #[serde(default = "default_true")]
     pub preserve_meta_formatting: bool,
+    /// Enable automatic file watching for sync.
+    #[serde(default = "default_watch")]
+    pub watch_files: bool,
 }
 
 impl Default for SyncSettings {
@@ -68,6 +80,7 @@ impl Default for SyncSettings {
         Self {
             conflict_resolution: default_conflict_mode(),
             preserve_meta_formatting: default_true(),
+            watch_files: default_watch(),
         }
     }
 }

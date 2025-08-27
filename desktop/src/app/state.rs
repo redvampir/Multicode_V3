@@ -746,6 +746,7 @@ mod tests {
         let mut settings = UserSettings::default();
         settings.sync.conflict_resolution = ConflictResolutionMode::PreferVisual;
         settings.sync.preserve_meta_formatting = false;
+        settings.sync.watch_files = false;
 
         // Serialize and ensure the sync section is present with the provided values.
         let json = serde_json::to_value(&settings).unwrap();
@@ -761,6 +762,12 @@ mod tests {
                 .and_then(|v| v.as_bool()),
             Some(false)
         );
+        assert_eq!(
+            json.get("sync")
+                .and_then(|v| v.get("watch_files"))
+                .and_then(|v| v.as_bool()),
+            Some(false)
+        );
 
         // Round-trip to verify the values survive deserialization.
         let deserialized: UserSettings = serde_json::from_value(json).unwrap();
@@ -769,6 +776,7 @@ mod tests {
             ConflictResolutionMode::PreferVisual
         );
         assert!(!deserialized.sync.preserve_meta_formatting);
+        assert!(!deserialized.sync.watch_files);
     }
 
     #[test]
@@ -782,14 +790,16 @@ mod tests {
             ConflictResolutionMode::PreferText
         );
         assert!(settings.sync.preserve_meta_formatting);
+        assert!(settings.sync.watch_files);
 
         // Empty sync object also uses defaults.
-        let settings: UserSettings = serde_json::from_str("{\"sync\":{}}" ).unwrap();
+        let settings: UserSettings = serde_json::from_str("{\"sync\":{}}").unwrap();
         assert_eq!(
             settings.sync.conflict_resolution,
             ConflictResolutionMode::PreferText
         );
         assert!(settings.sync.preserve_meta_formatting);
+        assert!(settings.sync.watch_files);
 
         // Missing conflict_resolution uses default.
         let json = r#"{"sync":{"preserve_meta_formatting":false}}"#;
@@ -799,6 +809,7 @@ mod tests {
             ConflictResolutionMode::PreferText
         );
         assert!(!settings.sync.preserve_meta_formatting);
+        assert!(settings.sync.watch_files);
 
         // Missing preserve_meta_formatting uses default.
         let json = r#"{"sync":{"conflict_resolution":"PreferVisual"}}"#;
@@ -808,6 +819,7 @@ mod tests {
             ConflictResolutionMode::PreferVisual
         );
         assert!(settings.sync.preserve_meta_formatting);
+        assert!(settings.sync.watch_files);
     }
 
     #[test]

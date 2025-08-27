@@ -177,7 +177,8 @@ impl MulticodeApp {
                         tab.content = code_owned;
                         tab.editor = Content::with_text(&tab.content);
                         for block in &mut tab.blocks {
-                            if let Some(meta) = metas_owned.iter().find(|m| m.id == block.visual_id) {
+                            if let Some(meta) = metas_owned.iter().find(|m| m.id == block.visual_id)
+                            {
                                 block.x = meta.x;
                                 block.y = meta.y;
                                 block.tags = meta.tags.clone();
@@ -372,14 +373,16 @@ impl MulticodeApp {
             }
             Message::ConflictResolutionModeSelected(mode) => {
                 self.settings.sync.conflict_resolution = mode;
-                self.sync_engine
-                    .update_settings(self.settings.sync.clone());
+                self.sync_engine.update_settings(self.settings.sync.clone());
                 Command::none()
             }
             Message::TogglePreserveMetaFormatting(val) => {
                 self.settings.sync.preserve_meta_formatting = val;
-                self.sync_engine
-                    .update_settings(self.settings.sync.clone());
+                self.sync_engine.update_settings(self.settings.sync.clone());
+                Command::none()
+            }
+            Message::ToggleWatchFiles(val) => {
+                self.settings.sync.watch_files = val;
                 Command::none()
             }
             Message::ToggleSearchIndex(val) => {

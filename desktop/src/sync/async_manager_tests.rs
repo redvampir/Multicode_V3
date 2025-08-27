@@ -1,4 +1,7 @@
-use super::{AsyncManager, SyncEngine, SyncMessage, SyncSettings, DEFAULT_BATCH_DELAY, DEFAULT_CHANNEL_CAPACITY};
+use super::{
+    AsyncManager, SyncEngine, SyncMessage, SyncSettings, DEFAULT_BATCH_DELAY,
+    DEFAULT_CHANNEL_CAPACITY,
+};
 use multicode_core::parser::Lang;
 use std::sync::{Arc, Mutex};
 
@@ -11,6 +14,7 @@ fn messages_within_delay_processed_in_one_batch() {
         DEFAULT_BATCH_DELAY,
         DEFAULT_CHANNEL_CAPACITY,
         log.clone(),
+        true,
     );
     manager
         .send(SyncMessage::TextChanged("a".into(), Lang::Rust))
@@ -37,6 +41,7 @@ fn pause_stops_processing_and_resume_restarts() {
         DEFAULT_BATCH_DELAY,
         DEFAULT_CHANNEL_CAPACITY,
         log.clone(),
+        true,
     );
     manager.pause();
     manager
