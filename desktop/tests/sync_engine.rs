@@ -73,6 +73,28 @@ fn visual_block_change_updates_text() {
 }
 
 #[test]
+fn text_meta_deletion_removes_state() {
+    let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
+
+    let meta = make_meta("block", DEFAULT_VERSION);
+    let mut code = meta::upsert("fn main() {}\n", &meta, false);
+
+    let _ = engine
+        .handle(SyncMessage::TextChanged(code.clone(), Lang::Rust))
+        .expect("text change");
+
+    assert!(engine.state().metas.contains_key("block"));
+
+    code = meta::remove_all(&code);
+
+    let _ = engine
+        .handle(SyncMessage::TextChanged(code.clone(), Lang::Rust))
+        .expect("text change");
+
+    assert!(!engine.state().metas.contains_key("block"));
+}
+
+#[test]
 fn sync_large_file_performance() {
     let mut engine = SyncEngine::new(Lang::Rust, SyncSettings::default());
     let mut code = String::new();
