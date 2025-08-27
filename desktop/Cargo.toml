@@ -30,7 +30,12 @@ libloading = "0.8"
 tempfile = "3"
 criterion = "0.5"
 tracing-test = "0.2"
+memory-stats = "1"
 
 [[bench]]
 name = "search"
+harness = false
+
+[[bench]]
+name = "sync_engine_bench"
 harness = false

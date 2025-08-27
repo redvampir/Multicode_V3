@@ -262,7 +262,7 @@ pub fn matches_block(block: &PaletteBlock, tokens: &[&str]) -> bool {
     })
 }
 
-#[cfg(test)]
+#[cfg(all(test, debug_assertions))]
 mod tests {
     use super::*;
     use iced::advanced::{
