@@ -116,3 +116,45 @@ fn sync_large_file_performance() {
     assert!(elapsed.as_secs() < 5, "syncing took {:?}", elapsed);
 }
 
+#[test]
+fn sync_engine_multilang() {
+    for lang in [Lang::Rust, Lang::C, Lang::Cpp, Lang::Java, Lang::CSharp] {
+        let meta = make_meta("block", DEFAULT_VERSION);
+
+        // TextChanged should parse meta from text for each language.
+        let mut engine_text = SyncEngine::new(lang, SyncSettings::default());
+        let code = meta::upsert("", &meta, false);
+        let (_code_after_text, metas_from_text, _diag) = engine_text
+            .handle(SyncMessage::TextChanged(code.clone(), lang))
+            .expect("text change");
+        assert_eq!(metas_from_text.len(), 1);
+        assert_eq!(metas_from_text[0].id, meta.id);
+        assert_eq!(metas_from_text[0].x, meta.x);
+
+        // VisualChanged should update text and survive a subsequent TextChanged.
+        let mut engine_visual = SyncEngine::new(lang, SyncSettings::default());
+        // Initialize engine state.
+        let _ = engine_visual.handle(SyncMessage::TextChanged(String::new(), lang));
+        let (code_from_visual, metas_from_visual, _diag) = engine_visual
+            .handle(SyncMessage::VisualChanged(meta.clone()))
+            .expect("visual change");
+        assert_eq!(metas_from_visual.len(), 1);
+        assert_eq!(metas_from_visual[0].id, meta.id);
+        assert_eq!(metas_from_visual[0].x, meta.x);
+
+        // Ensure the generated code contains the meta and can be parsed back.
+        let code_from_visual = code_from_visual.to_string();
+        let metas_from_code = meta::read_all(&code_from_visual);
+        assert_eq!(metas_from_code.len(), 1);
+        assert_eq!(metas_from_code[0].id, meta.id);
+        assert_eq!(metas_from_code[0].x, meta.x);
+
+        let (_code_after_visual, metas_roundtrip, _diag) = engine_visual
+            .handle(SyncMessage::TextChanged(code_from_visual, lang))
+            .expect("text change after visual");
+        assert_eq!(metas_roundtrip.len(), 1);
+        assert_eq!(metas_roundtrip[0].id, meta.id);
+        assert_eq!(metas_roundtrip[0].x, meta.x);
+    }
+}
+
