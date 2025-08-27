@@ -209,3 +209,5 @@ pub(crate) fn resolve_with_extensions(
 mod async_manager_tests;
 #[cfg(test)]
 mod engine_tests;
+#[cfg(test)]
+mod extension_tests;
