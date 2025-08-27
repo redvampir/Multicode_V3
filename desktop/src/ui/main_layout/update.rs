@@ -2,7 +2,7 @@ use super::state::{Dragging, MainUI};
 use crate::app::ViewMode;
 use crate::sync::{ResolutionOption, SyncMessage};
 use crate::visual::canvas::CanvasMessage;
-use multicode_core::{export, parser::Lang, search, BlockInfo};
+use multicode_core::{export, search, BlockInfo};
 use multicode_core::meta::{VisualMeta, DEFAULT_VERSION};
 use iced::widget::text_editor;
 use chrono::Utc;
@@ -68,7 +68,7 @@ impl MessageHandler for DefaultHandler {
             MainMessage::CodeEditorMsg(action) => {
                 state.code_editor.perform(action);
                 let content = state.code_editor.text().to_string();
-                handle_sync_message(state, SyncMessage::TextChanged(content, Lang::Rust));
+                handle_sync_message(state, SyncMessage::TextChanged(content, state.code_lang));
             }
             MainMessage::StartPaletteDrag(i) => {
                 if let Some(info) = state.palette.get(i).cloned() {
@@ -129,7 +129,7 @@ pub fn update(state: &mut MainUI, msg: MainMessage) {
 /// Initialize synchronization engine with current editor state.
 pub fn start_sync_engine(state: &mut MainUI) {
     let content = state.code_editor.text().to_string();
-    handle_sync_message(state, SyncMessage::TextChanged(content, Lang::Rust));
+    handle_sync_message(state, SyncMessage::TextChanged(content, state.code_lang));
 }
 
 /// Process a [`SyncMessage`] through the engine and refresh indicators.
