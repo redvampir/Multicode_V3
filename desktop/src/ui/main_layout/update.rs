@@ -2,6 +2,7 @@ use super::state::{Dragging, MainUI};
 use crate::app::ViewMode;
 use crate::sync::{ResolutionOption, SyncMessage};
 use crate::visual::canvas::CanvasMessage;
+use crate::visual::connections::{Connection, DataType};
 use multicode_core::{export, search, BlockInfo};
 use multicode_core::meta::{VisualMeta, DEFAULT_VERSION};
 use iced::widget::text_editor;
@@ -134,10 +135,45 @@ pub fn start_sync_engine(state: &mut MainUI) {
 
 /// Process a [`SyncMessage`] through the engine and refresh indicators.
 fn handle_sync_message(state: &mut MainUI, msg: SyncMessage) {
-    if let Some((code, _metas, _diag)) = state.sync_engine.handle(msg) {
-        // Update text editor with potentially modified code
+    if let Some((code, metas, diag)) = state.sync_engine.handle(msg) {
         let content = code.to_string();
         state.code_editor = text_editor::Content::with_text(&content);
+
+        state.blocks = metas
+            .iter()
+            .map(|m| BlockInfo {
+                visual_id: m.id.clone(),
+                node_id: None,
+                kind: String::new(),
+                translations: m.translations.clone(),
+                range: (0, 0),
+                anchors: Vec::new(),
+                x: m.x,
+                y: m.y,
+                ports: Vec::new(),
+                ai: None,
+                tags: m.tags.clone(),
+                links: m.links.clone(),
+            })
+            .collect();
+
+        state.connections = {
+            let mut conns = Vec::new();
+            for (i, block) in state.blocks.iter().enumerate() {
+                for link in &block.links {
+                    if let Some(j) = state.blocks.iter().position(|b| &b.visual_id == link) {
+                        conns.push(Connection {
+                            from: (i, 0),
+                            to: (j, 0),
+                            data_type: DataType::Any,
+                        });
+                    }
+                }
+            }
+            conns
+        };
+
+        state.diagnostics = diag.clone();
     }
     update_sync_indicators(state);
 }
@@ -181,5 +217,51 @@ mod tests {
         ui.view_mode = ViewMode::Schema;
         update(&mut ui, MainMessage::SwitchToText);
         assert_eq!(ui.view_mode, ViewMode::Code);
+    }
+
+    #[test]
+    fn handle_sync_updates_visual_state() {
+        let mut ui = MainUI::default();
+        let meta_b = VisualMeta {
+            version: DEFAULT_VERSION,
+            id: "b".into(),
+            x: 10.0,
+            y: 20.0,
+            tags: Vec::new(),
+            links: Vec::new(),
+            anchors: Vec::new(),
+            tests: Vec::new(),
+            extends: None,
+            origin: None,
+            translations: std::collections::HashMap::new(),
+            ai: None,
+            extras: None,
+            updated_at: Utc::now(),
+        };
+        handle_sync_message(&mut ui, SyncMessage::VisualChanged(meta_b));
+        let meta_a = VisualMeta {
+            version: DEFAULT_VERSION,
+            id: "a".into(),
+            x: 0.0,
+            y: 0.0,
+            tags: Vec::new(),
+            links: vec!["b".into()],
+            anchors: Vec::new(),
+            tests: Vec::new(),
+            extends: None,
+            origin: None,
+            translations: std::collections::HashMap::new(),
+            ai: None,
+            extras: None,
+            updated_at: Utc::now(),
+        };
+        handle_sync_message(&mut ui, SyncMessage::VisualChanged(meta_a));
+
+        let idx_a = ui.blocks.iter().position(|b| b.visual_id == "a").unwrap();
+        let idx_b = ui.blocks.iter().position(|b| b.visual_id == "b").unwrap();
+        assert!(ui
+            .connections
+            .iter()
+            .any(|c| c.from.0 == idx_a && c.to.0 == idx_b));
     }
 }

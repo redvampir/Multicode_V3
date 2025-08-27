@@ -161,7 +161,30 @@ pub fn view<'a>(state: &'a MainUI) -> Element<'a, MainMessage> {
         .spacing(10)
     };
 
-    let mut layout = column![menu, status_row, content];
+    let mut layout = column![menu, status_row];
+
+    if !state.diagnostics.orphaned_blocks.is_empty() || !state.diagnostics.unmapped_code.is_empty() {
+        let orphaned = if state.diagnostics.orphaned_blocks.is_empty() {
+            "none".to_string()
+        } else {
+            state.diagnostics.orphaned_blocks.join(", ")
+        };
+        let unmapped = if state.diagnostics.unmapped_code.is_empty() {
+            "none".to_string()
+        } else {
+            state
+                .diagnostics
+                .unmapped_code
+                .iter()
+                .map(|r| format!("{}..{}", r.start, r.end))
+                .collect::<Vec<_>>()
+                .join(", ")
+        };
+        let diag_text = format!("Orphaned: {} | Unmapped: {}", orphaned, unmapped);
+        layout = layout.push(row![text(diag_text)].spacing(10));
+    }
+
+    layout = layout.push(content);
     if let Some(conflict) = &state.active_conflict {
         let dialog = conflict_dialog::view(conflict)
             .map(|choice| MainMessage::ResolveConflict(conflict.id.clone(), choice));
