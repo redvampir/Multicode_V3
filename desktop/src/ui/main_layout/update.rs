@@ -114,6 +114,16 @@ impl MessageHandler for DefaultHandler {
                 CanvasMessage::ConnectionCreated(conn) => {
                     if !state.connections.contains(&conn) {
                         state.connections.push(conn);
+                        if conn.from.0 < state.blocks.len()
+                            && conn.to.0 < state.blocks.len()
+                        {
+                            let from_id = state.blocks[conn.from.0].visual_id.clone();
+                            let to_id = state.blocks[conn.to.0].visual_id.clone();
+                            handle_sync_message(
+                                state,
+                                SyncMessage::ConnectionAdded(from_id, to_id),
+                            );
+                        }
                     }
                 }
                 CanvasMessage::TogglePalette => {
@@ -164,6 +174,17 @@ pub fn start_sync_engine(state: &mut MainUI) {
 
 /// Process a [`SyncMessage`] through the engine and refresh indicators.
 fn handle_sync_message(state: &mut MainUI, msg: SyncMessage) {
+    match &msg {
+        SyncMessage::ConnectionAdded(from, to) => {
+            if let Some(block) = state.blocks.iter_mut().find(|b| &b.visual_id == from) {
+                if !block.links.contains(to) {
+                    block.links.push(to.clone());
+                }
+            }
+        }
+        _ => {}
+    }
+
     if let Some((code, metas, diag)) = state.sync_engine.handle(msg) {
         let content = code.to_string();
         state.code_editor = text_editor::Content::with_text(&content);
