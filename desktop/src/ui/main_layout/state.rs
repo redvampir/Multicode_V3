@@ -25,6 +25,8 @@ pub struct MainUI {
     pub dragging: Option<Dragging>,
     /// Current interface language for visual components.
     pub language: Language,
+    /// Currently selected programming language for code editor.
+    pub code_lang: Lang,
     /// Whether the block palette is visible.
     pub show_palette: bool,
     /// Registered view mode renderers allowing easy extension.
@@ -44,6 +46,7 @@ pub enum Dragging {
 
 impl Default for MainUI {
     fn default() -> Self {
+        let code_lang = Lang::Rust;
         let mut ui = Self {
             view_mode: ViewMode::Code,
             code_editor: text_editor::Content::new(),
@@ -52,9 +55,10 @@ impl Default for MainUI {
             connections: Vec::new(),
             dragging: None,
             language: Language::default(),
+            code_lang,
             show_palette: true,
             view_modes: view::default_modes(),
-            sync_engine: SyncEngine::new(Lang::Rust, SyncSettings::default()),
+            sync_engine: SyncEngine::new(code_lang, SyncSettings::default()),
             conflicts: Vec::new(),
             active_conflict: None,
         };
