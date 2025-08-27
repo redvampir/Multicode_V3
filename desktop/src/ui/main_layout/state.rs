@@ -41,6 +41,8 @@ pub struct MainUI {
     pub conflict_index: usize,
     /// Diagnostics reported by the synchronization engine.
     pub diagnostics: SyncDiagnostics,
+    /// Code content awaiting synchronization.
+    pub pending_text: Option<String>,
 }
 
 #[derive(Clone)]
@@ -67,6 +69,7 @@ impl Default for MainUI {
             active_conflict: None,
             conflict_index: 0,
             diagnostics: SyncDiagnostics::default(),
+            pending_text: None,
         };
         start_sync_engine(&mut ui);
         ui

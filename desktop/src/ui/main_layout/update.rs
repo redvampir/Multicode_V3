@@ -26,6 +26,8 @@ pub enum MainMessage {
     OpenSettings,
     /// Message originating from the code editor.
     CodeEditorMsg(iced::widget::text_editor::Action),
+    /// Periodic tick triggering deferred synchronization.
+    SyncTick,
     /// Start dragging a block from the palette.
     StartPaletteDrag(usize),
     /// Message originating from the visual editor canvas.
@@ -71,9 +73,20 @@ impl MessageHandler for DefaultHandler {
                 let _ = Command::new("node").arg("scripts/setup.js").spawn();
             }
             MainMessage::CodeEditorMsg(action) => {
+                // Apply the action and store the updated text. Actual
+                // synchronization is triggered by [`MainMessage::SyncTick`]
+                // messages emitted on a timer.
                 state.code_editor.perform(action);
                 let content = state.code_editor.text().to_string();
-                handle_sync_message(state, SyncMessage::TextChanged(content, state.code_lang));
+                state.pending_text = Some(content);
+            }
+            MainMessage::SyncTick => {
+                if let Some(content) = state.pending_text.take() {
+                    handle_sync_message(
+                        state,
+                        SyncMessage::TextChanged(content, state.code_lang),
+                    );
+                }
             }
             MainMessage::StartPaletteDrag(i) => {
                 if let Some(info) = state.palette.get(i).cloned() {
