@@ -1,0 +1,4 @@
+node_modules
+logs
+Cargo.lock
+package-lock.json

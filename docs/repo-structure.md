@@ -21,4 +21,3 @@ graph LR
 ```
 
 Дополнительные материалы: [modules.md](modules.md), [plugin-guide.md](plugin-guide.md), [plugins.md](plugins.md), [glossary.md](glossary.md).
-

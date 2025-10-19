@@ -5,15 +5,15 @@
 Определения терминов см. в [glossary.md](glossary.md).
 
 ```js
-import { on } from '../src/shared/event-bus.js';
+import { on } from "../src/shared/event-bus.js";
 
 export default function activate() {
-  on('blockSelected', ({ id }) => {
-    console.log('Выбран блок:', id);
+  on("blockSelected", ({ id }) => {
+    console.log("Выбран блок:", id);
   });
 
-  on('metaUpdated', meta => {
-    console.log('Метаданные обновлены:', meta);
+  on("metaUpdated", (meta) => {
+    console.log("Метаданные обновлены:", meta);
   });
 }
 ```

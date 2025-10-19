@@ -3,9 +3,9 @@
 В проекте поддерживается расширение функциональности через плагины.
 Плагин состоит из двух частей:
 
-* **Backend** – реализует трейт [`Plugin`](../../backend/src/plugins/mod.rs) и
+- **Backend** – реализует трейт [`Plugin`](../../backend/src/plugins/mod.rs) и
   сообщает о дополнительных типах блоков.
-* **Frontend** – предоставляет визуальный компонент для нового блока и
+- **Frontend** – предоставляет визуальный компонент для нового блока и
   регистрирует его через функцию `registerBlock`, а при необходимости
   удаляет через `unregisterBlock`.
 
@@ -44,31 +44,31 @@ export function register({ Block, registerBlock }) {
 
     draw(ctx) {
       super.draw(ctx);
-      ctx.strokeStyle = this.extras.outline || 'red';
+      ctx.strokeStyle = this.extras.outline || "red";
       ctx.strokeRect(this.x, this.y, this.w, this.h);
     }
   }
 
-  registerBlock('MyBlock', MyBlock);
+  registerBlock("MyBlock", MyBlock);
 }
 ```
 
 Загрузить модуль можно, передав путь в `loadBlockPlugins`:
 
 ```javascript
-await loadBlockPlugins(['./my-block.js']);
+await loadBlockPlugins(["./my-block.js"]);
 ```
 
 При обновлении кода плагина его можно перезагрузить без перезагрузки страницы:
 
 ```javascript
-await reloadPlugins(['./my-block.js']);
+await reloadPlugins(["./my-block.js"]);
 ```
 
 Если блок больше не нужен, его можно удалить из реестра:
 
 ```javascript
-unregisterBlock('MyBlock');
+unregisterBlock("MyBlock");
 ```
 
 Поле `extras` из структуры [`VisualMeta`](../../backend/src/meta/mod.rs) позволяет
