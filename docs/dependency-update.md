@@ -37,4 +37,3 @@ cargo update -p crate   # обновить конкретный крейт
 ```
 
 Не забудьте закоммитить изменённые файлы `package-lock.json` и `Cargo.lock`.
-

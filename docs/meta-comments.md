@@ -41,6 +41,7 @@
 // @VISUAL_META {"id":"1","x":1.0,"y":2.0,"tags":["a","b"]}
 fn main() {}
 ```
+
 Из `core/tests/tags.rs` — демонстрирует хранение списка `tags` и чтение его через `read_all`.
 
 ### Ссылки
@@ -49,6 +50,7 @@ fn main() {}
 // @VISUAL_META {"id":"1","x":0.0,"y":0.0,"links":["a","b"]}
 fn main() {}
 ```
+
 Фрагмент из `core/tests/links.rs` показывает использование поля `links` и поиск по ним.
 
 ### Дополнительные данные плагина
@@ -56,4 +58,5 @@ fn main() {}
 ```text
 // @VISUAL_META {"id":"1","x":0,"y":0,"extras":{"outline":"blue"}}
 ```
+
 Пример из `examples/plugins/README.md`, где в поле `extras` передаётся цвет обводки пользовательского блока.
