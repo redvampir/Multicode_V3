@@ -12,6 +12,7 @@ pub mod meta;
 pub mod parser;
 pub mod search;
 pub mod viz_lint;
+pub mod organs;
 
 pub use blocks::{parse_blocks, upsert_meta};
 
