@@ -14,7 +14,9 @@ use futures::{SinkExt, StreamExt};
 use once_cell::sync::OnceCell;
 use reqwest::Client;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::{
+    io::ErrorKind,
     net::SocketAddr,
     sync::{
         atomic::{AtomicBool, AtomicUsize, Ordering},
@@ -22,11 +24,18 @@ use std::{
     },
     time::Duration,
 };
-use std::collections::HashMap;
-use tokio::{signal, sync::broadcast, time};
+use tokio::{
+    fs,
+    io::{AsyncReadExt, AsyncSeekExt},
+    signal,
+    sync::broadcast,
+    time,
+};
 use tower::limit::ConcurrencyLimitLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tracing::{error, info};
+
+use base64::{engine::general_purpose, Engine as _};
 
 use crate::meta::db;
 use crate::meta::{remove_all, watch, AiNote, VisualMeta};
@@ -140,6 +149,151 @@ pub async fn parse_endpoint(
 }
 
 #[derive(Deserialize)]
+pub struct ReadMemoryQuery {
+    pub file: String,
+    pub range: Option<String>,
+}
+
+#[derive(Serialize, Debug, PartialEq)]
+pub struct ReadMemoryResponse {
+    pub status: String,
+    pub file: String,
+    pub size: u64,
+    #[serde(rename = "chunkStart")]
+    pub chunk_start: u64,
+    #[serde(rename = "chunkEnd")]
+    pub chunk_end: u64,
+    pub content: String,
+    pub truncated: bool,
+    pub encoding: String,
+}
+
+fn bad_request(message: impl Into<String>) -> (StatusCode, Json<ErrorResponse>) {
+    let status = StatusCode::BAD_REQUEST;
+    (
+        status,
+        Json(ErrorResponse {
+            code: status.as_u16(),
+            message: message.into(),
+        }),
+    )
+}
+
+fn to_error_response(
+    status: StatusCode,
+    message: impl Into<String>,
+) -> (StatusCode, Json<ErrorResponse>) {
+    (
+        status,
+        Json(ErrorResponse {
+            code: status.as_u16(),
+            message: message.into(),
+        }),
+    )
+}
+
+fn parse_range_param(range: Option<&str>) -> Result<(u64, u64), (StatusCode, Json<ErrorResponse>)> {
+    let raw = range.ok_or_else(|| bad_request("Параметр range обязателен"))?;
+    let mut parts = raw.split(':');
+    let start: u64 = parts
+        .next()
+        .ok_or_else(|| bad_request("Неверный формат range"))?
+        .parse()
+        .map_err(|_| bad_request("Неверный формат range"))?;
+    let bytes: u64 = parts
+        .next()
+        .ok_or_else(|| bad_request("Неверный формат range"))?
+        .parse()
+        .map_err(|_| bad_request("Неверный формат range"))?;
+
+    if parts.next().is_some() {
+        return Err(bad_request("Неверный формат range"));
+    }
+    if bytes == 0 {
+        return Err(bad_request("Размер диапазона должен быть больше нуля"));
+    }
+
+    Ok((start, bytes))
+}
+
+async fn read_chunk(file: &str, start: u64, end_inclusive: u64) -> Result<Vec<u8>, std::io::Error> {
+    let mut fh = fs::File::open(file).await?;
+    fh.seek(std::io::SeekFrom::Start(start)).await?;
+    let mut reader = fh.take(end_inclusive - start + 1);
+    let mut buf = Vec::new();
+    reader.read_to_end(&mut buf).await?;
+    Ok(buf)
+}
+
+pub async fn read_memory_endpoint(
+    headers: HeaderMap,
+    AxumQuery(params): AxumQuery<ReadMemoryQuery>,
+) -> Result<Json<ReadMemoryResponse>, (StatusCode, Json<ErrorResponse>)> {
+    if !auth(&headers) {
+        let status = StatusCode::UNAUTHORIZED;
+        return Err((
+            status,
+            Json(ErrorResponse {
+                code: status.as_u16(),
+                message: "Unauthorized".into(),
+            }),
+        ));
+    }
+
+    let (start, bytes) = parse_range_param(params.range.as_deref())?;
+    let meta = fs::metadata(&params.file)
+        .await
+        .map_err(|e| match e.kind() {
+            ErrorKind::NotFound => to_error_response(StatusCode::NOT_FOUND, "Файл не найден"),
+            _ => to_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Ошибка чтения файла: {e}"),
+            ),
+        })?;
+
+    let size = meta.len();
+    if size == 0 {
+        return Err(bad_request("Файл пуст"));
+    }
+    if start >= size {
+        return Err(bad_request("Начало диапазона превышает размер файла"));
+    }
+
+    let end_inclusive = start
+        .checked_add(bytes)
+        .and_then(|v| v.checked_sub(1))
+        .map(|candidate| candidate.min(size - 1))
+        .ok_or_else(|| bad_request("Неверный диапазон: переполнение"))?;
+
+    let data = read_chunk(&params.file, start, end_inclusive)
+        .await
+        .map_err(|e| match e.kind() {
+            ErrorKind::NotFound => to_error_response(StatusCode::NOT_FOUND, "Файл не найден"),
+            _ => to_error_response(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                format!("Ошибка чтения файла: {e}"),
+            ),
+        })?;
+
+    let (content, encoding) = match String::from_utf8(data.clone()) {
+        Ok(text) => (text, "utf8".to_string()),
+        Err(_) => (general_purpose::STANDARD.encode(data), "base64".to_string()),
+    };
+
+    let chunk_end = end_inclusive + 1;
+    Ok(Json(ReadMemoryResponse {
+        status: "ok".to_string(),
+        file: params.file,
+        size,
+        chunk_start: start,
+        chunk_end,
+        content,
+        truncated: chunk_end < size,
+        encoding,
+    }))
+}
+
+#[derive(Deserialize)]
 pub struct ExportRequest {
     pub content: String,
     #[serde(default)]
@@ -213,7 +367,12 @@ pub async fn metadata_upsert_endpoint(
             }),
         ));
     }
-    Ok(Json(upsert_meta(req.content, req.meta, req.lang, req.files)))
+    Ok(Json(upsert_meta(
+        req.content,
+        req.meta,
+        req.lang,
+        req.files,
+    )))
 }
 
 #[derive(Deserialize)]
@@ -626,6 +785,7 @@ pub async fn run() -> Result<(), Box<dyn std::error::Error + Send + Sync>> {
         .route("/watch", get(watch_endpoint))
         .route("/parse", post(parse_endpoint))
         .route("/export", post(export_endpoint))
+        .route("/api/readMemory", get(read_memory_endpoint))
         .route(
             "/metadata",
             get(metadata_endpoint).post(metadata_upsert_endpoint),
