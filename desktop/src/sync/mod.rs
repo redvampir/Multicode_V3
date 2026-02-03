@@ -91,6 +91,13 @@ fn register_boxed_extension(ext: Box<dyn SyncExtension>) {
     }
 }
 
+#[cfg(test)]
+pub(crate) fn clear_extensions() {
+    if let Ok(mut exts) = SYNC_EXTENSIONS.lock() {
+        exts.clear();
+    }
+}
+
 /// Initialize synchronization extensions, optionally loading them from a custom
 /// directory.
 ///
